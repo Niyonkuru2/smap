@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SMPMPS - PWA Installation Debug</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f3f4f6;
+            color: #1f2937;
+        }
+        .container {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #10b981;
+            margin-top: 0;
+        }
+        .status-item {
+            display: flex;
+            align-items: center;
+            padding: 12px;
+            margin: 10px 0;
+            border-radius: 8px;
+            background: #f9fafb;
+            border-left: 4px solid #d1d5db;
+        }
+        .status-item.success {
+            border-left-color: #10b981;
+            background: #f0fdf4;
+        }
+        .status-item.error {
+            border-left-color: #ef4444;
+            background: #fef2f2;
+        }
+        .status-item.warning {
+            border-left-color: #000000;
+            background: #fffbeb;
+        }
+        .status-icon {
+            font-size: 20px;
+            margin-right: 12px;
+            min-width: 24px;
+        }
+        .status-text {
+            flex: 1;
+        }
+        .status-label {
+            font-weight: 600;
+            font-size: 14px;
+        }
+        .status-value {
+            font-size: 12px;
+            color: #6b7280;
+            margin-top: 2px;
+        }
+        button {
+            display: block;
+            width: 100%;
+            padding: 12px;
+            margin-top: 20px;
+            background: #10b981;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        button:hover {
+            background: #059669;
+        }
+        .code {
+            background: #f3f4f6;
+            padding: 12px;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            overflow-x: auto;
+            margin: 10px 0;
+        }
+        .instructions {
+            background: #f0fdf4;
+            border-left: 4px solid #10b981;
+            padding: 12px;
+            border-radius: 6px;
+            margin: 16px 0;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 SMPMPS - PWA Installation Debug</h1>
+        
+        <h2>Status Checks</h2>
+        <div id="statusContainer"></div>
+        
+        <div class="instructions">
+            <strong>📝 Installation Steps:</strong>
+            <ol>
+                <li>Ensure all green checkmarks appear above</li>
+                <li>Look for the <strong>Install</strong> button that appears at the bottom of the app</li>
+                <li>On Android: tap the install button or the menu button (⋮) → "Install app"</li>
+                <li>On iOS: tap Share → "Add to Home Screen"</li>
+            </ol>
+        </div>
+        
+        <button onclick="location.href='/'">← Go Back to App</button>
+    </div>
+
+    <script>
+        const statusContainer = document.getElementById('statusContainer');
+
+        function addStatus(label, status, message, details = '') {
+            const icon = status === 'success' ? '✅' : status === 'error' ? '❌' : '⚠️';
+            const item = document.createElement('div');
+            item.className = `status-item ${status}`;
+            item.innerHTML = `
+                <div class="status-icon">${icon}</div>
+                <div class="status-text">
+                    <div class="status-label">${label}</div>
+                    <div class="status-value">${message}${details ? '<br>' + details : ''}</div>
+                </div>
+            `;
+            statusContainer.appendChild(item);
+        }
+
+        // Check Service Worker
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(regs => {
+                if (regs.length > 0) {
+                    addStatus('Service Worker', 'success', 'Service Worker registered', `${regs.length} registration(s) found`);
+                } else {
+                    addStatus('Service Worker', 'warning', 'Service Worker pending', 'Currently loading...');
+                }
+            });
+        } else {
+            addStatus('Service Worker', 'error', 'Not supported', 'Service Workers not available in this browser');
+        }
+
+        // Check Manifest
+        fetch('/manifest.json')
+            .then(r => r.json())
+            .then(manifest => {
+                addStatus('Manifest', 'success', 'Manifest loaded', `Name: ${manifest.short_name || 'SMPMPS'}`);
+            })
+            .catch(err => addStatus('Manifest', 'error', 'Failed to load', err.message));
+
+        // Check HTTPS or localhost
+        const isSecure = location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname.startsWith('192.168');
+        if (isSecure) {
+            addStatus('Protocol', 'success', 'Secure context', `Using ${location.protocol}`);
+        } else {
+            addStatus('Protocol', 'error', 'Not secure', 'PWA requires HTTPS or localhost');
+        }
+
+        // Check Installation capability
+        let deferredPrompt;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            deferredPrompt = e;
+            addStatus('Installation', 'success', 'Install prompt available', 'Browser supports installation');
+        });
+
+        if (window.matchMedia('(display-mode: standalone)').matches) {
+            addStatus('Installation', 'success', 'App installed', 'App is already installed');
+        } else {
+            addStatus('Installation', 'warning', 'Not installed yet', 'Ready for installation');
+        }
+
+        // Check Icons
+        const icons = ['/favicon.svg', '/icon-192.svg', '/icon-512.svg'];
+        icons.forEach(icon => {
+            const img = new Image();
+            img.onload = () => addStatus(`Icon: ${icon}`, 'success', 'Loaded');
+            img.onerror = () => addStatus(`Icon: ${icon}`, 'error', 'Failed to load');
+            img.src = icon;
+        });
+
+        // Check API connectivity
+        fetch(`http://${window.location.hostname}:3001/`)
+            .then(() => addStatus('Backend API', 'success', 'API accessible', `http://${window.location.hostname}:3001`))
+            .catch(() => addStatus('Backend API', 'warning', 'API not responding', `Cannot reach http://${window.location.hostname}:3001`));
+    </script>
+</body>
+</html>

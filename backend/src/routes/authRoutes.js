@@ -1,0 +1,21 @@
+import express from 'express';
+import * as authController from '../controllers/authController.js';
+import { authenticateToken } from '../middleware/auth.js';
+
+const router = express.Router();
+
+// Public routes
+router.post('/send-verification', authController.sendVerificationEmail);
+router.post('/verify-code', authController.verifyEmailCode);
+router.post('/register', authController.completeRegistration);
+router.post('/login', authController.login);
+router.post('/resend-verification', authController.resendVerificationCode);
+router.post('/forgot-password', authController.forgotPassword);
+router.post('/reset-password', authController.resetPassword);
+
+// Protected routes (require authentication)
+router.post('/change-password', authenticateToken, authController.changePassword);
+router.get('/profile', authenticateToken, authController.getProfile);
+router.put('/profile', authenticateToken, authController.updateProfile);
+router.post('/verify-reset-token', authController.verifyResetToken);
+export default router;

@@ -1,0 +1,177 @@
+# ===============================================
+# ENVIRONMENT & SECRETS
+# ===============================================
+.env
+.env.local
+.env.production
+.env.staging
+.env.*.local
+.env.production.local
+.env.test.local
+
+# ===============================================
+# NODE.JS & NPM
+# ===============================================
+node_modules/
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+npm-debug.log
+yarn-error.log
+lerna-debug.log
+.pnpm-debug.log
+
+# ===============================================
+# BUILD OUTPUT
+# ===============================================
+dist/
+build/
+.next/
+out/
+*.tsbuildinfo
+
+# ===============================================
+# RUNTIME & TEMPORARY
+# ===============================================
+.cache/
+.eslintcache
+.node_repl_history
+*.tgz
+.yarn-integrity
+.env.test
+
+# ===============================================
+# IDE & EDITOR
+# ===============================================
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+.idea/
+.idea_modules/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+*.iml
+*.ipr
+*.iws
+
+# ===============================================
+# OS
+# ===============================================
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+.project
+.classpath
+.c9/
+*.launch
+
+# ===============================================
+# LOGGING & MONITORING
+# ===============================================
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ===============================================
+# DATABASE
+# ===============================================
+postgres_data/
+sql-dump/
+*.sql
+!schema.sql
+!migrations/*.sql
+*.db
+*.sqlite
+*.sqlite3
+
+# ===============================================
+# DOCKER
+# ===============================================
+docker-compose.local.yml
+.docker/.??*
+.dockerignore
+
+# ===============================================
+# UPLOADS & TEMPORARY FILES
+# ===============================================
+uploads/
+tmp/
+temp/
+*.tmp
+*.temp
+
+# ===============================================
+# TESTING
+# ===============================================
+coverage/
+.nyc_output/
+test-results/
+.mocha_output/
+
+# ===============================================
+# DISTRIBUTION
+# ===============================================
+dist-server/
+dist-client/
+
+# ===============================================
+# CERTIFICATES & KEYS
+# ===============================================
+*.pem
+*.key
+*.cert
+*.crt
+*.p12
+*.pfx
+
+# ===============================================
+# DEPLOYMENT FILES (Local only)
+# ===============================================
+.deployment
+.env.production
+deploy.json
+firebase-config.json
+
+# ===============================================
+# VITE
+# ===============================================
+.vite/
+
+# ===============================================
+# REDIS
+# ===============================================
+redis_data/
+dump.rdb
+
+# ===============================================
+# macOS
+# ===============================================
+.AppleDouble
+.LSOverride
+.TemporaryItems
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+
+# ===============================================
+# Windows
+# ===============================================
+ehthumbs.db
+$RECYCLE.BIN/
+*.cab
+
+# ===============================================
+# MISC
+# ===============================================
+*.orig
+.cache-loader
+dist-ssr/
+*.local.js

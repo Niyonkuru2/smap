@@ -1,0 +1,1444 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* UNIFIED COLOR SCHEME - Emerald Green + Black Theme */
+  /* Dark Background */
+  --background: 160 40% 15%;
+  --foreground: 0 0% 95%;
+  --card: 160 40% 22%;
+  --card-foreground: 0 0% 95%;
+  --popover: 160 40% 22%;
+  --popover-foreground: 0 0% 95%;
+  
+  /* Primary Emerald Green - Main Action Button */
+  --primary: 160 84% 39%;
+  --primary-foreground: 0 0% 100%;
+  
+  /* Secondary Black - Strong Emphasis & Contrast */
+  --secondary: 0 0% 0%;
+  --secondary-foreground: 0 0% 100%;
+  
+  /* Muted Colors - Text & Subtle Elements */
+  --muted: 0 0% 40%;
+  --muted-foreground: 0 0% 70%;
+  
+  /* Accent Sky Blue - Information & Analytics */
+  --accent: 217 91% 60%;
+  --accent-foreground: 0 0% 100%;
+  
+  /* Destructive - Error states */
+  --destructive: 0 85% 50%;
+  --destructive-foreground: 0 0% 100%;
+  
+  /* Border & Input */
+  --border: 0 0% 30%;
+  --input: 0 0% 15%;
+  --input-background: 0 0% 10%;
+  --ring: 160 84% 39%;
+  --radius: 0.5rem;
+}
+
+/* Dark mode - Use the same unified Emerald Green + Black theme */
+.dark {
+  /* Background & Text */
+  --background: 160 40% 15%;
+  --foreground: 0 0% 95%;
+  --card: 160 40% 22%;
+  --card-foreground: 0 0% 95%;
+  --popover: 160 40% 22%;
+  --popover-foreground: 0 0% 95%;
+  
+  /* Primary Emerald Green Button */
+  --primary: 160 84% 39%;
+  --primary-foreground: 0 0% 100%;
+  
+  /* Secondary Black */
+  --secondary: 0 0% 0%;
+  --secondary-foreground: 0 0% 100%;
+  
+  /* Muted */
+  --muted: 0 0% 40%;
+  --muted-foreground: 0 0% 70%;
+  
+  /* Accent Sky Blue */
+  --accent: 217 91% 60%;
+  --accent-foreground: 0 0% 100%;
+  
+  /* Destructive */
+  --destructive: 0 85% 55%;
+  --destructive-foreground: 0 0% 100%;
+  
+  /* Border & Input */
+  --border: 0 0% 30%;
+  --input: 0 0% 15%;
+  --input-background: 0 0% 10%;
+  --ring: 160 84% 39%;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  margin: 0;
+  padding: 0;
+  background: hsl(160, 40%, 20%);
+  color: hsl(160, 40%, 95%);
+}
+
+/* ========================================
+   PREMIUM ANIMATED BACKGROUND SYSTEM
+   🏪 MARKET THEME - CSS-Only Vibrant Market Scene
+   ======================================== */
+.app-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  background: hsl(160, 40%, 20%); /* Dark green - unified color scheme */
+  filter: none;
+  transform: none;
+  overflow: hidden;
+}
+
+/* Soft atmospheric glow */
+.app-bg::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: 
+    radial-gradient(circle at 16% 12%, rgba(14, 165, 233, 0.14) 0%, transparent 34%),
+    radial-gradient(circle at 84% 14%, rgba(20, 184, 166, 0.12) 0%, transparent 36%),
+    radial-gradient(circle at 50% 85%, rgba(59, 130, 246, 0.1) 0%, transparent 38%);
+  animation: marketAwnings 20s ease-in-out infinite;
+}
+
+/* Very subtle grain texture for depth */
+.app-bg::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    repeating-linear-gradient(
+      45deg,
+      rgba(255, 255, 255, 0.028) 0px,
+      rgba(255, 255, 255, 0.028) 2px,
+      transparent 2px,
+      transparent 6px
+    );
+  animation: produceFloat 24s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes marketAwnings {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.95; }
+}
+
+@keyframes produceFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+
+/* Light overlay for readability */
+.app-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+/* ========================================
+   GLASSMORPHISM CARDS - ENHANCED
+   ======================================== */
+.glass-card {
+  background: rgba(255, 255, 255, 0.9) !important;
+  backdrop-filter: blur(20px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+  border: 1px solid rgba(226, 232, 240, 0.8) !important;
+  box-shadow: 
+    0 8px 24px 0 rgba(15, 23, 42, 0.12),
+    0 0 0 1px rgba(255, 255, 255, 0.25) inset !important;
+  border-radius: 24px !important;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.glass-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 
+    0 16px 42px 0 rgba(15, 23, 42, 0.18),
+    0 0 0 1px rgba(255, 255, 255, 0.3) inset !important;
+}
+
+.dark .glass-card {
+  background: rgba(30, 41, 59, 0.9) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  box-shadow: 
+    0 4px 6px -1px rgba(0, 0, 0, 0.3),
+    0 2px 4px -2px rgba(0, 0, 0, 0.2) !important;
+}
+
+.dark-glass {
+  background: rgba(15, 23, 42, 0.82) !important;
+  backdrop-filter: blur(30px) saturate(200%) !important;
+  -webkit-backdrop-filter: blur(30px) saturate(200%) !important;
+  border: 1px solid rgba(16, 185, 129, 0.2) !important;
+  box-shadow: 
+    0 8px 28px 0 rgba(0, 0, 0, 0.34),
+    0 0 50px rgba(16, 185, 129, 0.12),
+    0 0 90px rgba(5, 150, 105, 0.06),
+    0 0 0 1px rgba(255, 255, 255, 0.05) inset !important;
+  border-radius: 24px !important;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.dark-glass:hover {
+  border: 1px solid rgba(16, 185, 129, 0.35) !important;
+  box-shadow: 
+    0 12px 40px 0 rgba(0, 0, 0, 0.45),
+    0 0 70px rgba(16, 185, 129, 0.15),
+    0 0 110px rgba(5, 150, 105, 0.08) !important;
+}
+
+/* ========================================
+   PREMIUM BUTTONS - Market Fresh Style
+   ======================================== */
+.btn-premium {
+  background: linear-gradient(135deg, #059669 0%, #10B981 55%, #047857 100%) !important;
+  border: none !important;
+  box-shadow: 
+    0 4px 20px rgba(5, 150, 105, 0.35),
+    0 0 36px rgba(16, 185, 129, 0.2),
+    0 0 54px rgba(4, 120, 87, 0.12) !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  color: white !important;
+  font-weight: 700 !important;
+  position: relative;
+  overflow: hidden;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.3) !important;
+}
+
+.btn-premium::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+  transition: left 0.6s;
+}
+
+.btn-premium:hover::before {
+  left: 100%;
+}
+
+.btn-premium:hover {
+  transform: translateY(-4px) scale(1.03) !important;
+  box-shadow: 
+    0 10px 30px rgba(5, 150, 105, 0.45),
+    0 0 56px rgba(16, 185, 129, 0.28),
+    0 0 74px rgba(4, 120, 87, 0.18) !important;
+}
+
+.btn-premium:active {
+  transform: translateY(-2px) scale(0.98) !important;
+}
+
+/* Secondary Button - Outline Style */
+.btn-secondary {
+  background: transparent !important;
+  border: 2px solid #10B981 !important;
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.2) !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  color: #10B981 !important;
+  font-weight: 600 !important;
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-secondary:hover {
+  background: rgba(16, 185, 129, 0.15) !important;
+  border-color: #059669 !important;
+  color: #059669 !important;
+  transform: translateY(-2px) !important;
+  box-shadow: 0 8px 25px rgba(5, 150, 105, 0.3) !important;
+}
+
+/* Danger Button - For delete/cancel actions */
+.btn-danger {
+  background: linear-gradient(135deg, #DC3545 0%, #FF6B6B 100%) !important;
+  border: none !important;
+  box-shadow: 0 4px 15px rgba(220, 53, 69, 0.4) !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  color: white !important;
+  font-weight: 600 !important;
+}
+
+.btn-danger:hover {
+  transform: translateY(-3px) scale(1.02) !important;
+  box-shadow: 0 8px 25px rgba(220, 53, 69, 0.5) !important;
+}
+
+/* Success Button */
+.btn-success {
+  background: linear-gradient(135deg, #059669 0%, #10B981 100%) !important;
+  border: none !important;
+  box-shadow: 0 4px 15px rgba(5, 150, 105, 0.4) !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  color: white !important;
+  font-weight: 600 !important;
+}
+
+.btn-success:hover {
+  transform: translateY(-3px) scale(1.02) !important;
+  box-shadow: 0 8px 25px rgba(5, 150, 105, 0.5) !important;
+}
+
+/* Warning Button - Dark Green shades */
+.btn-warning {
+  background: linear-gradient(135deg, #047857 0%, #059669 100%) !important;
+  border: none !important;
+  box-shadow: 0 4px 15px rgba(4, 120, 87, 0.4) !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  color: white !important;
+  font-weight: 700 !important;
+}
+
+.btn-warning:hover {
+  transform: translateY(-3px) scale(1.02) !important;
+  box-shadow: 0 8px 25px rgba(5, 150, 105, 0.5) !important;
+}
+
+/* Info Button - Dark Green tones */
+.btn-info {
+  background: linear-gradient(135deg, #10B981 0%, #059669 100%) !important;
+  border: none !important;
+  box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4) !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  color: white !important;
+  font-weight: 600 !important;
+}
+
+.btn-info:hover {
+  transform: translateY(-3px) scale(1.02) !important;
+  box-shadow: 0 8px 25px rgba(5, 150, 105, 0.5) !important;
+}
+
+/* Ghost Button - Minimal style */
+.btn-ghost {
+  background: transparent !important;
+  border: none !important;
+  color: rgba(255, 255, 255, 0.8) !important;
+  font-weight: 500 !important;
+  transition: all 0.2s ease !important;
+}
+
+.btn-ghost:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: #10B981 !important;
+}
+
+/* Icon Button - Circular */
+.btn-icon {
+  width: 48px !important;
+  height: 48px !important;
+  border-radius: 50% !important;
+  background: rgba(16, 185, 129, 0.2) !important;
+  border: 1px solid rgba(16, 185, 129, 0.3) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transition: all 0.3s ease !important;
+  color: #10B981 !important;
+}
+
+.btn-icon:hover {
+  background: rgba(16, 185, 129, 0.4) !important;
+  transform: scale(1.1) rotate(5deg) !important;
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.4) !important;
+}
+
+/* Large CTA Button */
+.btn-cta {
+  background: linear-gradient(135deg, #059669 0%, #10B981 30%, #047857 70%, #065f46 100%) !important;
+  background-size: 200% 200% !important;
+  border: none !important;
+  padding: 16px 48px !important;
+  font-size: 1.125rem !important;
+  font-weight: 800 !important;
+  color: white !important;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.3) !important;
+  box-shadow: 
+    0 6px 30px rgba(5, 150, 105, 0.4),
+    0 0 60px rgba(16, 185, 129, 0.2) !important;
+  animation: ctaGradient 3s ease infinite !important;
+  transition: all 0.3s ease !important;
+}
+
+.btn-cta:hover {
+  transform: translateY(-5px) scale(1.05) !important;
+  box-shadow: 
+    0 12px 40px rgba(5, 150, 105, 0.5),
+    0 0 80px rgba(16, 185, 129, 0.3) !important;
+}
+
+@keyframes ctaGradient {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+/* ========================================
+   ANIMATED GRADIENT TEXT - Market Style
+   ======================================== */
+.gradient-text {
+  background: linear-gradient(135deg, #10B981, #059669, #047857, #10B981);
+  background-size: 400% 400%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: gradientText 6s ease infinite;
+  filter: drop-shadow(0 2px 4px rgba(5, 150, 105, 0.25));
+}
+
+@keyframes gradientText {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+/* ========================================
+   🏪 MARKET-STYLE PRODUCT CARDS
+   ======================================== */
+
+/* Product Card - Like a market stall tag */
+.market-card {
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.95) 0%, rgba(245, 245, 220, 0.9) 100%) !important;
+  border: 3px solid #8B4513 !important;
+  border-radius: 16px !important;
+  box-shadow: 
+    0 8px 24px rgba(139, 69, 19, 0.3),
+    inset 0 2px 4px rgba(255, 255, 255, 0.5) !important;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s ease !important;
+}
+
+.market-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 6px;
+  background: linear-gradient(90deg, #059669, #10B981, #047857, #065f46);
+}
+
+.market-card:hover {
+  transform: translateY(-6px) rotate(-1deg) !important;
+  box-shadow: 
+    0 16px 40px rgba(139, 69, 19, 0.4),
+    0 0 30px rgba(16, 185, 129, 0.2) !important;
+}
+
+/* Price Tag Card - Looks like a hanging price tag */
+.price-tag {
+  background: #DCFCE7 !important;
+  border: 2px dashed #059669 !important;
+  border-radius: 8px !important;
+  padding: 12px 20px !important;
+  position: relative;
+  box-shadow: 3px 3px 0 #8B4513 !important;
+  transition: all 0.2s ease !important;
+}
+
+.price-tag::before {
+  content: '🏷️';
+  position: absolute;
+  top: -12px;
+  left: 10px;
+  font-size: 20px;
+}
+
+.price-tag:hover {
+  transform: rotate(2deg) scale(1.05) !important;
+  box-shadow: 5px 5px 0 #8B4513 !important;
+}
+
+/* Fresh Badge - For new/fresh items */
+.fresh-badge {
+  background: linear-gradient(135deg, #10B981 0%, #059669 100%) !important;
+  color: white !important;
+  padding: 4px 12px !important;
+  border-radius: 20px !important;
+  font-size: 0.75rem !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 1px !important;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.4) !important;
+  animation: freshPulse 2s ease-in-out infinite !important;
+}
+
+@keyframes freshPulse {
+  0%, 100% { box-shadow: 0 2px 8px rgba(16, 185, 129, 0.4); }
+  50% { box-shadow: 0 2px 16px rgba(16, 185, 129, 0.7); }
+}
+
+/* Sale Badge */
+.sale-badge {
+  background: linear-gradient(135deg, #FF6347 0%, #DC3545 100%) !important;
+  color: white !important;
+  padding: 4px 12px !important;
+  border-radius: 20px !important;
+  font-size: 0.75rem !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  animation: saleBounce 1s ease-in-out infinite !important;
+}
+
+@keyframes saleBounce {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+}
+
+/* Wooden Frame Card - Like market stall display */
+.wooden-card {
+  background: linear-gradient(180deg, #DEB887 0%, #D2691E 100%) !important;
+  border: 4px solid #8B4513 !important;
+  border-radius: 12px !important;
+  padding: 16px !important;
+  box-shadow: 
+    inset 0 2px 4px rgba(255, 255, 255, 0.3),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.2),
+    0 6px 20px rgba(139, 69, 19, 0.5) !important;
+  position: relative;
+}
+
+.wooden-card::after {
+  content: '';
+  position: absolute;
+  inset: 4px;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  pointer-events: none;
+}
+
+/* Basket Card - Like a woven basket */
+.basket-card {
+  background: 
+    repeating-linear-gradient(
+      45deg,
+      #DEB887 0px,
+      #DEB887 10px,
+      #D2B48C 10px,
+      #D2B48C 20px
+    ) !important;
+  border: 3px solid #8B4513 !important;
+  border-radius: 20px !important;
+  padding: 20px !important;
+  box-shadow: 
+    0 8px 24px rgba(139, 69, 19, 0.4),
+    inset 0 0 20px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Chalkboard Card - Like market chalkboard menu */
+.chalkboard-card {
+  background: #065f46 !important;
+  border: 8px solid #047857 !important;
+  border-radius: 4px !important;
+  padding: 20px !important;
+  color: white !important;
+  font-family: 'Inter', sans-serif !important;
+  box-shadow: 
+    inset 0 0 30px rgba(0, 0, 0, 0.5),
+    0 8px 24px rgba(0, 0, 0, 0.4) !important;
+  position: relative;
+}
+
+.chalkboard-card::before {
+  content: '';
+  position: absolute;
+  bottom: 8px;
+  left: 10%;
+  right: 10%;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 2px;
+}
+
+/* Vegetable Category Cards */
+.veggie-card {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.2) 0%, rgba(5, 150, 105, 0.3) 100%) !important;
+  border: 2px solid #10B981 !important;
+  border-radius: 16px !important;
+  transition: all 0.3s ease !important;
+}
+
+.veggie-card:hover {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.3) 0%, rgba(5, 150, 105, 0.4) 100%) !important;
+  border-color: #059669 !important;
+  transform: scale(1.02) !important;
+}
+
+.fruit-card {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.2) 0%, rgba(5, 150, 105, 0.3) 100%) !important;
+  border: 2px solid #10B981 !important;
+  border-radius: 16px !important;
+  transition: all 0.3s ease !important;
+}
+
+.fruit-card:hover {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.3) 0%, rgba(5, 150, 105, 0.4) 100%) !important;
+  transform: scale(1.02) !important;
+}
+
+.grain-card {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.2) 0%, rgba(5, 150, 105, 0.3) 100%) !important;
+  border: 2px solid #10B981 !important;
+  border-radius: 16px !important;
+  transition: all 0.3s ease !important;
+}
+
+.grain-card:hover {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.3) 0%, rgba(5, 150, 105, 0.4) 100%) !important;
+  transform: scale(1.02) !important;
+}
+
+/* ========================================
+   CARD HOVER EFFECTS
+   ======================================== */
+.card-hover {
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.card-hover:hover {
+  transform: translateY(-8px) scale(1.02);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+}
+
+/* ========================================
+   GLOWING BORDERS
+   ======================================== */
+.glow-border {
+  position: relative;
+}
+
+.glow-border::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  background: linear-gradient(45deg, #10B981, #059669, #047857, #10B981);
+  background-size: 400% 400%;
+  border-radius: inherit;
+  z-index: -1;
+  animation: glowRotate 3s linear infinite;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.glow-border:hover::before {
+  opacity: 1;
+}
+
+@keyframes glowRotate {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 400% 50%; }
+}
+
+/* ========================================
+   FLOATING ANIMATION
+   ======================================== */
+.float-animation {
+  animation: float 6s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-20px); }
+}
+
+/* ========================================
+   PULSE RING EFFECT
+   ======================================== */
+.pulse-ring {
+  position: relative;
+}
+
+.pulse-ring::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: inherit;
+  border: 2px solid rgba(16, 185, 129, 0.5);
+  animation: pulseRing 2s ease-out infinite;
+}
+
+@keyframes pulseRing {
+  0% { transform: scale(1); opacity: 1; }
+  100% { transform: scale(1.1); opacity: 0; }
+}
+
+/* ========================================
+   SHIMMER LOADING EFFECT
+   ======================================== */
+.shimmer {
+  background: linear-gradient(90deg, 
+    rgba(255,255,255,0) 0%, 
+    rgba(255,255,255,0.4) 50%, 
+    rgba(255,255,255,0) 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* ========================================
+   STAT CARDS
+   ======================================== */
+.stat-card {
+  background: linear-gradient(135deg, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0.7) 100%);
+  backdrop-filter: blur(10px);
+  border-radius: 20px;
+  padding: 1.5rem;
+  border: 1px solid rgba(255,255,255,0.3);
+  transition: all 0.3s ease;
+}
+
+.stat-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+}
+
+.stat-card.green {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(5, 150, 105, 0.05) 100%);
+  border-color: rgba(16, 185, 129, 0.3);
+}
+
+.stat-card.blue {
+  background: linear-gradient(135deg, rgba(30, 136, 229, 0.15) 0%, rgba(30, 136, 229, 0.05) 100%);
+  border-color: rgba(30, 136, 229, 0.3);
+}
+
+.stat-card.purple {
+  background: linear-gradient(135deg, rgba(156, 39, 176, 0.15) 0%, rgba(156, 39, 176, 0.05) 100%);
+  border-color: rgba(156, 39, 176, 0.3);
+}
+
+.stat-card.orange {
+  background: linear-gradient(135deg, rgba(255, 152, 0, 0.15) 0%, rgba(255, 152, 0, 0.05) 100%);
+  border-color: rgba(255, 152, 0, 0.3);
+}
+
+/* ========================================
+   INPUT FOCUS EFFECTS
+   ======================================== */
+input:focus, select:focus, textarea:focus {
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2), 0 0 20px rgba(16, 185, 129, 0.1) !important;
+  border-color: #10B981 !important;
+  transition: all 0.3s ease;
+}
+
+/* ========================================
+   SCROLLBAR STYLING
+   ======================================== */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, #10B981, #059669);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(135deg, #059669, #047857);
+}
+
+/* ========================================
+   BADGE ANIMATIONS
+   ======================================== */
+.badge-pulse {
+  animation: badgePulse 2s ease-in-out infinite;
+}
+
+@keyframes badgePulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+}
+
+/* ========================================
+   PAGE TRANSITIONS
+   ======================================== */
+.page-enter {
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+.page-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition: all 0.4s ease-out;
+}
+
+/* ========================================
+   TYPOGRAPHY ENHANCEMENTS
+   ======================================== */
+h1, h2, h3 {
+  letter-spacing: -0.025em;
+}
+
+.text-shadow {
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+}
+
+/* ========================================
+   ICON CONTAINERS
+   ======================================== */
+.icon-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(46, 204, 113, 0.2), rgba(30, 136, 229, 0.2));
+  transition: all 0.3s ease;
+}
+
+.icon-container:hover {
+  transform: rotate(5deg) scale(1.1);
+  background: linear-gradient(135deg, rgba(46, 204, 113, 0.3), rgba(30, 136, 229, 0.3));
+}
+
+/* ========================================
+   🎨 MONOCHROMATIC TEAL THEME UTILITIES
+   ======================================== */
+
+/* Primary brand color variants */
+.bg-primary-dark { background-color: hsl(var(--primary-hue) 45% 22%); }
+.bg-primary { background-color: hsl(var(--primary)); }
+.bg-primary-light { background-color: hsl(var(--primary-hue) 40% 50%); }
+.bg-primary-lighter { background-color: hsl(var(--primary-hue) 35% 70%); }
+.bg-primary-lightest { background-color: hsl(var(--primary-hue) 30% 90%); }
+
+/* Text colors matching brand */
+.text-primary-dark { color: hsl(var(--primary-hue) 45% 22%); }
+.text-primary { color: hsl(var(--primary)); }
+.text-primary-light { color: hsl(var(--primary-hue) 40% 50%); }
+
+/* Borders using brand color */
+.border-primary { border-color: hsl(var(--primary)); }
+.border-primary-light { border-color: hsl(var(--primary-hue) 35% 70%); }
+
+/* Buttons - All use brand color */
+.btn-primary {
+  background-color: hsl(var(--primary));
+  color: white;
+  border: none;
+  transition: all 0.3s ease;
+}
+
+.btn-primary:hover {
+  background-color: hsl(var(--primary-hue) 45% 28%);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px hsl(var(--primary-hue) 45% 32% / 0.3);
+}
+
+.btn-secondary {
+  background-color: hsl(var(--primary-hue) 35% 70%);
+  color: hsl(var(--primary-hue) 45% 22%);
+  border: 2px solid hsl(var(--primary));
+}
+
+/* Cards with consistent brand styling */
+.card-primary {
+  background: white;
+  border: 1px solid hsl(var(--primary-hue) 30% 90%);
+  border-top: 4px solid hsl(var(--primary));
+}
+
+/* Accents */
+.accent-primary::before {
+  content: '';
+  display: inline-block;
+  width: 4px;
+  height: 4px;
+  background-color: hsl(var(--primary));
+  border-radius: 50%;
+  margin-right: 8px;
+}
+
+/* ========================================
+   NOTIFICATION DOT
+   ======================================== */
+.notification-dot {
+  position: relative;
+}
+
+.notification-dot::after {
+  content: '';
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 12px;
+  height: 12px;
+  background: #ef4444;
+  border-radius: 50%;
+  border: 2px solid white;
+  animation: notificationPulse 2s ease-in-out infinite;
+}
+
+@keyframes notificationPulse {
+  0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.5); }
+  50% { transform: scale(1.1); box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); }
+}
+
+/* ========================================
+   FADE IN ANIMATION
+   ======================================== */
+.animate-fadeIn {
+  animation: fadeIn 0.6s ease-out forwards;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* ========================================
+   SLIDE IN ANIMATIONS
+   ======================================== */
+.animate-slideInLeft {
+  animation: slideInLeft 0.5s ease-out forwards;
+}
+
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.animate-slideInRight {
+  animation: slideInRight 0.5s ease-out forwards;
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.animate-slideInUp {
+  animation: slideInUp 0.5s ease-out forwards;
+}
+
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ========================================
+   GLOBAL DARK GREEN BACKGROUND OVERRIDE
+   ======================================== */
+
+/* Override all white backgrounds to dark green */
+.bg-white {
+  background: hsl(160, 40%, 22%) !important;
+}
+
+/* Override light backgrounds */
+.bg-gray-50,
+.bg-slate-50,
+.bg-gray-100,
+.bg-slate-100 {
+  background: hsl(160, 40%, 25%) !important;
+}
+
+/* Override light purple, blue, indigo backgrounds */
+.bg-purple-100,
+.bg-indigo-100,
+.bg-blue-50,
+.bg-blue-100,
+.bg-orange-100,
+.bg-yellow-100,
+.bg-red-100,
+.bg-pink-100,
+.bg-cyan-100,
+.bg-teal-100,
+.bg-emerald-100 {
+  background: hsl(160, 40%, 28%) !important;
+  color: hsl(160, 40%, 95%) !important;
+}
+
+/* Override medium background colors */
+.bg-purple-500,
+.bg-blue-500,
+.bg-indigo-500,
+.bg-orange-500,
+.bg-yellow-500,
+.bg-red-500,
+.bg-pink-500,
+.bg-cyan-500,
+.bg-teal-500 {
+  background: hsl(160, 75%, 35%) !important;
+  color: white !important;
+}
+
+/* Override border colors for light backgrounds */
+.border-slate-200,
+.border-gray-200,
+.border-blue-200,
+.border-blue-300,
+.border-purple-200,
+.border-purple-300,
+.border-orange-200,
+.border-orange-300,
+.border-yellow-200,
+.border-red-200,
+.border-red-300,
+.border-pink-200,
+.border-cyan-200,
+.border-cyan-300,
+.border-teal-200,
+.border-teal-300 {
+  border-color: hsl(160, 35%, 30%) !important;
+}
+
+/* Override text colors */
+.text-slate-900,
+.text-gray-900,
+.text-blue-700,
+.text-blue-800,
+.text-purple-700,
+.text-purple-800,
+.text-orange-700,
+.text-yellow-700,
+.text-red-700,
+.text-red-800,
+.text-pink-700,
+.text-cyan-700,
+.text-teal-700 {
+  color: hsl(160, 40%, 95%) !important;
+}
+
+/* Light text on dark backgrounds */  
+.text-slate-600,
+.text-gray-600,
+.text-muted-foreground {
+  color: hsl(160, 40%, 75%) !important;
+}
+
+/* Override ring/focus colors */
+.ring-blue-500,
+.ring-purple-500,
+.ring-indigo-500 {
+  --tw-ring-color: hsl(160, 75%, 35%) !important;
+}
+
+/* Override placeholder colors */
+.placeholder-gray-400,
+.placeholder-slate-400 {
+  color: hsl(160, 40%, 55%) !important;
+}
+
+/* === COMPREHENSIVE COLOR OVERRIDES === */
+/* All background colors override */
+.bg-white,
+.bg-gray-50,
+.bg-gray-100,
+.bg-gray-200,
+.bg-gray-300,
+.bg-gray-400,
+.bg-gray-500,
+.bg-gray-600,
+.bg-gray-700,
+.bg-gray-800,
+.bg-slate-50,
+.bg-slate-100,
+.bg-slate-200,
+.bg-slate-300,
+.bg-slate-400,
+.bg-slate-500,
+.bg-blue-50,
+.bg-blue-100,
+.bg-blue-200,
+.bg-blue-300,
+.bg-blue-400,
+.bg-blue-500,
+.bg-blue-600,
+.bg-blue-700,
+.bg-blue-800,
+.bg-blue-900,
+.bg-indigo-50,
+.bg-indigo-100,
+.bg-indigo-200,
+.bg-indigo-300,
+.bg-indigo-400,
+.bg-indigo-500,
+.bg-indigo-600,
+.bg-indigo-700,
+.bg-purple-50,
+.bg-purple-100,
+.bg-purple-200,
+.bg-purple-300,
+.bg-purple-400,
+.bg-purple-500,
+.bg-purple-600,
+.bg-purple-700,
+.bg-pink-50,
+.bg-pink-100,
+.bg-pink-200,
+.bg-pink-300,
+.bg-pink-400,
+.bg-pink-500,
+.bg-pink-600,
+.bg-pink-700,
+.bg-red-50,
+.bg-red-100,
+.bg-red-200,
+.bg-red-300,
+.bg-red-400,
+.bg-red-500,
+.bg-red-600,
+.bg-red-700,
+.bg-red-800,
+.bg-red-900,
+.bg-orange-50,
+.bg-orange-100,
+.bg-orange-200,
+.bg-orange-300,
+.bg-orange-400,
+.bg-orange-500,
+.bg-orange-600,
+.bg-orange-700,
+.bg-amber-50,
+.bg-amber-100,
+.bg-amber-200,
+.bg-amber-300,
+.bg-amber-400,
+.bg-amber-500,
+.bg-yellow-50,
+.bg-yellow-100,
+.bg-yellow-200,
+.bg-yellow-300,
+.bg-yellow-400,
+.bg-yellow-500,
+.bg-yellow-600,
+.bg-yellow-700,
+.bg-green-100,
+.bg-green-200,
+.bg-green-300,
+.bg-emerald-50,
+.bg-emerald-100,
+.bg-emerald-200,
+.bg-teal-50,
+.bg-teal-100,
+.bg-teal-200,
+.bg-teal-300,
+.bg-teal-400,
+.bg-teal-500,
+.bg-cyan-50,
+.bg-cyan-100,
+.bg-cyan-200,
+.bg-cyan-300,
+.bg-cyan-400,
+.bg-cyan-500,
+.bg-cyan-600,
+.bg-cyan-700,
+.bg-sky-50,
+.bg-sky-100,
+.bg-sky-200,
+.bg-sky-300,
+.bg-sky-400,
+.bg-sky-500 {
+  background-color: hsl(160, 40%, 25%) !important;
+}
+
+/* All text colors override */
+.text-blue-500,
+.text-blue-600,
+.text-blue-700,
+.text-blue-800,
+.text-blue-900,
+.text-indigo-500,
+.text-indigo-600,
+.text-indigo-700,
+.text-indigo-800,
+.text-purple-500,
+.text-purple-600,
+.text-purple-700,
+.text-purple-800,
+.text-purple-900,
+.text-pink-500,
+.text-pink-600,
+.text-pink-700,
+.text-pink-800,
+.text-pink-900,
+.text-red-500,
+.text-red-600,
+.text-red-700,
+.text-red-800,
+.text-red-900,
+.text-orange-500,
+.text-orange-600,
+.text-orange-700,
+.text-orange-800,
+.text-orange-900,
+.text-yellow-500,
+.text-yellow-600,
+.text-yellow-700,
+.text-yellow-800,
+.text-yellow-900,
+.text-amber-500,
+.text-amber-600,
+.text-amber-700,
+.text-amber-800,
+.text-amber-900,
+.text-teal-500,
+.text-teal-600,
+.text-teal-700,
+.text-teal-800,
+.text-teal-900,
+.text-cyan-500,
+.text-cyan-600,
+.text-cyan-700,
+.text-cyan-800,
+.text-cyan-900,
+.text-sky-500,
+.text-sky-600,
+.text-sky-700,
+.text-sky-800,
+.text-sky-900 {
+  color: hsl(160, 40%, 95%) !important;
+}
+
+/* All border colors override */
+.border-blue-100,
+.border-blue-200,
+.border-blue-300,
+.border-blue-400,
+.border-blue-500,
+.border-blue-600,
+.border-blue-700,
+.border-indigo-100,
+.border-indigo-200,
+.border-indigo-300,
+.border-indigo-400,
+.border-indigo-500,
+.border-indigo-600,
+.border-purple-100,
+.border-purple-200,
+.border-purple-300,
+.border-purple-400,
+.border-purple-500,
+.border-purple-600,
+.border-pink-100,
+.border-pink-200,
+.border-pink-300,
+.border-pink-400,
+.border-pink-500,
+.border-pink-600,
+.border-red-100,
+.border-red-200,
+.border-red-300,
+.border-red-400,
+.border-red-500,
+.border-red-600,
+.border-orange-100,
+.border-orange-200,
+.border-orange-300,
+.border-orange-400,
+.border-orange-500,
+.border-orange-600,
+.border-yellow-100,
+.border-yellow-200,
+.border-yellow-300,
+.border-yellow-400,
+.border-yellow-500,
+.border-amber-100,
+.border-amber-200,
+.border-amber-300,
+.border-amber-400,
+.border-amber-500,
+.border-teal-100,
+.border-teal-200,
+.border-teal-300,
+.border-teal-400,
+.border-teal-500,
+.border-teal-600,
+.border-cyan-100,
+.border-cyan-200,
+.border-cyan-300,
+.border-cyan-400,
+.border-cyan-500,
+.border-cyan-600,
+.border-sky-100,
+.border-sky-200,
+.border-sky-300,
+.border-sky-400,
+.border-sky-500 {
+  border-color: hsl(160, 35%, 30%) !important;
+}
+
+/* ========================================
+   SCALE IN ANIMATION
+   ======================================== */
+.animate-scaleIn {
+  animation: scaleIn 0.4s ease-out forwards;
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* ========================================
+   BOUNCE ANIMATION
+   ======================================== */
+.animate-bounce-soft {
+  animation: bounceSoft 2s ease-in-out infinite;
+}
+
+@keyframes bounceSoft {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+/* ========================================
+   STAGGER CHILDREN ANIMATION
+   ======================================== */
+.stagger-children > * {
+  opacity: 0;
+  animation: fadeIn 0.4s ease-out forwards;
+}
+
+.stagger-children > *:nth-child(1) { animation-delay: 0.1s; }
+.stagger-children > *:nth-child(2) { animation-delay: 0.2s; }
+.stagger-children > *:nth-child(3) { animation-delay: 0.3s; }
+.stagger-children > *:nth-child(4) { animation-delay: 0.4s; }
+.stagger-children > *:nth-child(5) { animation-delay: 0.5s; }
+.stagger-children > *:nth-child(6) { animation-delay: 0.6s; }
+
+/* ========================================
+   HOVER LIFT EFFECT
+   ======================================== */
+.hover-lift {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.hover-lift:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+}
+
+/* ========================================
+   GLOW ON HOVER
+   ======================================== */
+.glow-hover {
+  transition: all 0.3s ease;
+}
+
+.glow-hover:hover {
+  box-shadow: 0 0 30px rgba(46, 204, 113, 0.4), 0 0 60px rgba(30, 136, 229, 0.2);
+}
+
+/* ========================================
+   PREMIUM CARD STYLES
+   ======================================== */
+.premium-card {
+  background: linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.85) 100%);
+  border-radius: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow: 
+    0 10px 40px rgba(0, 0, 0, 0.1),
+    0 0 0 1px rgba(255, 255, 255, 0.5) inset;
+  backdrop-filter: blur(10px);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.premium-card:hover {
+  transform: translateY(-8px) scale(1.02);
+  box-shadow: 
+    0 30px 60px rgba(0, 0, 0, 0.15),
+    0 0 0 1px rgba(255, 255, 255, 0.6) inset;
+}
+
+/* ========================================
+   PRICE TAG ANIMATION
+   ======================================== */
+.price-tag {
+  position: relative;
+  display: inline-block;
+  padding: 0.5rem 1rem;
+  background: linear-gradient(135deg, #10B981, #059669);
+  color: white;
+  font-weight: 700;
+  border-radius: 12px;
+  box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);
+  animation: priceFloat 3s ease-in-out infinite;
+}
+
+@keyframes priceFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+
+/* ========================================
+   RWANDAN FLAG COLORS ACCENT
+   ======================================== */
+.rwanda-accent {
+  background: linear-gradient(90deg, #00A3DD 0%, #FAD201 50%, #009739 100%);
+  height: 4px;
+  border-radius: 2px;
+}
+
+/* ========================================
+   SUCCESS/ERROR STATES
+   ======================================== */
+.success-glow {
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.4);
+  border-color: #10B981;
+}
+
+.error-glow {
+  box-shadow: 0 0 20px rgba(239, 68, 68, 0.4);
+  border-color: #ef4444;
+}

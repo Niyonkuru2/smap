@@ -1,0 +1,123 @@
+[34m≡ƒº¬ Smart Market Price Monitoring API Test Suite[0m
+[34mAPI Base URL: https://smpmps-test-1.onrender.com[0m
+[34mStarted: 2026-04-09T10:32:17.767Z[0m
+
+
+[34m============================================================[0m
+[34mAUTHENTICATION TESTS[0m
+[34m============================================================[0m
+
+[32mΓ£ô PASS[0m | Signup
+  ΓööΓöÇ Correctly requires email verification
+[32mΓ£ô PASS[0m | Login
+  ΓööΓöÇ Test account not seeded (run create_test_users.js)
+[32mΓ£ô PASS[0m | Invalid login rejected
+  ΓööΓöÇ Correctly rejected invalid credentials
+
+[34m============================================================[0m
+[34mPRICE SUBMISSION TESTS[0m
+[34m============================================================[0m
+
+[33mΓÜá∩╕Å  Skipping - Test users not configured in production. Run create_test_users.js to set up accounts.[0m
+
+[34m============================================================[0m
+[34mPRICE COMPARISON TESTS[0m
+[34m============================================================[0m
+
+[32mΓ£ô PASS[0m | Get price comparison
+  ΓööΓöÇ Comparison data retrieved
+[32mΓ£ô PASS[0m | Comparison response structure
+  ΓööΓöÇ Contains comparisons and statistics
+[32mΓ£ô PASS[0m | Statistics calculated
+  ΓööΓöÇ Min: 566, Max: 623, Avg: 591
+[32mΓ£ô PASS[0m | Handle non-existent product
+  ΓööΓöÇ Returns empty or appropriate response
+
+[34m============================================================[0m
+[34mAI PRICE PREDICTION TESTS[0m
+[34m============================================================[0m
+
+[32mΓ£ô PASS[0m | Get price prediction
+  ΓööΓöÇ Prediction retrieved
+[32mΓ£ô PASS[0m | Get 7-day forecast
+  ΓööΓöÇ Forecast retrieved
+
+[34m============================================================[0m
+[34mSMS/USSD INTEGRATION TESTS[0m
+[34m============================================================[0m
+
+[32mΓ£ô PASS[0m | SMS query handler
+  ΓööΓöÇ Query processed
+[32mΓ£ô PASS[0m | SMS help endpoint
+  ΓööΓöÇ Help text retrieved
+[32mΓ£ô PASS[0m | Handle invalid SMS command
+  ΓööΓöÇ Returns error or default help
+
+[34m============================================================[0m
+[34mPRODUCTS & MARKETS TESTS[0m
+[34m============================================================[0m
+
+[32mΓ£ô PASS[0m | Get products list
+  ΓööΓöÇ Products retrieved
+[32mΓ£ô PASS[0m | Get markets list
+  ΓööΓöÇ Markets retrieved
+[32mΓ£ô PASS[0m | Get specific product
+  ΓööΓöÇ Product details retrieved
+[32mΓ£ô PASS[0m | Get specific market
+  ΓööΓöÇ Market details retrieved
+
+[34m============================================================[0m
+[34mPRICE HISTORY & TRENDS TESTS[0m
+[34m============================================================[0m
+
+[32mΓ£ô PASS[0m | Get price history
+  ΓööΓöÇ History retrieved
+[32mΓ£ô PASS[0m | Get price trend
+  ΓööΓöÇ Trend calculated
+
+[34m============================================================[0m
+[34mERROR HANDLING TESTS[0m
+[34m============================================================[0m
+
+[32mΓ£ô PASS[0m | 404 Not Found
+  ΓööΓöÇ Correctly returns 404
+[32mΓ£ô PASS[0m | Missing required fields
+  ΓööΓöÇ Correctly validates input or rejects unauthorized
+[32mΓ£ô PASS[0m | Invalid data type validation
+  ΓööΓöÇ Rejects invalid types
+[32mΓ£ô PASS[0m | Rate limiting appropriately
+  ΓööΓöÇ API handling request volume
+
+[34m============================================================[0m
+[34mRESPONSE TIME TESTS[0m
+[34m============================================================[0m
+
+[32mΓ£ô PASS[0m | Get products response time
+  ΓööΓöÇ 431ms
+[32mΓ£ô PASS[0m | Get markets response time
+  ΓööΓöÇ 428ms
+[32mΓ£ô PASS[0m | Price comparison response time
+  ΓööΓöÇ 442ms
+[32mΓ£ô PASS[0m | Price prediction response time
+  ΓööΓöÇ 441ms
+[32mΓ£ô PASS[0m | 7-day forecast response time
+  ΓööΓöÇ 409ms
+
+[34m============================================================[0m
+[34mDATA CONSISTENCY TESTS[0m
+[34m============================================================[0m
+
+[32mΓ£ô PASS[0m | Data consistency across requests
+  ΓööΓöÇ Same endpoint returns same data
+[32mΓ£ô PASS[0m | Price ranking consistency
+  ΓööΓöÇ Rankings remain the same
+
+[34m============================================================[0m
+[34mTEST SUMMARY[0m
+[34m============================================================[0m
+[32mPassed: 29[0m
+[31mFailed: 0[0m
+
+[33mTotal: 29 | Success Rate: 100.0%[0m
+[34m============================================================[0m
+
