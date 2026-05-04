@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS users (
     last_login TIMESTAMP,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    registration_completed BOOLEAN DEFAULT FALSE;
+    registration_completed BOOLEAN DEFAULT FALSE
 );
 
 -- Verification codes table
