@@ -52,7 +52,7 @@ if (process.env.TWILIO_SID) {
 }
 
 /* =========================================
-   1️⃣ Send Email Verification  (YOUR API)
+   Send Email Verification 
    POST /verify/email
 ========================================= */
 app.post("/verify/email", async (req, res) => {
