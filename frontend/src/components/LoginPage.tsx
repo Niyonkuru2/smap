@@ -21,27 +21,25 @@ import {
   Send,
   Shield
 } from 'lucide-react';
-import type { UserType, UserRole } from '../types';
-import {signIn, 
-  signUp, 
+import type { UserRole } from '../types';
+import { 
   sendVerificationEmail, 
   verifyEmailForSignup, 
   requestPasswordReset, 
   verifyResetToken, 
-  resetPassword  } from '../lib/api';
+  resetPassword 
+} from '../lib/api';
 import { toast } from 'sonner';
-import {isValidEmail, validatePassword, sanitizeEmail, isDisposableEmail} from '../lib/validations/emailValidation';
+import { isValidEmail, validatePassword, sanitizeEmail, isDisposableEmail } from '../lib/validations/emailValidation';
+import { useAuth } from '../contexts/AuthContext';
 import ThemeToggle from './ThemeToggle';
-
-interface LoginPageProps {
-  onLogin?: (user: UserType) => void; // Made optional
-}
 
 type SignupStage = 'email' | 'code' | 'details' | null;
 type RecoveryStage = 'email' | 'code' | 'reset' | null;
 
-export default function LoginPage({ onLogin }: LoginPageProps) {
-  const navigate = useNavigate(); // Add navigation hook
+export default function LoginPage() {
+  const navigate = useNavigate();
+  const { login, register, loading: authLoading } = useAuth();
   
   // Login state
   const [email, setEmail] = useState('');
@@ -75,7 +73,6 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [recoveryCodeSent, setRecoveryCodeSent] = useState(false);
 
   // Force dark mode
   useEffect(() => {
@@ -100,29 +97,6 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
     return () => clearInterval(interval);
   }, [codeExpireTime]);
 
-  // Navigation helper based on user role
-  const navigateToDashboard = (role: string) => {
-    switch (role) {
-      case 'admin':
-        navigate('/admin/dashboard');
-        break;
-      case 'vendor':
-        navigate('/vendor/dashboard');
-        break;
-      case 'business':
-        navigate('/business/dashboard');
-        break;
-      case 'consumer':
-        navigate('/consumer/dashboard');
-        break;
-      case 'agent':
-        navigate('/agent/dashboard');
-        break;
-      default:
-        navigate('/dashboard');
-    }
-  };
-
   // ============= LOGIN HANDLERS =============
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -139,32 +113,40 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
 
     setLoading(true);
     try {
-      const { user } = await signIn(cleanEmail, password);
-      
-      const userData = {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-      };
-      
-      // Store user data in localStorage for persistence
-      localStorage.setItem('user', JSON.stringify(userData));
-      
-      // Call onLogin if provided (for backward compatibility)
-      if (onLogin) {
-        onLogin(userData);
-      }
-      
+      const user = await login(cleanEmail, password);
       toast.success(`Welcome back, ${user.name}!`);
-      
-      // Navigate to appropriate dashboard
-      navigateToDashboard(user.role);
-      
+      // Navigation happens automatically via the ProtectedRoute redirect
+      // Force a small delay to ensure state is updated
+      setTimeout(() => {
+        navigateToDashboard(user.role);
+      }, 100);
     } catch (error: any) {
       toast.error(error.message || 'Login failed');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Navigation helper based on user role
+  const navigateToDashboard = (role: string) => {
+    switch (role) {
+      case 'admin':
+        navigate('/admin/dashboard', { replace: true });
+        break;
+      case 'vendor':
+        navigate('/vendor/dashboard', { replace: true });
+        break;
+      case 'business':
+        navigate('/business/dashboard', { replace: true });
+        break;
+      case 'consumer':
+        navigate('/consumer/dashboard', { replace: true });
+        break;
+      case 'agent':
+        navigate('/agent/dashboard', { replace: true });
+        break;
+      default:
+        navigate('/dashboard', { replace: true });
     }
   };
 
@@ -252,40 +234,21 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
 
     setLoading(true);
     try {
-      const result = await signUp({
+      const newUser = await register({
         email: signupEmail,
         password: signupPassword,
         name: signupName,
         role: signupRole,
         phone: signupPhone || undefined,
-        province: undefined,
-        district: undefined,
       });
-
-      if (result.success) {
-        // Store the token
-        localStorage.setItem('authToken', result.token);
-        
-        const userData = {
-          id: result.user.id,
-          name: result.user.name,
-          email: result.user.email,
-          role: result.user.role,
-        };
-        localStorage.setItem('user', JSON.stringify(userData));
-        
-        if (onLogin) {
-          onLogin(userData);
-        }
-
-        toast.success(`Welcome, ${signupName}!`);
-        closeSignupModal();
-        
-        // Navigate to appropriate dashboard
-        navigateToDashboard(result.user.role);
-      } else {
-        toast.error(result.message || 'Failed to create account');
-      }
+      
+      toast.success(`Welcome, ${signupName}!`);
+      closeSignupModal();
+      
+      // Navigate to appropriate dashboard
+      setTimeout(() => {
+        navigateToDashboard(newUser.role);
+      }, 100);
     } catch (error: any) {
       toast.error(error.message || 'Failed to create account');
     } finally {
@@ -306,7 +269,6 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
     setLoading(true);
     try {
       await requestPasswordReset(cleanEmail);
-      setRecoveryCodeSent(true);
       setRecoveryStage('code');
       toast.success('Reset code sent to your email!');
     } catch (error: any) {
@@ -359,10 +321,6 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
       await resetPassword(resetToken, newPassword);
       toast.success('Password reset successful! Please login with your new password.');
       closeRecoveryModal();
-      setRecoveryEmail('');
-      setResetToken('');
-      setNewPassword('');
-      setConfirmPassword('');
     } catch (error: any) {
       toast.error(error.message || 'Failed to reset password');
     } finally {
@@ -400,7 +358,6 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
   const closeRecoveryModal = () => {
     setShowAccountRecovery(false);
     setRecoveryStage(null);
-    setRecoveryCodeSent(false);
   };
 
   const handleSignupBack = () => {
@@ -422,6 +379,15 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
       setConfirmPassword('');
     }
   };
+
+  // Loading state
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 to-emerald-900">
+        <Loader2 className="h-12 w-12 animate-spin text-emerald-500" />
+      </div>
+    );
+  }
 
   // ============= RENDER FUNCTIONS =============
   const renderSignupContent = () => {
@@ -772,7 +738,6 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
 
   return (
     <div className="min-h-screen flex flex-col">
-      
       {/* Background */}
       <div className="app-bg" />
       <div className="app-overlay" />
@@ -861,8 +826,8 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
                   </button>
                 </div>
 
-                <Button type="submit" disabled={loading} className="w-full btn-premium py-3 rounded-xl">
-                  {loading ? <Loader2 className="animate-spin mx-auto" /> : 'Sign In'}
+                <Button type="submit" disabled={loading || authLoading} className="w-full btn-premium py-3 rounded-xl">
+                  {loading || authLoading ? <Loader2 className="animate-spin mx-auto" /> : 'Sign In'}
                 </Button>
 
                 <p className="text-center text-sm text-muted-foreground">

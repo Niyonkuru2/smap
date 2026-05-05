@@ -1,17 +1,18 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { getProfile, getSession, login as apiLogin, register as apiRegister, logout as apiLogout, signIn } from '../lib/api';
+import { getSession, register as apiRegister, logout as apiLogout, signIn } from '../lib/api';
 import type { UserType, UserRole } from '../types';
-
-// And in the AuthContextType interface
 interface AuthContextType {
   user: UserType | null;
   loading: boolean;
   viewingAsRole: UserRole | null;
-  login: (email: string, password: string) => Promise<void>;
-  register: (userData: RegisterData) => Promise<void>;
+
+  login: (email: string, password: string) => Promise<UserType>;
+  register: (userData: RegisterData) => Promise<UserType>;
   logout: () => Promise<void>;
+
   setViewingAsRole: (role: UserRole | null) => void;
   returnToAdminView: () => void;
+
   isAdminViewing: boolean;
 }
 
@@ -27,66 +28,67 @@ interface RegisterData {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// ================= PROVIDER =================
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<UserType | null>(null);
   const [loading, setLoading] = useState(true);
   const [viewingAsRole, setViewingAsRole] = useState<UserRole | null>(null);
 
+  // ================= INIT SESSION =================
   useEffect(() => {
-    checkSession();
+    const initAuth = async () => {
+      try {
+        const storedUser = localStorage.getItem('user');
+        const token = localStorage.getItem('authToken');
+
+        if (storedUser && token) {
+          setUser(JSON.parse(storedUser));
+        } else {
+          // Optional API fallback
+          const session = await getSession();
+          if (session?.user) {
+            const userData: UserType = {
+              id: session.user.id.toString(),
+              name: session.user.name,
+              email: session.user.email,
+              role: session.user.role,
+            };
+
+            setUser(userData);
+            localStorage.setItem('user', JSON.stringify(userData));
+          }
+        }
+      } catch (error) {
+        console.error('Auth init failed:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    initAuth();
   }, []);
 
-  const checkSession = async () => {
-    try {
-      // Check if user data exists in localStorage
-      const storedUser = localStorage.getItem('user');
-      const token = localStorage.getItem('authToken');
-      
-      if (storedUser && token) {
-        const parsedUser = JSON.parse(storedUser);
-        setUser({
-          id: parsedUser.id.toString(), // Convert id to string
-          name: parsedUser.name,
-          email: parsedUser.email,
-          role: parsedUser.role,
-        });
-      } else {
-        // Try to get session from API
-        const session = await getSession();
-        if (session && session.user) {
-          setUser({
-            id: session.user.id.toString(),
-            name: session.user.name,
-            email: session.user.email,
-            role: session.user.role,
-          });
-        }
-      }
-    } catch (error) {
-      console.error('Session check failed:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleLogin = async (email: string, password: string) => {
+  // ================= LOGIN =================
+  const login = async (email: string, password: string): Promise<UserType> => {
     setLoading(true);
     try {
       const response = await signIn(email, password);
-      const userData = {
+
+      const userData: UserType = {
         id: response.user.id.toString(),
         name: response.user.name,
         email: response.user.email,
         role: response.user.role,
       };
-      
-      // Store in localStorage
+
       if (response.token) {
         localStorage.setItem('authToken', response.token);
       }
+
       localStorage.setItem('user', JSON.stringify(userData));
-      
       setUser(userData);
+
+      return userData;
     } catch (error) {
       throw error;
     } finally {
@@ -94,24 +96,27 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  const handleRegister = async (userData: RegisterData) => {
+  // ================= REGISTER =================
+  const register = async (data: RegisterData): Promise<UserType> => {
     setLoading(true);
     try {
-      const response = await apiRegister(userData);
-      const newUser = {
+      const response = await apiRegister(data);
+
+      const newUser: UserType = {
         id: response.user.id.toString(),
         name: response.user.name,
         email: response.user.email,
         role: response.user.role,
       };
-      
-      // Store in localStorage
+
       if (response.token) {
         localStorage.setItem('authToken', response.token);
       }
+
       localStorage.setItem('user', JSON.stringify(newUser));
-      
       setUser(newUser);
+
+      return newUser;
     } catch (error) {
       throw error;
     } finally {
@@ -119,49 +124,47 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  const handleLogout = async () => {
+  // ================= LOGOUT =================
+  const logout = async () => {
     setLoading(true);
     try {
       await apiLogout();
-      // Clear localStorage
-      localStorage.removeItem('authToken');
-      localStorage.removeItem('user');
-      setUser(null);
-      setViewingAsRole(null);
     } catch (error) {
-      console.error('Logout failed:', error);
-      // Still clear local state even if API fails
+      console.warn('Logout API failed, clearing locally anyway');
+    } finally {
       localStorage.removeItem('authToken');
       localStorage.removeItem('user');
+
       setUser(null);
       setViewingAsRole(null);
-    } finally {
       setLoading(false);
     }
   };
 
-  const handleSetViewingAsRole = (role: UserRole | null) => {
+  // ================= ADMIN VIEW =================
+  const setViewingAs = (role: UserRole | null) => {
     if (user?.role === 'admin') {
       setViewingAsRole(role);
     }
   };
 
-  const returnToAdminView = () => {
-    setViewingAsRole(null);
-  };
+  const returnToAdminView = () => setViewingAsRole(null);
 
   const isAdminViewing = user?.role === 'admin' && viewingAsRole !== null;
 
+  // ================= PROVIDER =================
   return (
     <AuthContext.Provider
       value={{
         user,
         loading,
         viewingAsRole,
-        login: handleLogin,
-        register: handleRegister,
-        logout: handleLogout,
-        setViewingAsRole: handleSetViewingAsRole,
+
+        login,
+        register,
+        logout,
+
+        setViewingAsRole: setViewingAs,
         returnToAdminView,
         isAdminViewing,
       }}
@@ -171,10 +174,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   );
 };
 
+// ================= HOOK =================
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
+  if (!context) {
+    throw new Error('useAuth must be used within AuthProvider');
   }
   return context;
 };
