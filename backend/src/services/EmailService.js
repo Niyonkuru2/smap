@@ -6,17 +6,13 @@ import {
     getWelcomeTemplate
 } from './email/templates.js';
 
-// ============================================
 // TRANSPORTER SETUP
-// ============================================
-
 let transporter = null;
 let isConfiguredFlag = false;
 
 function initializeTransporter() {
-    // =========================
+
     // SENDGRID (priority)
-    // =========================
     if (process.env.SENDGRID_API_KEY) {
         transporter = nodemailer.createTransport({
             host: 'smtp.sendgrid.net',
@@ -36,15 +32,11 @@ function initializeTransporter() {
         return transporter;
     }
 
-    // =========================
     // SMTP / GMAIL (FIXED)
-    // =========================
     if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
         const isGmail =
             process.env.EMAIL_USER.includes('gmail.com') ||
             process.env.SMTP_HOST?.includes('gmail');
-
-        // 🔥 FIX: NEVER use `service: gmail`
         const config = {
             host: process.env.SMTP_HOST || 'smtp.gmail.com',
             port: parseInt(process.env.SMTP_PORT || '587'),
@@ -59,8 +51,6 @@ function initializeTransporter() {
             ...config,
             connectionTimeout: 30000,
             socketTimeout: 30000,
-
-            // 🔥 CRITICAL FIX FOR RENDER (IPv4)
             family: 4,
             requireTLS: true,
             tls: {
@@ -73,26 +63,20 @@ function initializeTransporter() {
         return transporter;
     }
 
-    // =========================
     // NO CONFIG
-    // =========================
-    console.warn('⚠️ Email service not configured');
     isConfiguredFlag = false;
     transporter = null;
     return null;
 }
 
-// ============================================
 // VERIFY CONNECTION
-// ============================================
-
 function verifyTransporter(name) {
     transporter.verify((error) => {
         if (error) {
-            console.error(`❌ ${name} verification failed:`, error.message);
+            console.error(`${name} verification failed:`, error.message);
             isConfiguredFlag = false;
         } else {
-            console.log(`✅ ${name} SMTP ready`);
+            console.log(`${name} SMTP ready`);
         }
     });
 }
@@ -100,18 +84,13 @@ function verifyTransporter(name) {
 // Initialize
 initializeTransporter();
 
-// ============================================
 // HELPERS
-// ============================================
-
 export const isConfigured = () => isConfiguredFlag && transporter !== null;
 export const getTransporter = () => transporter;
 export const isEmailConfigured = () => isConfigured();
 
-// ============================================
-// RETRY LOGIC (VERY IMPORTANT)
-// ============================================
 
+// RETRY LOGIC (VERY IMPORTANT)
 const sendWithRetry = async (mailOptions, retries = 2) => {
     try {
         return await transporter.sendMail(mailOptions);
@@ -125,9 +104,7 @@ const sendWithRetry = async (mailOptions, retries = 2) => {
     }
 };
 
-// ============================================
 // SEND EMAIL
-// ============================================
 
 export const sendEmail = async ({ to, subject, html, text }) => {
     if (!isConfigured()) {
