@@ -19,11 +19,6 @@ import UnauthorizedPage from './components/auth/UnauthorizedPage';
 
 // Protected Route Component
 import ProtectedRoute from './components/auth/ProtectedRoute';
-
-// Build version tracker
-const BUILD_VERSION = '1.0.7';
-console.log(`SMPMPS Build Version: ${BUILD_VERSION} - Smart Install Enabled`);
-
 // Safe localStorage helper
 const getLocalStorage = (key: string) => {
   if (typeof window === 'undefined') return null;
