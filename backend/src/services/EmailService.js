@@ -6,19 +6,18 @@ import {
     getWelcomeTemplate
 } from './email/templates.js';
 
-// Email transporter setup
+// ============================================
+// TRANSPORTER SETUP
+// ============================================
+
 let transporter = null;
 let isConfiguredFlag = false;
 
-/**
- * Initialize email transporter based on available configuration
- * Priority: SendGrid > Custom SMTP > Gmail > No email service
- */
 function initializeTransporter() {
-    // Check for SendGrid API key (primary for production)
+    // =========================
+    // SENDGRID (priority)
+    // =========================
     if (process.env.SENDGRID_API_KEY) {
-        console.log('🔌 Configuring SendGrid email transporter...');
-        
         transporter = nodemailer.createTransport({
             host: 'smtp.sendgrid.net',
             port: 587,
@@ -31,239 +30,183 @@ function initializeTransporter() {
             socketTimeout: 30000,
             family: 4
         });
-        
+
         isConfiguredFlag = true;
-        
-        transporter.verify((error) => {
-            if (error) {
-                console.error('❌ SendGrid verification failed:', error.message);
-                isConfiguredFlag = false;
-            } else {
-                console.log('✅ SendGrid SMTP verified and ready!');
-            }
-        });
-        
+        verifyTransporter('SendGrid');
         return transporter;
     }
-    
-    // Check for custom SMTP configuration (including Gmail)
+
+    // =========================
+    // SMTP / GMAIL (FIXED)
+    // =========================
     if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
-        // Determine if this is Gmail
-        const isGmail = process.env.EMAIL_USER.includes('gmail.com') || 
-                       process.env.SMTP_HOST?.includes('gmail');
-        
-        console.log(`🔌 Configuring ${isGmail ? 'Gmail' : 'Custom SMTP'} email transporter...`);
-        
-        const config = isGmail ? {
-            service: 'gmail',
-            auth: {
-                user: process.env.EMAIL_USER,
-                pass: process.env.EMAIL_PASS
-            }
-        } : {
+        const isGmail =
+            process.env.EMAIL_USER.includes('gmail.com') ||
+            process.env.SMTP_HOST?.includes('gmail');
+
+        // 🔥 FIX: NEVER use `service: gmail`
+        const config = {
             host: process.env.SMTP_HOST || 'smtp.gmail.com',
             port: parseInt(process.env.SMTP_PORT || '587'),
-            secure: process.env.SMTP_SECURE === 'true',
+            secure: false,
             auth: {
                 user: process.env.EMAIL_USER,
                 pass: process.env.EMAIL_PASS
             }
         };
-        
+
         transporter = nodemailer.createTransport({
             ...config,
             connectionTimeout: 30000,
             socketTimeout: 30000,
-            family: 4
-        });
-        
-        isConfiguredFlag = true;
-        
-        transporter.verify((error) => {
-            if (error) {
-                console.error(`❌ ${isGmail ? 'Gmail' : 'Custom SMTP'} verification failed:`, error.message);
-                if (isGmail && error.message.includes('Invalid login')) {
-                    console.error('   For Gmail, you must use an App Password, not your regular password');
-                    console.error('   Generate one at: https://myaccount.google.com/apppasswords');
-                }
-                isConfiguredFlag = false;
-            } else {
-                console.log(`✅ ${isGmail ? 'Gmail' : 'Custom SMTP'} verified and ready!`);
+
+            // 🔥 CRITICAL FIX FOR RENDER (IPv4)
+            family: 4,
+            requireTLS: true,
+            tls: {
+                rejectUnauthorized: false
             }
         });
-        
+
+        isConfiguredFlag = true;
+        verifyTransporter(isGmail ? 'Gmail' : 'SMTP');
         return transporter;
     }
-    
-    // No email configuration found
-    console.warn('⚠️ Email not configured');
-    console.warn('   Options:');
-    console.warn('   1. Set SENDGRID_API_KEY for SendGrid (recommended for production)');
-    console.warn('   2. Set EMAIL_USER and EMAIL_PASS for Gmail or custom SMTP');
+
+    // =========================
+    // NO CONFIG
+    // =========================
+    console.warn('⚠️ Email service not configured');
     isConfiguredFlag = false;
     transporter = null;
-    
     return null;
 }
 
-// Initialize on module load
+// ============================================
+// VERIFY CONNECTION
+// ============================================
+
+function verifyTransporter(name) {
+    transporter.verify((error) => {
+        if (error) {
+            console.error(`❌ ${name} verification failed:`, error.message);
+            isConfiguredFlag = false;
+        } else {
+            console.log(`✅ ${name} SMTP ready`);
+        }
+    });
+}
+
+// Initialize
 initializeTransporter();
 
-/**
- * Check if email service is configured (property style - for backward compatibility)
- */
+// ============================================
+// HELPERS
+// ============================================
+
 export const isConfigured = () => isConfiguredFlag && transporter !== null;
-
-/**
- * Check if email service is configured (function style - for direct property access)
- */
-isConfigured.isConfigured = isConfiguredFlag && transporter !== null;
-
-/**
- * Get email transporter instance
- */
 export const getTransporter = () => transporter;
+export const isEmailConfigured = () => isConfigured();
 
-/**
- * Check if email service is configured and ready (legacy method name)
- */
-export const isEmailConfigured = () => isConfiguredFlag && transporter !== null;
+// ============================================
+// RETRY LOGIC (VERY IMPORTANT)
+// ============================================
 
-/**
- * Get email configuration status for diagnostics
- */
-export const getEmailStatus = () => {
-    const config = {
-        sendgrid: process.env.SENDGRID_API_KEY ? '✅ SET' : '❌ NOT SET',
-        email_user: process.env.EMAIL_USER ? '✅ SET' : '❌ NOT SET',
-        email_pass: process.env.EMAIL_PASS ? '✅ SET' : '❌ NOT SET'
-    };
-    
-    let activeProvider = 'NONE';
-    if (process.env.SENDGRID_API_KEY) activeProvider = 'SendGrid';
-    else if (process.env.EMAIL_USER) activeProvider = 'Custom SMTP';
-    
-    return {
-        configured: isConfiguredFlag && transporter !== null,
-        isConfigured: isConfiguredFlag && transporter !== null, // For backward compatibility
-        transporterInitialized: transporter !== null,
-        emailProvider: activeProvider,
-        configuration: config,
-        action: !transporter ? 'Email service not configured' : 'Email service ready!'
-    };
+const sendWithRetry = async (mailOptions, retries = 2) => {
+    try {
+        return await transporter.sendMail(mailOptions);
+    } catch (error) {
+        if (retries > 0) {
+            console.warn(`Retrying email... (${retries} left)`);
+            await new Promise(res => setTimeout(res, 2000));
+            return sendWithRetry(mailOptions, retries - 1);
+        }
+        throw error;
+    }
 };
 
-/**
- * Get health status for email service
- */
-export const getHealthStatus = () => {
-    return {
-        configured: isConfiguredFlag && transporter !== null,
-        provider: process.env.SENDGRID_API_KEY ? 'SendGrid' : 
-                 (process.env.EMAIL_USER ? 'SMTP' : 'None'),
-        timestamp: new Date().toISOString()
-    };
-};
+// ============================================
+// SEND EMAIL
+// ============================================
 
-/**
- * Send email with proper error handling
- */
 export const sendEmail = async ({ to, subject, html, text }) => {
-    if (!isConfiguredFlag || !transporter) {
-        console.warn(`⚠️ Email not sent to ${to}: Service not configured`);
+    if (!isConfigured()) {
+        console.warn(`Email skipped → ${to}`);
         return {
             success: false,
-            error: 'Email service not configured',
-            skipped: true
+            skipped: true,
+            error: 'Email service not configured'
         };
     }
-    
+
     try {
-        const from = process.env.EMAIL_FROM || process.env.EMAIL_USER || 'noreply@smpmps.com';
-        
-        const info = await transporter.sendMail({
+        const from =
+            process.env.EMAIL_FROM ||
+            process.env.EMAIL_USER ||
+            'noreply@smpmps.com';
+
+        const info = await sendWithRetry({
             from: `"SMPMPS" <${from}>`,
             to,
             subject,
             html,
             text: text || html?.replace(/<[^>]*>/g, '') || ''
         });
-        
-        console.log(`✅ Email sent to ${to}, Message ID: ${info.messageId}`);
-        
+
         return {
             success: true,
-            messageId: info.messageId,
-            sentTo: to
+            messageId: info.messageId
         };
+
     } catch (error) {
-        console.error(`❌ Email send failed to ${to}:`, error.message);
-        
-        // Enhanced error logging
+        // CLEAN ERROR HANDLING
         if (error.code === 'EAUTH') {
-            console.error('   🔴 Authentication failed - check credentials');
-            if (process.env.EMAIL_USER?.includes('gmail.com')) {
-                console.error('   For Gmail, you must use an App Password: https://myaccount.google.com/apppasswords');
-            }
-        } else if (error.code === 'ENETUNREACH' || error.message?.includes('ENETUNREACH')) {
-            console.error('   🔴 Cannot reach SMTP server - network issue');
+            console.error('Auth failed (check App Password)');
+        } else if (error.code === 'ENETUNREACH') {
+            console.error('Network unreachable (SMTP blocked)');
         } else if (error.message?.includes('timeout')) {
-            console.error('   🔴 Connection timeout - check firewall settings');
+            console.error('SMTP timeout');
         }
-        
+
         return {
             success: false,
-            error: error.message,
-            code: error.code
+            error: error.message
         };
     }
 };
 
-/**
- * Send verification email with OTP code
- */
-export const sendVerificationEmail = async (to, userName, verificationCode, language = 'en') => {
-    const { subject, html } = getVerificationTemplate(userName, verificationCode, language);
+// ============================================
+// EMAIL TYPES
+// ============================================
+
+export const sendVerificationEmail = async (to, name, code, lang = 'en') => {
+    const { subject, html } = getVerificationTemplate(name, code, lang);
     return sendEmail({ to, subject, html });
 };
 
-/**
- * Send password reset email
- */
-export const sendPasswordResetEmail = async (to, userName, resetToken, resetCode, language = 'en') => {
-    const { subject, html } = getPasswordResetTemplate(userName, resetToken, resetCode, language);
+export const sendPasswordResetEmail = async (to, name, token, code, lang = 'en') => {
+    const { subject, html } = getPasswordResetTemplate(name, token, code, lang);
     return sendEmail({ to, subject, html });
 };
 
-/**
- * Send price alert notification email
- */
-export const sendPriceAlertEmail = async (to, userName, alertData) => {
-    const { subject, html } = getPriceAlertTemplate(userName, alertData);
+export const sendPriceAlertEmail = async (to, name, data) => {
+    const { subject, html } = getPriceAlertTemplate(name, data);
     return sendEmail({ to, subject, html });
 };
 
-/**
- * Send welcome email after successful verification
- */
-export const sendWelcomeEmail = async (to, userName, language = 'en') => {
-    const { subject, html } = getWelcomeTemplate(userName, language);
+export const sendWelcomeEmail = async (to, name, lang = 'en') => {
+    const { subject, html } = getWelcomeTemplate(name, lang);
     return sendEmail({ to, subject, html });
 };
 
-// Create the EmailService object for default export (backward compatible)
-const EmailService = {
-    isConfigured: () => isConfiguredFlag && transporter !== null,
-    isConfiguredFlag: isConfiguredFlag && transporter !== null,
-    getTransporter: () => transporter,
-    getEmailStatus,
-    getHealthStatus,
+// SERVICE EXPORT
+
+export default {
+    isConfigured,
+    getTransporter,
     sendEmail,
     sendVerificationEmail,
     sendPasswordResetEmail,
     sendPriceAlertEmail,
-    sendWelcomeEmail,
-    transporter
+    sendWelcomeEmail
 };
-
-export default EmailService;
