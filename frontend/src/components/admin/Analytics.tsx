@@ -58,11 +58,11 @@ const defaultAnalyticsData = {
 };
 
 const COLORS = [
+  "hsl(var(--primary))",
   "#10B981",
-  "#059669",
-  "#047857",
-  "#065f46",
-  "#1e3a2f",
+  "#F59E0B",
+  "#8B5CF6",
+  "#EC4899",
 ];
 
 const weeklyData = [
@@ -116,7 +116,7 @@ export default function Analytics() {
       {/* Header */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         <div>
-          <h2 className="text-xl lg:text-2xl">{t('analyticsDashboard')}</h2>
+          <h2 className="text-xl lg:text-2xl gradient-text">{t('analyticsDashboard')}</h2>
           <p className="text-xs lg:text-sm text-muted-foreground">
             {t('analyticsOverview') || 'Overview of system activity and trends'}
           </p>
@@ -126,7 +126,7 @@ export default function Analytics() {
             variant="outline"
             size="sm"
             onClick={() => handleExport("csv")}
-            className="text-xs"
+            className="btn-outline-premium text-xs"
           >
             <Download className="h-4 w-4 mr-2" />
             {t('exportCsv') || 'Export CSV'}
@@ -135,6 +135,7 @@ export default function Analytics() {
             variant="outline"
             size="sm"
             onClick={() => handleExport("pdf")}
+            className="btn-outline-premium"
           >
             <Download className="h-4 w-4 mr-2" />
             {t('exportPdf') || 'Export PDF'}
@@ -144,74 +145,74 @@ export default function Analytics() {
 
       {/* Key Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="p-4">
+        <Card className="p-4 dark-glass border-white/10 shadow-lg">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-muted-foreground">
                 {t('totalUsers')}
               </p>
-              <p className="text-2xl font-semibold">
+              <p className="text-2xl font-semibold text-white">
                 {analyticsData.totalUsers.toLocaleString()}
               </p>
-              <p className="text-xs text-green-600 flex items-center mt-1">
+              <p className="text-xs text-emerald-400 flex items-center mt-1">
                 <TrendingUp className="h-3 w-3 mr-1" />
                 +12% from last month
               </p>
             </div>
-            <Users className="h-8 w-8 text-green-500" />
+            <Users className="h-8 w-8 text-primary/70" />
           </div>
         </Card>
 
-        <Card className="p-4">
+        <Card className="p-4 dark-glass border-white/10 shadow-lg">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-muted-foreground">
                 {t('activeVendors')}
               </p>
-              <p className="text-2xl font-semibold">
+              <p className="text-2xl font-semibold text-white">
                 {analyticsData.activeVendors}
               </p>
-              <p className="text-xs text-green-600 flex items-center mt-1">
+              <p className="text-xs text-emerald-400 flex items-center mt-1">
                 <TrendingUp className="h-3 w-3 mr-1" />
                 +8% from last month
               </p>
             </div>
-            <ShoppingCart className="h-8 w-8 text-green-500" />
+            <ShoppingCart className="h-8 w-8 text-primary/60" />
           </div>
         </Card>
 
-        <Card className="p-4">
+        <Card className="p-4 dark-glass border-white/10 shadow-lg">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-muted-foreground">
                 {t('totalMarkets')}
               </p>
-              <p className="text-2xl font-semibold">
+              <p className="text-2xl font-semibold text-white">
                 {analyticsData.totalMarkets}
               </p>
               <p className="text-xs text-muted-foreground mt-1">
                 {t('across3Districts') || 'Across 3 districts'}
               </p>
             </div>
-            <MapPin className="h-8 w-8 text-green-500" />
+            <MapPin className="h-8 w-8 text-primary/50" />
           </div>
         </Card>
 
-        <Card className="p-4">
+        <Card className="p-4 dark-glass border-white/10 shadow-lg">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-muted-foreground">
                 {t('updatesToday')}
               </p>
-              <p className="text-2xl font-semibold">
+              <p className="text-2xl font-semibold text-white">
                 {analyticsData.priceUpdatesToday}
               </p>
-              <p className="text-xs text-green-600 flex items-center mt-1">
+              <p className="text-xs text-emerald-400 flex items-center mt-1">
                 <TrendingUp className="h-3 w-3 mr-1" />
                 {t('aboveAverage') || 'Above average'}
               </p>
             </div>
-            <Activity className="h-8 w-8 text-green-500" />
+            <Activity className="h-8 w-8 text-primary/40" />
           </div>
         </Card>
       </div>
@@ -219,28 +220,32 @@ export default function Analytics() {
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Weekly Activity */}
-        <Card className="p-6">
-          <h3 className="text-lg mb-4">{t('weeklyActivity')}</h3>
+        <Card className="p-6 dark-glass border-white/10 shadow-lg">
+          <h3 className="text-lg mb-4 gradient-text">{t('weeklyActivity')}</h3>
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={weeklyData}>
-              <CartesianGrid
-                strokeDasharray="3 3"
-                stroke="hsl(160, 35%, 30%)"
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+              <XAxis dataKey="day" stroke="hsl(var(--muted-foreground))" />
+              <YAxis stroke="hsl(var(--muted-foreground))" />
+              <Tooltip 
+                contentStyle={{ 
+                  backgroundColor: 'rgba(0,0,0,0.8)', 
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  borderRadius: '0.5rem',
+                  color: 'white'
+                }}
               />
-              <XAxis dataKey="day" stroke="hsl(160, 40%, 60%)" />
-              <YAxis stroke="hsl(160, 40%, 60%)" />
-              <Tooltip />
               <Line
                 type="monotone"
                 dataKey="submissions"
-                stroke="#10B981"
+                stroke="hsl(var(--primary))"
                 strokeWidth={2}
                 name={t('submissions')}
               />
               <Line
                 type="monotone"
                 dataKey="searches"
-                stroke="#059669"
+                stroke="#10B981"
                 strokeWidth={2}
                 name={t('searches')}
               />
@@ -249,8 +254,8 @@ export default function Analytics() {
         </Card>
 
         {/* Category Distribution */}
-        <Card className="p-6">
-          <h3 className="text-lg mb-4">
+        <Card className="p-6 dark-glass border-white/10 shadow-lg">
+          <h3 className="text-lg mb-4 gradient-text">
             {t('priceSubmissionsByCategory')}
           </h3>
           <ResponsiveContainer width="100%" height={300}>
@@ -264,7 +269,7 @@ export default function Analytics() {
                   `${name} ${(percent * 100).toFixed(0)}%`
                 }
                 outerRadius={80}
-                fill="#10B981"
+                fill="hsl(var(--primary))"
                 dataKey="value"
               >
                 {categoryData.map((entry, index) => (
@@ -274,33 +279,40 @@ export default function Analytics() {
                   />
                 ))}
               </Pie>
-              <Tooltip />
+              <Tooltip 
+                contentStyle={{ 
+                  backgroundColor: 'rgba(0,0,0,0.8)', 
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  borderRadius: '0.5rem',
+                  color: 'white'
+                }}
+              />
             </PieChart>
           </ResponsiveContainer>
         </Card>
       </div>
 
       {/* Popular Products */}
-      <Card className="p-6">
-        <h3 className="text-lg mb-4">{t('mostSearchedProducts')}</h3>
+      <Card className="p-6 dark-glass border-white/10 shadow-lg">
+        <h3 className="text-lg mb-4 gradient-text">{t('mostSearchedProducts')}</h3>
         <div className="space-y-3">
           {analyticsData.popularProducts.map(
             (product, index) => (
               <div
                 key={index}
-                className="flex items-center justify-between"
+                className="flex items-center justify-between p-2 hover:bg-white/5 rounded-lg transition-colors"
               >
                 <div className="flex items-center gap-3">
-                  <div className="bg-primary/10 text-primary w-8 h-8 rounded-full flex items-center justify-center text-sm">
+                  <div className="bg-primary/20 text-primary w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold">
                     {index + 1}
                   </div>
-                  <span>{product.name}</span>
+                  <span className="text-white">{product.name}</span>
                 </div>
                 <div className="flex items-center gap-4">
-                  <span className="text-muted-foreground">
+                  <span className="text-muted-foreground text-sm">
                     {product.searches} searches
                   </span>
-                  <div className="w-32 bg-green-950/50 rounded-full h-2">
+                  <div className="w-32 bg-white/10 rounded-full h-2">
                     <div
                       className="bg-primary h-2 rounded-full"
                       style={{
@@ -316,53 +328,62 @@ export default function Analytics() {
       </Card>
 
       {/* Active Markets */}
-      <Card className="p-6">
-        <h3 className="text-lg mb-4">Most Active Markets</h3>
+      <Card className="p-6 dark-glass border-white/10 shadow-lg">
+        <h3 className="text-lg mb-4 gradient-text">Most Active Markets</h3>
         <ResponsiveContainer width="100%" height={250}>
           <BarChart data={analyticsData.activeMarkets}>
-            <CartesianGrid
-              strokeDasharray="3 3"
-              stroke="hsl(160, 35%, 30%)"
+            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+            <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" angle={-45} textAnchor="end" height={80} />
+            <YAxis stroke="hsl(var(--muted-foreground))" />
+            <Tooltip 
+              contentStyle={{ 
+                backgroundColor: 'rgba(0,0,0,0.8)', 
+                border: '1px solid rgba(255,255,255,0.1)',
+                borderRadius: '0.5rem',
+                color: 'white'
+              }}
             />
-            <XAxis dataKey="name" stroke="hsl(160, 40%, 60%)" />
-            <YAxis stroke="hsl(160, 40%, 60%)" />
-            <Tooltip />
             <Bar
               dataKey="submissions"
-              fill="#10B981"
+              fill="hsl(var(--primary))"
               name="Price Submissions"
+              radius={[4, 4, 0, 0]}
             />
           </BarChart>
         </ResponsiveContainer>
       </Card>
 
       {/* Price Alerts */}
-      <Card className="p-6">
-        <h3 className="text-lg mb-4">Recent Price Changes</h3>
+      <Card className="p-6 dark-glass border-white/10 shadow-lg">
+        <h3 className="text-lg mb-4 gradient-text">Recent Price Changes</h3>
         <div className="space-y-3">
           {analyticsData.priceChangeAlerts.map(
             (alert, index) => (
               <div
                 key={index}
-                className="flex items-center justify-between p-3 rounded-xl bg-card border border-accent shadow-sm"
+                className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors"
               >
                 <div className="flex items-center gap-3">
                   {alert.type === "increase" ? (
-                    <TrendingUp className="h-5 w-5 text-green-500" />
+                    <TrendingUp className="h-5 w-5 text-emerald-400" />
                   ) : (
-                    <TrendingDown className="h-5 w-5 text-green-500" />
+                    <TrendingDown className="h-5 w-5 text-red-400" />
                   )}
                   <div>
-                    <p className="font-medium text-foreground">
+                    <p className="font-medium text-white">
                       {alert.product}
                     </p>
-                    <p className="text-sm text-gray-600">
+                    <p className="text-sm text-muted-foreground">
                       {alert.market}
                     </p>
                   </div>
                 </div>
                 <span
-                  className={`font-semibold ${alert.type === "increase" ? "text-green-600" : "text-green-600"}`}
+                  className={`font-semibold ${
+                    alert.type === "increase" 
+                      ? "text-emerald-400" 
+                      : "text-red-400"
+                  }`}
                 >
                   {alert.change}
                 </span>
@@ -371,7 +392,21 @@ export default function Analytics() {
           )}
         </div>
       </Card>
+
+      <style>{`
+        .btn-outline-premium {
+          background: rgba(255, 255, 255, 0.05);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          color: hsl(var(--foreground));
+          transition: all 0.2s ease;
+        }
+
+        .btn-outline-premium:hover {
+          background: rgba(255, 255, 255, 0.1);
+          border-color: rgba(255, 255, 255, 0.2);
+          transform: translateY(-1px);
+        }
+      `}</style>
     </div>
   );
 }
-

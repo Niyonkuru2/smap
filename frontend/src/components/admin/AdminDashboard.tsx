@@ -1,7 +1,7 @@
 ﻿import { useState, useEffect } from 'react';
 import { Button } from '../ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
-import { LogOut, BarChart3, CheckSquare, Users, Settings, Bell, Download, Upload, UserCog, Mail, Smartphone, Brain, Megaphone, AlertTriangle, MoreVertical } from 'lucide-react';
+import { LogOut, BarChart3, CheckSquare, Users, Settings, Bell, Download, Upload, UserCog, Mail, Smartphone, Brain, Megaphone, AlertTriangle, MoreVertical, X, Store, Plus } from 'lucide-react';
 import type { User, UserRole } from '../../App';
 import { globalNotifications } from '../../state/globalState';
 import PriceApprovals from './PriceApprovals';
@@ -21,8 +21,8 @@ import RoleViewSwitcher from '../RoleViewSwitcher';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { Badge } from '../ui/badge';
 import ThemeToggle from '../ThemeToggle';
-import MobileBottomNav from '../mobile/MobileNavigation';
 import TabCarousel from '../mobile/TabCarousel';
+import VendorManagement from './VendorManagement'; 
 
 interface AdminDashboardProps {
   user: User;
@@ -37,18 +37,22 @@ export default function AdminDashboard({ user, onLogout, onViewAsRole }: AdminDa
   const [notificationCount, setNotificationCount] = useState(0);
 
   const navItems = [
-    { id: 'approvals', label: t('priceApprovals'), icon: <CheckSquare className="h-4 w-4" />, badge: notificationCount },
-    { id: 'anomalies', label: t('anomalyAlerts') || 'Anomaly Alerts', icon: <AlertTriangle className="h-4 w-4" />, badge: 3 },
-    { id: 'analytics', label: t('analytics'), icon: <BarChart3 className="h-4 w-4" /> },
-    { id: 'categories', label: t('categories'), icon: <Settings className="h-4 w-4" /> },
-    { id: 'users', label: t('users'), icon: <Users className="h-4 w-4" /> },
-    { id: 'notifications', label: t('notifications'), icon: <Bell className="h-4 w-4" />, badge: notificationCount },
-    { id: 'import', label: t('bulkPriceImport'), icon: <Upload className="h-4 w-4" /> },
-    { id: 'emails', label: t('emailTemplates'), icon: <Mail className="h-4 w-4" /> },
-    { id: 'sms', label: t('smsUssd'), icon: <Smartphone className="h-4 w-4" /> },
-    { id: 'ml', label: t('mlModels'), icon: <Brain className="h-4 w-4" /> },
-    { id: 'ads', label: t('adAnalytics') || 'Ad Analytics', icon: <Megaphone className="h-4 w-4" /> },
+    { id: 'approvals', label: t('priceApprovals'), icon: <CheckSquare className="h-5 w-5" />, badge: notificationCount },
+    { id: 'anomalies', label: t('anomalyAlerts') || 'Anomaly Alerts', icon: <AlertTriangle className="h-5 w-5" />, badge: 3 },
+    { id: 'analytics', label: t('analytics'), icon: <BarChart3 className="h-5 w-5" /> },
+    { id: 'categories', label: t('categories'), icon: <Settings className="h-5 w-5" /> },
+    { id: 'users', label: t('users'), icon: <Users className="h-5 w-5" /> },
+    { id: 'vendors', label: t('vendors') || 'Vendors', icon: <Store className="h-5 w-5" /> },
+    { id: 'notifications', label: t('notifications'), icon: <Bell className="h-5 w-5" />, badge: notificationCount },
+    { id: 'import', label: t('bulkPriceImport'), icon: <Upload className="h-5 w-5" /> },
+    { id: 'emails', label: t('emailTemplates'), icon: <Mail className="h-5 w-5" /> },
+    { id: 'sms', label: t('smsUssd'), icon: <Smartphone className="h-5 w-5" /> },
+    { id: 'ml', label: t('mlModels'), icon: <Brain className="h-5 w-5" /> },
+    { id: 'ads', label: t('adAnalytics') || 'Ad Analytics', icon: <Megaphone className="h-5 w-5" /> },
   ];
+
+  // All tabs for mobile carousel
+  const allTabs = [...navItems];
 
   useEffect(() => {
     // Update notification count
@@ -63,29 +67,38 @@ export default function AdminDashboard({ user, onLogout, onViewAsRole }: AdminDa
   }, []);
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_14%_8%,rgba(16,185,129,0.12),transparent_34%),radial-gradient(circle_at_86%_12%,rgba(5,150,105,0.1),transparent_34%),linear-gradient(135deg,hsl(160,40%,20%)_0%,hsl(160,40%,22%)_45%,hsl(160,40%,20%)_100%)]">
+    <div className="min-h-screen flex flex-col">
+      {/* Background - Same as consumer dashboard */}
+      <div className="app-bg" />
+      <div className="app-overlay" />
+
       {/* Header */}
-      <header className="dark-glass border-b border-white/10 sticky top-0 z-40 shadow-lg">
-        <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-green-500 via-emerald-500 to-green-600" />
+      <header className="dark-glass border-b border-white/10 sticky top-0 z-40 shadow-lg backdrop-blur-xl">
+        <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-primary via-slate-500 to-purple-500" />
         
         {/* Desktop Header */}
         <div className="hidden md:block">
-          <div className="max-w-7xl mx-auto px-6">
-            <div className="flex items-center justify-between h-14">
+          <div className="max-w-7xl mx-auto px-6 py-3">
+            <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-gradient-to-br from-green-600 to-emerald-700 rounded-lg shadow-md">
-                  <UserCog className="h-5 w-5 text-white" />
+                <div className="icon-container">
+                  <UserCog className="h-5 w-5 text-primary" />
                 </div>
                 <div>
-                  <h1 className="text-lg font-bold text-white">{t('adminDashboard')}</h1>
-                  <p className="text-xs text-green-300">{t('welcome')}, <span className="font-semibold text-white">{user.name}</span></p>
+                  <h1 className="text-lg font-bold gradient-text">{t('adminDashboard')}</h1>
+                  <p className="text-xs text-muted-foreground">{t('welcome')}, <span className="font-semibold text-white">{user.name}</span></p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
                 <ThemeToggle />
                 <LanguageSwitcher />
                 <RoleViewSwitcher onViewAsRole={onViewAsRole} />
-                <Button variant="outline" size="sm" onClick={onLogout} className="bg-accent/20 text-foreground border-accent/40 hover:bg-accent/30">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={onLogout} 
+                  className="bg-red-500/10 border border-red-500/30 text-red-400 hover:bg-red-500/20 hover:text-red-300 hover:border-red-500/50 transition-all duration-200 focus:outline-none focus:ring-0"
+                >
                   <LogOut className="h-4 w-4 mr-2" />
                   {t('logout')}
                 </Button>
@@ -96,198 +109,172 @@ export default function AdminDashboard({ user, onLogout, onViewAsRole }: AdminDa
 
         {/* Mobile Header */}
         <div className="md:hidden">
-          <div className="relative px-4 py-3.5">
+          <div className="relative px-4 py-3">
             <div className="flex items-center justify-between gap-3">
-              {/* Left: Icon + Title */}
               <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                <div className="p-2 bg-gradient-to-br from-green-600 to-emerald-700 rounded-lg shadow-md flex-shrink-0">
-                  <UserCog className="h-6 w-6 text-white" />
+                <div className="icon-container flex-shrink-0">
+                  <UserCog className="h-6 w-6 text-primary" />
                 </div>
                 <div className="min-w-0">
-                  <h1 className="text-base font-bold text-white truncate">{t('adminDashboard')}</h1>
-                  <p className="text-xs text-green-300 truncate">{user.name}</p>
+                  <h1 className="text-base font-bold gradient-text truncate">{t('adminDashboard')}</h1>
+                  <p className="text-xs text-muted-foreground truncate">{user.name}</p>
                 </div>
               </div>
 
-              {/* Right: Controls */}
               <div className="flex items-center gap-2 flex-shrink-0">
                 <ThemeToggle />
                 <button
                   onClick={() => setShowMobileMenu(!showMobileMenu)}
-                  className={`p-2 rounded-lg transition-all touch-target transform ${
-                    showMobileMenu 
-                      ? 'bg-green-500/30 text-green-300 scale-110 shadow-lg' 
-                      : 'text-gray-300 hover:bg-white/10 active:bg-white/20'
-                  }`}
+                  className="p-2 rounded-lg text-muted-foreground hover:text-white hover:bg-white/10 active:bg-white/20 transition-colors"
                   aria-label="Menu"
-                  title="Admin Menu"
                 >
-                  <MoreVertical className="h-6 w-6" />
+                  {showMobileMenu ? <X className="h-6 w-6" /> : <MoreVertical className="h-6 w-6" />}
                 </button>
               </div>
             </div>
 
             {/* Mobile Menu Dropdown */}
             {showMobileMenu && (
-              <>
-                {/* Backdrop overlay */}
-                <div 
-                  className="fixed inset-0 top-14 z-40 bg-black/50 backdrop-blur-sm touch-target" 
-                  onClick={() => setShowMobileMenu(false)}
-                />
-                
-                {/* Menu Panel - fixed positioning for mobile */}
-                <div 
-                  className="fixed top-16 right-4 z-50 w-72 bg-gradient-to-b from-slate-900 to-slate-950 border-2 border-green-500/80 rounded-2xl shadow-2xl overflow-hidden"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  {/* Menu Header */}
-                  <div className="bg-gradient-to-r from-green-600 to-emerald-600 px-5 py-4 border-b-2 border-green-500/50">
-                    <p className="text-white font-bold text-lg">⚙️ Admin Menu</p>
+              <div className="absolute right-4 top-14 dark-glass border border-white/10 rounded-lg shadow-lg z-50 min-w-max">
+                <div className="p-3 space-y-2">
+                  <div className="px-4 py-2">
+                    <LanguageSwitcher />
                   </div>
-                  
-                  {/* Menu Items Container */}
-                  <div className="px-5 py-4 space-y-3 max-h-96 overflow-y-auto">
-                    {/* Language Switcher Section */}
-                    <div className="rounded-xl border-2 border-green-700/50 p-4 bg-slate-800/80 backdrop-blur">
-                      <p className="text-sm text-green-400 font-bold mb-3 uppercase tracking-widest">🌐 Language</p>
-                      <LanguageSwitcher />
-                    </div>
-
-                    {/* Role Switcher Section */}
-                    <div className="rounded-xl border-2 border-green-700/50 p-4 bg-slate-800/80 backdrop-blur">
-                      <p className="text-sm text-green-400 font-bold mb-3 uppercase tracking-widest">👤 View As</p>
-                      <RoleViewSwitcher onViewAsRole={(role) => {
-                        onViewAsRole(role);
-                        setShowMobileMenu(false);
-                      }} />
-                    </div>
-
-                    {/* Divider */}
-                    <div className="border-t-2 border-slate-700 my-2" />
-
-                    {/* Logout Button */}
-                    <button
-                      onClick={() => {
-                        onLogout();
-                        setShowMobileMenu(false);
-                      }}
-                      className="w-full flex items-center justify-center gap-3 px-5 py-4 rounded-xl font-bold text-lg text-white bg-gradient-to-r from-red-600 via-red-700 to-red-800 hover:from-red-700 hover:via-red-800 hover:to-red-900 active:from-red-800 active:via-red-900 active:to-red-950 transition-all shadow-xl hover:shadow-2xl touch-target border-2 border-red-500/50"
-                    >
-                      <LogOut className="h-6 w-6" />
-                      <span>Logout</span>
-                    </button>
+                  <div className="px-4 py-2 border-t border-white/10">
+                    <RoleViewSwitcher onViewAsRole={(role) => {
+                      onViewAsRole(role);
+                      setShowMobileMenu(false);
+                    }} />
                   </div>
+                  <button
+                    onClick={() => {
+                      onLogout();
+                      setShowMobileMenu(false);
+                    }}
+                    className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-base text-red-400 hover:bg-red-500/10 active:bg-red-500/20 transition-colors"
+                  >
+                    <LogOut className="h-5 w-5" />
+                    {t('logout')}
+                  </button>
                 </div>
-              </>
+              </div>
             )}
           </div>
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="mx-auto px-4 sm:px-6 sm:max-w-7xl py-4 sm:py-6 pb-24 md:pb-6">
+      <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-6 pb-24 md:pb-6 relative z-10">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           {/* Desktop Tab Navigation */}
-          <TabsList className="mb-3 p-0.5 bg-green-900 border border-green-700 shadow-sm rounded-lg flex-wrap gap-0.5 h-auto hidden md:flex">
-            <TabsTrigger value="approvals" className="h-7 px-2 text-[11px] font-medium text-gray-600 rounded-md data-[state=active]:bg-green-900 data-[state=active]:text-white">
-              <CheckSquare className="h-3 w-3 mr-1" />
+          <TabsList className="mb-6 p-1 dark-glass border border-white/10 shadow-lg rounded-xl flex-wrap gap-1 h-auto hidden md:flex">
+            <TabsTrigger value="approvals" className="tab-trigger-premium data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg">
+              <CheckSquare className="h-4 w-4 mr-2" />
               {t('priceApprovals')}
               {notificationCount > 0 && (
-                <Badge className="ml-1 bg-green-700 text-white px-1 py-0 text-[10px] animate-pulse">
+                <Badge className="ml-1 bg-primary/20 text-primary border border-primary/30 px-1 py-0 text-[10px]">
                   {notificationCount}
                 </Badge>
               )}
             </TabsTrigger>
-            <TabsTrigger value="anomalies" className="h-7 px-2 text-[11px] font-medium text-gray-600 rounded-md data-[state=active]:bg-green-900 data-[state=active]:text-white">
-              <AlertTriangle className="h-3 w-3 mr-1" />
+            <TabsTrigger value="anomalies" className="tab-trigger-premium data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg">
+              <AlertTriangle className="h-4 w-4 mr-2" />
               {t('anomalyAlerts') || 'Anomaly Alerts'}
-              <Badge className="ml-1 bg-green-700 text-white px-1 py-0 text-[10px]">3</Badge>
+              <Badge className="ml-1 bg-orange-500/20 text-orange-400 border border-orange-500/30 px-1 py-0 text-[10px]">3</Badge>
             </TabsTrigger>
-            <TabsTrigger value="analytics" className="h-7 px-2 text-[11px] font-medium text-gray-600 rounded-md data-[state=active]:bg-green-900 data-[state=active]:text-white">
-              <BarChart3 className="h-3 w-3 mr-1" />
+            <TabsTrigger value="analytics" className="tab-trigger-premium data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg">
+              <BarChart3 className="h-4 w-4 mr-2" />
               {t('analytics')}
             </TabsTrigger>
-            <TabsTrigger value="categories" className="h-7 px-2 text-[11px] font-medium text-gray-600 rounded-md data-[state=active]:bg-green-900 data-[state=active]:text-white">
-              <Settings className="h-3 w-3 mr-1" />
+            <TabsTrigger value="categories" className="tab-trigger-premium data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg">
+              <Settings className="h-4 w-4 mr-2" />
               {t('categories')}
             </TabsTrigger>
-            <TabsTrigger value="users" className="h-7 px-2 text-[11px] font-medium text-gray-600 rounded-md data-[state=active]:bg-green-900 data-[state=active]:text-white">
-              <Users className="h-3 w-3 mr-1" />
+            <TabsTrigger value="users" className="tab-trigger-premium data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg">
+              <Users className="h-4 w-4 mr-2" />
               {t('users')}
             </TabsTrigger>
-            <TabsTrigger value="notifications" className="h-7 px-2 text-[11px] font-medium text-gray-600 rounded-md data-[state=active]:bg-green-900 data-[state=active]:text-white">
-              <Bell className="h-3 w-3 mr-1" />
+            <TabsTrigger value="vendors" className="tab-trigger-premium data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg">
+              <Store className="h-4 w-4 mr-2" />
+              {t('vendors') || 'Vendors'}
+            </TabsTrigger>
+            <TabsTrigger value="notifications" className="tab-trigger-premium data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg">
+              <Bell className="h-4 w-4 mr-2" />
               {t('notifications')}
               {notificationCount > 0 && (
-                <Badge className="ml-1 bg-green-700 text-white px-1 py-0 text-[10px]">
+                <Badge className="ml-1 bg-primary/20 text-primary border border-primary/30 px-1 py-0 text-[10px]">
                   {notificationCount}
                 </Badge>
               )}
             </TabsTrigger>
-            <TabsTrigger value="import" className="h-7 px-2 text-[11px] font-medium text-gray-600 rounded-md data-[state=active]:bg-green-900 data-[state=active]:text-white">
-              <Upload className="h-3 w-3 mr-1" />
+            <TabsTrigger value="import" className="tab-trigger-premium data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg">
+              <Upload className="h-4 w-4 mr-2" />
               {t('bulkPriceImport')}
             </TabsTrigger>
-            <TabsTrigger value="emails" className="h-7 px-2 text-[11px] font-medium text-gray-600 rounded-md data-[state=active]:bg-green-900 data-[state=active]:text-white">
-              <Mail className="h-3 w-3 mr-1" />
+            <TabsTrigger value="emails" className="tab-trigger-premium data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg">
+              <Mail className="h-4 w-4 mr-2" />
               {t('emailTemplates')}
             </TabsTrigger>
-            <TabsTrigger value="sms" className="h-7 px-2 text-[11px] font-medium text-gray-600 rounded-md data-[state=active]:bg-green-900 data-[state=active]:text-white">
-              <Smartphone className="h-3 w-3 mr-1" />
+            <TabsTrigger value="sms" className="tab-trigger-premium data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg">
+              <Smartphone className="h-4 w-4 mr-2" />
               {t('smsUssd')}
             </TabsTrigger>
-            <TabsTrigger value="ml" className="h-7 px-2 text-[11px] font-medium text-gray-600 rounded-md data-[state=active]:bg-green-900 data-[state=active]:text-white">
-              <Brain className="h-3 w-3 mr-1" />
+            <TabsTrigger value="ml" className="tab-trigger-premium data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg">
+              <Brain className="h-4 w-4 mr-2" />
               {t('mlModels')}
             </TabsTrigger>
-            <TabsTrigger value="ads" className="h-7 px-2 text-[11px] font-medium text-gray-600 rounded-md data-[state=active]:bg-green-900 data-[state=active]:text-white">
-              <Megaphone className="h-3 w-3 mr-1" />
+            <TabsTrigger value="ads" className="tab-trigger-premium data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg">
+              <Megaphone className="h-4 w-4 mr-2" />
               {t('adAnalytics')}
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="approvals">
+          {/* Tab Contents */}
+          <TabsContent value="approvals" className="mt-4 animate-fadeIn">
             <PriceApprovals />
           </TabsContent>
 
-          <TabsContent value="anomalies">
+          <TabsContent value="anomalies" className="animate-fadeIn">
             <AnomalyAlertsDashboard />
           </TabsContent>
 
-          <TabsContent value="analytics">
+          <TabsContent value="analytics" className="animate-fadeIn">
             <Analytics />
           </TabsContent>
 
-          <TabsContent value="categories">
+          <TabsContent value="categories" className="animate-fadeIn">
             <CategoryManagement />
           </TabsContent>
 
-          <TabsContent value="users">
+          <TabsContent value="users" className="animate-fadeIn">
             <UserManagement />
           </TabsContent>
 
-          <TabsContent value="notifications">
+          <TabsContent value="vendors" className="animate-fadeIn">
+            <VendorManagement />
+          </TabsContent>
+
+          <TabsContent value="notifications" className="animate-fadeIn">
             <NotificationManagement />
           </TabsContent>
 
-          <TabsContent value="import">
+          <TabsContent value="import" className="animate-fadeIn">
             <BulkPriceImport />
           </TabsContent>
 
-          <TabsContent value="emails">
+          <TabsContent value="emails" className="animate-fadeIn">
             <EmailPreview />
           </TabsContent>
 
-          <TabsContent value="sms">
+          <TabsContent value="sms" className="animate-fadeIn">
             <SMSUSSDManagement />
           </TabsContent>
 
-          <TabsContent value="ml">
+          <TabsContent value="ml" className="animate-fadeIn">
             <MLModelDashboard />
           </TabsContent>
 
-          <TabsContent value="ads">
+          <TabsContent value="ads" className="animate-fadeIn">
             <AdAnalyticsDashboard />
           </TabsContent>
         </Tabs>
@@ -295,13 +282,77 @@ export default function AdminDashboard({ user, onLogout, onViewAsRole }: AdminDa
         {/* Mobile Tab Carousel Footer */}
         <div className="md:hidden">
           <TabCarousel
-            items={navItems}
+            items={allTabs}
             activeTab={activeTab}
             onTabChange={setActiveTab}
           />
         </div>
       </main>
+
+      <style>{`
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        
+        @keyframes scaleIn {
+          from {
+            opacity: 0;
+            transform: scale(0.95);
+          }
+          to {
+            opacity: 1;
+            transform: scale(1);
+          }
+        }
+        
+        .animate-fadeIn {
+          animation: fadeIn 0.2s ease-out;
+        }
+        
+        .animate-scaleIn {
+          animation: scaleIn 0.3s ease-out;
+        }
+
+        .tab-trigger-premium {
+          transition: all 0.2s ease;
+          padding: 0.5rem 1rem;
+          font-size: 0.875rem;
+          font-weight: 500;
+          color: hsl(var(--muted-foreground));
+        }
+
+        .tab-trigger-premium:hover {
+          color: white;
+          background: rgba(255, 255, 255, 0.1);
+        }
+
+        .tab-trigger-premium[data-state="active"] {
+          background: hsl(var(--primary));
+          color: white;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .btn-outline-premium {
+          background: rgba(255, 255, 255, 0.05);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          color: hsl(var(--foreground));
+          transition: all 0.2s ease;
+        }
+
+        .btn-outline-premium:hover {
+          background: rgba(255, 255, 255, 0.1);
+          border-color: rgba(255, 255, 255, 0.2);
+          transform: translateY(-1px);
+        }
+
+        .icon-container {
+          padding: 0.5rem;
+          background: rgba(255, 255, 255, 0.05);
+          border-radius: 0.75rem;
+          border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+      `}</style>
     </div>
   );
 }
-

@@ -107,35 +107,35 @@ export function MLModelDashboard() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'active': return 'bg-green-100 text-green-700';
-      case 'training': return 'bg-secondary text-primary border-accent';
-      case 'idle': return 'bg-secondary text-muted-foreground';
-      case 'error': return 'bg-secondary text-primary border-accent';
-      default: return 'bg-secondary text-muted-foreground';
+      case 'active': return 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30';
+      case 'training': return 'bg-primary/20 text-primary border-primary/30';
+      case 'idle': return 'bg-slate-500/20 text-slate-400 border-slate-500/30';
+      case 'error': return 'bg-red-500/20 text-red-400 border-red-500/30';
+      default: return 'bg-slate-500/20 text-slate-400 border-slate-500/30';
     }
   };
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'active': return <CheckCircle className="h-4 w-4" />;
-      case 'training': return <RefreshCw className="h-4 w-4 animate-spin" />;
-      case 'idle': return <Clock className="h-4 w-4" />;
-      case 'error': return <AlertTriangle className="h-4 w-4" />;
-      default: return <Minus className="h-4 w-4" />;
+      case 'active': return <CheckCircle className="h-3 w-3" />;
+      case 'training': return <RefreshCw className="h-3 w-3 animate-spin" />;
+      case 'idle': return <Clock className="h-3 w-3" />;
+      case 'error': return <AlertTriangle className="h-3 w-3" />;
+      default: return <Minus className="h-3 w-3" />;
     }
   };
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <Card className="p-6 rounded-2xl border border-accent bg-card shadow-sm">
-        <div className="flex items-center justify-between mb-6">
+      <Card className="p-6 rounded-xl dark-glass border-white/10 shadow-lg">
+        <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
           <div className="flex items-center gap-4">
-            <div className="p-3 bg-gradient-to-br from-green-600 to-emerald-600 rounded-xl">
-              <Brain className="h-6 w-6 text-white" />
+            <div className="p-3 rounded-xl bg-primary/20">
+              <Brain className="h-6 w-6 text-primary" />
             </div>
             <div>
-              <h2 className="text-xl font-bold">{t('mlModelDashboard') || 'ML Model Training Dashboard'}</h2>
+              <h2 className="text-xl font-bold gradient-text">{t('mlModelDashboard') || 'ML Model Training Dashboard'}</h2>
               <p className="text-sm text-muted-foreground">
                 Configure and train AI models for price prediction
               </p>
@@ -146,6 +146,7 @@ export function MLModelDashboard() {
               variant="outline" 
               onClick={() => window.location.reload()}
               disabled={isTraining}
+              className="btn-outline-premium"
             >
               <RefreshCw className="h-4 w-4 mr-2" />
               Refresh
@@ -153,7 +154,7 @@ export function MLModelDashboard() {
             <Button 
               onClick={handleTrainAll}
               disabled={isTraining}
-              className="bg-gradient-to-r from-green-600 to-emerald-600"
+              className="bg-primary hover:bg-primary/90"
             >
               {isTraining ? (
                 <>
@@ -174,12 +175,12 @@ export function MLModelDashboard() {
         {isTraining && (
           <div className="mb-6">
             <div className="flex justify-between text-sm mb-2">
-              <span>Training Progress</span>
-              <span>{Math.round(trainingProgress)}%</span>
+              <span className="text-white">Training Progress</span>
+              <span className="text-primary">{Math.round(trainingProgress)}%</span>
             </div>
-            <div className="h-3 bg-gray-200 rounded-full overflow-hidden">
+            <div className="h-3 bg-white/10 rounded-full overflow-hidden">
               <div 
-                className="h-full bg-gradient-to-r from-green-600 to-emerald-600 transition-all duration-300"
+                className="h-full bg-gradient-to-r from-primary to-primary/60 transition-all duration-300 rounded-full"
                 style={{ width: `${trainingProgress}%` }}
               />
             </div>
@@ -188,47 +189,47 @@ export function MLModelDashboard() {
 
         {/* Stats Grid */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-          <div className="p-4 bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl">
+          <div className="p-4 rounded-xl bg-white/5 border border-white/10">
             <div className="flex items-center gap-2 mb-2">
-              <Activity className="h-4 w-4 text-green-500" />
+              <Activity className="h-4 w-4 text-primary" />
               <span className="text-xs text-muted-foreground">Overall Accuracy</span>
             </div>
-            <p className="text-2xl font-bold text-green-300">{metrics.avgAccuracy}%</p>
+            <p className="text-2xl font-bold text-white">{metrics.avgAccuracy}%</p>
           </div>
-          <div className="p-4 bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl">
+          <div className="p-4 rounded-xl bg-white/5 border border-white/10">
             <div className="flex items-center gap-2 mb-2">
-              <BarChart3 className="h-4 w-4 text-green-500" />
+              <BarChart3 className="h-4 w-4 text-primary" />
               <span className="text-xs text-muted-foreground">Predictions</span>
             </div>
-            <p className="text-2xl font-bold text-green-300">{metrics.totalPredictions.toLocaleString()}</p>
+            <p className="text-2xl font-bold text-white">{metrics.totalPredictions.toLocaleString()}</p>
           </div>
-          <div className="p-4 bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl">
+          <div className="p-4 rounded-xl bg-white/5 border border-white/10">
             <div className="flex items-center gap-2 mb-2">
-              <Database className="h-4 w-4 text-green-500" />
+              <Database className="h-4 w-4 text-primary" />
               <span className="text-xs text-muted-foreground">Training Records</span>
             </div>
-            <p className="text-2xl font-bold text-green-300">{trainingData.totalRecords.toLocaleString()}</p>
+            <p className="text-2xl font-bold text-white">{trainingData.totalRecords.toLocaleString()}</p>
           </div>
-          <div className="p-4 bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl">
+          <div className="p-4 rounded-xl bg-white/5 border border-white/10">
             <div className="flex items-center gap-2 mb-2">
-              <Cpu className="h-4 w-4 text-green-500" />
+              <Cpu className="h-4 w-4 text-primary" />
               <span className="text-xs text-muted-foreground">Active Models</span>
             </div>
-            <p className="text-2xl font-bold text-green-300">{models.filter(m => m.enabled).length}</p>
+            <p className="text-2xl font-bold text-white">{models.filter(m => m.enabled).length}</p>
           </div>
-          <div className="p-4 bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl">
+          <div className="p-4 rounded-xl bg-white/5 border border-white/10">
             <div className="flex items-center gap-2 mb-2">
-              <Zap className="h-4 w-4 text-green-500" />
+              <Zap className="h-4 w-4 text-primary" />
               <span className="text-xs text-muted-foreground">Products</span>
             </div>
-            <p className="text-2xl font-bold text-green-300">{trainingData.products}</p>
+            <p className="text-2xl font-bold text-white">{trainingData.products}</p>
           </div>
         </div>
       </Card>
 
       {/* Model List */}
-      <Card className="p-6 rounded-2xl border border-accent bg-card shadow-sm">
-        <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+      <Card className="p-6 rounded-xl dark-glass border-white/10 shadow-lg">
+        <h3 className="text-lg font-semibold mb-4 flex items-center gap-2 gradient-text">
           <Settings className="h-5 w-5" />
           ML Models Configuration
         </h3>
@@ -239,19 +240,19 @@ export function MLModelDashboard() {
               key={model.id}
               className={`p-4 rounded-xl border transition-all ${
                 model.enabled 
-                  ? 'bg-card border-accent shadow-sm' 
-                  : 'bg-secondary border-accent opacity-60'
+                  ? 'bg-white/5 border-white/10 hover:bg-white/10' 
+                  : 'bg-white/5 border-white/10 opacity-60'
               }`}
             >
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between flex-wrap gap-4">
                 <div className="flex items-center gap-4">
-                  <div className={`p-2 rounded-lg ${model.enabled ? 'bg-green-100' : 'bg-gray-200'}`}>
-                    <Brain className={`h-5 w-5 ${model.enabled ? 'text-green-600' : 'text-gray-500'}`} />
+                  <div className={`p-2 rounded-lg ${model.enabled ? 'bg-primary/20' : 'bg-white/5'}`}>
+                    <Brain className={`h-5 w-5 ${model.enabled ? 'text-primary' : 'text-muted-foreground'}`} />
                   </div>
                   <div>
-                    <div className="flex items-center gap-2">
-                      <h4 className="font-semibold">{model.name}</h4>
-                      <span className={`px-2 py-0.5 rounded-full text-xs ${getStatusColor(model.status)}`}>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h4 className="font-semibold text-white">{model.name}</h4>
+                      <span className={`px-2 py-0.5 rounded-full text-xs border ${getStatusColor(model.status)}`}>
                         <span className="flex items-center gap-1">
                           {getStatusIcon(model.status)}
                           {model.status}
@@ -262,20 +263,20 @@ export function MLModelDashboard() {
                   </div>
                 </div>
                 
-                <div className="flex items-center gap-6">
+                <div className="flex items-center gap-4 flex-wrap">
                   <div className="text-center">
                     <p className="text-xs text-muted-foreground">Accuracy</p>
-                    <p className={`font-bold text-green-300`}>
+                    <p className={`font-bold text-emerald-400`}>
                       {model.accuracy.toFixed(1)}%
                     </p>
                   </div>
                   <div className="text-center">
                     <p className="text-xs text-muted-foreground">Weight</p>
-                    <p className="font-semibold">{(model.weight * 100).toFixed(0)}%</p>
+                    <p className="font-semibold text-white">{(model.weight * 100).toFixed(0)}%</p>
                   </div>
                   <div className="text-center">
                     <p className="text-xs text-muted-foreground">Last Trained</p>
-                    <p className="text-sm">{model.lastTrained}</p>
+                    <p className="text-sm text-muted-foreground">{model.lastTrained}</p>
                   </div>
                   <div className="flex gap-2">
                     <Button
@@ -283,6 +284,7 @@ export function MLModelDashboard() {
                       variant="outline"
                       onClick={() => handleTrainModel(model.id)}
                       disabled={model.status === 'training' || !model.enabled}
+                      className="border-white/10 hover:bg-white/10"
                     >
                       {model.status === 'training' ? (
                         <RefreshCw className="h-4 w-4 animate-spin" />
@@ -294,6 +296,7 @@ export function MLModelDashboard() {
                       size="sm"
                       variant={model.enabled ? "default" : "outline"}
                       onClick={() => toggleModel(model.id)}
+                      className={model.enabled ? "bg-primary hover:bg-primary/90" : "border-white/10 hover:bg-white/10"}
                     >
                       {model.enabled ? 'Enabled' : 'Disabled'}
                     </Button>
@@ -307,56 +310,56 @@ export function MLModelDashboard() {
 
       {/* Training Data Info */}
       <div className="grid md:grid-cols-2 gap-6">
-        <Card className="p-6 rounded-2xl border border-accent bg-card shadow-sm">
-          <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+        <Card className="p-6 rounded-xl dark-glass border-white/10 shadow-lg">
+          <h3 className="text-lg font-semibold mb-4 flex items-center gap-2 gradient-text">
             <Database className="h-5 w-5" />
             Training Data
           </h3>
           <div className="space-y-3">
-            <div className="flex justify-between p-3 rounded-lg bg-secondary border border-accent">
+            <div className="flex justify-between p-3 rounded-lg bg-white/5 border border-white/10">
               <span className="text-muted-foreground">Total Records</span>
-              <span className="font-semibold">{trainingData.totalRecords.toLocaleString()}</span>
+              <span className="font-semibold text-white">{trainingData.totalRecords.toLocaleString()}</span>
             </div>
-            <div className="flex justify-between p-3 rounded-lg bg-secondary border border-accent">
+            <div className="flex justify-between p-3 rounded-lg bg-white/5 border border-white/10">
               <span className="text-muted-foreground">Markets Covered</span>
-              <span className="font-semibold">{trainingData.markets}</span>
+              <span className="font-semibold text-white">{trainingData.markets}</span>
             </div>
-            <div className="flex justify-between p-3 rounded-lg bg-secondary border border-accent">
+            <div className="flex justify-between p-3 rounded-lg bg-white/5 border border-white/10">
               <span className="text-muted-foreground">Products Tracked</span>
-              <span className="font-semibold">{trainingData.products}</span>
+              <span className="font-semibold text-white">{trainingData.products}</span>
             </div>
-            <div className="flex justify-between p-3 rounded-lg bg-secondary border border-accent">
+            <div className="flex justify-between p-3 rounded-lg bg-white/5 border border-white/10">
               <span className="text-muted-foreground">Date Range</span>
-              <span className="font-semibold">{trainingData.dateRange}</span>
+              <span className="font-semibold text-white">{trainingData.dateRange}</span>
             </div>
-            <div className="flex justify-between p-3 rounded-lg bg-secondary border border-accent">
+            <div className="flex justify-between p-3 rounded-lg bg-white/5 border border-white/10">
               <span className="text-muted-foreground">Last Updated</span>
-              <span className="font-semibold">{trainingData.lastUpdated}</span>
+              <span className="font-semibold text-white">{trainingData.lastUpdated}</span>
             </div>
           </div>
         </Card>
 
-        <Card className="p-6 rounded-2xl border border-accent bg-card shadow-sm">
-          <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+        <Card className="p-6 rounded-xl dark-glass border-white/10 shadow-lg">
+          <h3 className="text-lg font-semibold mb-4 flex items-center gap-2 gradient-text">
             <BarChart3 className="h-5 w-5" />
             Model Performance
           </h3>
           <div className="space-y-3">
             {metrics.models.map((model, i) => (
-              <div key={i} className="p-3 rounded-lg bg-secondary border border-accent">
+              <div key={i} className="p-3 rounded-lg bg-white/5 border border-white/10">
                 <div className="flex justify-between items-center mb-2">
-                  <span className="font-medium">{model.name}</span>
-                  <span className={`text-sm font-bold text-green-300`}>
+                  <span className="font-medium text-white">{model.name}</span>
+                  <span className={`text-sm font-bold text-emerald-400`}>
                     {model.accuracy}%
                   </span>
                 </div>
-                <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                <div className="h-2 bg-white/10 rounded-full overflow-hidden">
                   <div 
-                    className={`h-full ${model.accuracy >= 85 ? 'bg-green-500' : 'bg-green-400'}`}
+                    className={`h-full rounded-full ${model.accuracy >= 85 ? 'bg-emerald-500' : 'bg-primary'}`}
                     style={{ width: `${model.accuracy}%` }}
                   />
                 </div>
-                <div className="flex justify-between mt-1 text-xs text-slate-500">
+                <div className="flex justify-between mt-1 text-xs text-muted-foreground">
                   <span>MAPE: {model.mape}%</span>
                   <span>RMSE: {model.rmse}</span>
                 </div>
@@ -365,7 +368,21 @@ export function MLModelDashboard() {
           </div>
         </Card>
       </div>
+
+      <style>{`
+        .btn-outline-premium {
+          background: rgba(255, 255, 255, 0.05);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          color: hsl(var(--foreground));
+          transition: all 0.2s ease;
+        }
+
+        .btn-outline-premium:hover {
+          background: rgba(255, 255, 255, 0.1);
+          border-color: rgba(255, 255, 255, 0.2);
+          transform: translateY(-1px);
+        }
+      `}</style>
     </div>
   );
 }
-

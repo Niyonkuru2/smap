@@ -78,39 +78,39 @@ export default function SMSUSSDManagement() {
 
   const getStatusBadge = (status: string) => {
     const styles: Record<string, string> = {
-      delivered: 'bg-green-900 text-green-100 border border-green-700',
-      pending: 'bg-green-900 text-green-100 border border-green-700',
-      failed: 'bg-green-950 text-green-100 border border-green-700',
+      delivered: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
+      pending: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
+      failed: 'bg-red-500/20 text-red-400 border-red-500/30',
     };
-    return styles[status] || 'bg-green-900 text-green-100 border border-green-700';
+    return styles[status] || 'bg-slate-500/20 text-slate-400 border-slate-500/30';
   };
 
   const getTypeIcon = (type: string) => {
     switch (type) {
       case 'price_query':
-        return <Search className="h-4 w-4 text-green-500" />;
+        return <Search className="h-4 w-4 text-primary" />;
       case 'alert':
-        return <Bell className="h-4 w-4 text-green-500" />;
+        return <Bell className="h-4 w-4 text-primary" />;
       case 'price_alert':
-        return <AlertTriangle className="h-4 w-4 text-green-500" />;
+        return <AlertTriangle className="h-4 w-4 text-primary" />;
       case 'market_query':
-        return <Activity className="h-4 w-4 text-green-500" />;
+        return <Activity className="h-4 w-4 text-primary" />;
       default:
-        return <MessageSquare className="h-4 w-4 text-slate-600" />;
+        return <MessageSquare className="h-4 w-4 text-muted-foreground" />;
     }
   };
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <Card className="p-6 rounded-2xl border border-green-700/50 bg-green-950/80 backdrop-blur-sm shadow-[0_14px_32px_-22px_rgba(0,0,0,0.8)]">
+      <Card className="p-6 rounded-xl dark-glass border-white/10 shadow-lg">
         <div className="flex items-center gap-4">
-          <div className="p-3 bg-gradient-to-br from-green-500 to-teal-500 rounded-xl">
-            <Smartphone className="h-6 w-6 text-white" />
+          <div className="p-3 rounded-xl bg-primary/20">
+            <Smartphone className="h-6 w-6 text-primary" />
           </div>
           <div>
-            <h2 className="text-xl font-bold text-green-100">{t('smsUssdManagement') || 'SMS/USSD Management'}</h2>
-            <p className="text-sm text-green-300/80">
+            <h2 className="text-xl font-bold gradient-text">{t('smsUssdManagement') || 'SMS/USSD Management'}</h2>
+            <p className="text-sm text-muted-foreground">
               {t('smsUssdDesc') || 'Manage SMS notifications and USSD services for non-smartphone users'}
             </p>
           </div>
@@ -119,49 +119,49 @@ export default function SMSUSSDManagement() {
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-        <Card className="p-4 glass-card text-center">
-          <p className="text-2xl font-bold text-green-300">{smsStats.totalSent}</p>
+        <Card className="p-4 rounded-xl dark-glass border-white/10 shadow-lg text-center">
+          <p className="text-2xl font-bold text-white">{smsStats.totalSent}</p>
           <p className="text-xs text-muted-foreground">Total SMS Sent</p>
         </Card>
-        <Card className="p-4 glass-card text-center">
-          <p className="text-2xl font-bold text-green-300">{smsStats.todaySent}</p>
+        <Card className="p-4 rounded-xl dark-glass border-white/10 shadow-lg text-center">
+          <p className="text-2xl font-bold text-white">{smsStats.todaySent}</p>
           <p className="text-xs text-muted-foreground">Sent Today</p>
         </Card>
-        <Card className="p-4 glass-card text-center">
-          <p className="text-2xl font-bold text-green-300">{smsStats.priceQueries}</p>
+        <Card className="p-4 rounded-xl dark-glass border-white/10 shadow-lg text-center">
+          <p className="text-2xl font-bold text-white">{smsStats.priceQueries}</p>
           <p className="text-xs text-muted-foreground">Price Queries</p>
         </Card>
-        <Card className="p-4 glass-card text-center">
-          <p className="text-2xl font-bold text-green-300">{smsStats.alertsActive}</p>
+        <Card className="p-4 rounded-xl dark-glass border-white/10 shadow-lg text-center">
+          <p className="text-2xl font-bold text-white">{smsStats.alertsActive}</p>
           <p className="text-xs text-muted-foreground">Active Alerts</p>
         </Card>
-        <Card className="p-4 glass-card text-center">
-          <p className="text-2xl font-bold text-green-300">{smsStats.ussdSessions}</p>
+        <Card className="p-4 rounded-xl dark-glass border-white/10 shadow-lg text-center">
+          <p className="text-2xl font-bold text-white">{smsStats.ussdSessions}</p>
           <p className="text-xs text-muted-foreground">USSD Sessions</p>
         </Card>
-        <Card className="p-4 glass-card text-center">
-          <p className="text-2xl font-bold text-green-300">{smsStats.deliveryRate}%</p>
+        <Card className="p-4 rounded-xl dark-glass border-white/10 shadow-lg text-center">
+          <p className="text-2xl font-bold text-emerald-400">{smsStats.deliveryRate}%</p>
           <p className="text-xs text-muted-foreground">Delivery Rate</p>
         </Card>
       </div>
 
       {/* Main Content */}
-      <Card className="rounded-2xl border border-green-700/50 bg-green-950/80 backdrop-blur-sm shadow-[0_14px_32px_-22px_rgba(0,0,0,0.8)]">
+      <Card className="rounded-xl dark-glass border-white/10 shadow-lg">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="w-full justify-start border-b rounded-none h-auto p-0 bg-transparent">
-            <TabsTrigger value="overview" className="rounded-none border-b-2 border-transparent data-[state=active]:border-green-500">
+          <TabsList className="w-full justify-start border-b border-white/10 rounded-none h-auto p-0 bg-transparent">
+            <TabsTrigger value="overview" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary">
               <Activity className="h-4 w-4 mr-2" />
               Overview
             </TabsTrigger>
-            <TabsTrigger value="bulk" className="rounded-none border-b-2 border-transparent data-[state=active]:border-green-500">
+            <TabsTrigger value="bulk" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary">
               <Send className="h-4 w-4 mr-2" />
               Bulk SMS
             </TabsTrigger>
-            <TabsTrigger value="alerts" className="rounded-none border-b-2 border-transparent data-[state=active]:border-green-500">
+            <TabsTrigger value="alerts" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary">
               <Bell className="h-4 w-4 mr-2" />
               Price Alerts
             </TabsTrigger>
-            <TabsTrigger value="settings" className="rounded-none border-b-2 border-transparent data-[state=active]:border-green-500">
+            <TabsTrigger value="settings" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary">
               <Settings className="h-4 w-4 mr-2" />
               Settings
             </TabsTrigger>
@@ -169,37 +169,37 @@ export default function SMSUSSDManagement() {
 
           {/* Overview Tab */}
           <TabsContent value="overview" className="p-6">
-            <h3 className="font-semibold text-slate-900 mb-4">Recent SMS Activity</h3>
+            <h3 className="font-semibold gradient-text mb-4">Recent SMS Activity</h3>
             <div className="space-y-3">
               {recentSMSLogs.map((log) => (
                 <div
                   key={log.id}
-                  className="flex items-center justify-between p-3 rounded-xl bg-green-950 border border-green-700 shadow-sm hover:border-green-600 hover:bg-green-900 transition-colors"
+                  className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors flex-wrap gap-3"
                 >
                   <div className="flex items-center gap-3">
                     {getTypeIcon(log.type)}
                     <div>
-                      <p className="font-semibold text-sm text-slate-800">{log.phone}</p>
-                      <p className="text-xs font-medium text-slate-600">{log.message}</p>
+                      <p className="font-semibold text-sm text-white">{log.phone}</p>
+                      <p className="text-xs font-medium text-muted-foreground">{log.message}</p>
                     </div>
                   </div>
                   <div className="text-right">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusBadge(log.status)}`}>
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusBadge(log.status)}`}>
                       {log.status}
                     </span>
-                    <p className="text-xs text-slate-500 mt-1">{log.time}</p>
+                    <p className="text-xs text-muted-foreground mt-1">{log.time}</p>
                   </div>
                 </div>
               ))}
             </div>
 
             {/* USSD Commands Reference */}
-            <div className="mt-6 p-4 bg-gradient-to-r from-green-50 to-teal-50 rounded-lg border border-green-200">
-              <h4 className="font-semibold text-green-900 mb-3">USSD Service Code: *123#</h4>
-              <div className="grid md:grid-cols-2 gap-4 text-sm text-green-600">
+            <div className="mt-6 p-4 rounded-lg bg-white/5 border border-white/10">
+              <h4 className="font-semibold text-primary mb-3">USSD Service Code: *123#</h4>
+              <div className="grid md:grid-cols-2 gap-4 text-sm">
                 <div>
-                  <p className="font-medium">SMS Commands:</p>
-                  <ul className="mt-1 space-y-1">
+                  <p className="font-medium text-white">SMS Commands:</p>
+                  <ul className="mt-1 space-y-1 text-muted-foreground">
                     <li>• PRICE [product] - Get prices</li>
                     <li>• MARKET [name] - Market info</li>
                     <li>• ALERT [product] [price] - Set alert</li>
@@ -207,8 +207,8 @@ export default function SMSUSSDManagement() {
                   </ul>
                 </div>
                 <div>
-                  <p className="font-medium">USSD Menu:</p>
-                  <ul className="mt-1 space-y-1">
+                  <p className="font-medium text-white">USSD Menu:</p>
+                  <ul className="mt-1 space-y-1 text-muted-foreground">
                     <li>• 1 → Check Prices</li>
                     <li>• 2 → Price Alerts</li>
                     <li>• 3 → Register</li>
@@ -223,12 +223,12 @@ export default function SMSUSSDManagement() {
           <TabsContent value="bulk" className="p-6">
             <div className="space-y-4">
               <div>
-                <Label>Target Audience</Label>
+                <Label className="text-white">Target Audience</Label>
                 <Select value={targetAudience} onValueChange={setTargetAudience}>
-                  <SelectTrigger className="mt-1">
+                  <SelectTrigger className="mt-1 bg-white/5 border-white/10 text-white">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="dark-glass border-white/10">
                     <SelectItem value="all">All Subscribers ({smsStats.alertsActive})</SelectItem>
                     <SelectItem value="consumers">Consumers Only</SelectItem>
                     <SelectItem value="vendors">Vendors Only</SelectItem>
@@ -239,12 +239,12 @@ export default function SMSUSSDManagement() {
               </div>
 
               <div>
-                <Label>Message</Label>
+                <Label className="text-white">Message</Label>
                 <Textarea
                   value={bulkMessage}
                   onChange={(e) => setBulkMessage(e.target.value)}
                   placeholder="Enter your message (max 160 characters for single SMS)..."
-                  className="mt-1 min-h-[120px]"
+                  className="mt-1 min-h-[120px] bg-white/5 border-white/10 text-white placeholder:text-muted-foreground"
                   maxLength={320}
                 />
                 <p className="text-xs text-muted-foreground mt-1">
@@ -252,11 +252,11 @@ export default function SMSUSSDManagement() {
                 </p>
               </div>
 
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-wrap">
                 <Button
                   onClick={handleSendBulkSMS}
                   disabled={sending || !bulkMessage.trim()}
-                  className="bg-gradient-to-r from-green-500 to-teal-500"
+                  className="bg-primary hover:bg-primary/90"
                 >
                   {sending ? (
                     <>
@@ -273,6 +273,7 @@ export default function SMSUSSDManagement() {
                 <Button 
                   variant="outline"
                   onClick={() => alert('Schedule feature coming soon!')}
+                  className="btn-outline-premium"
                 >
                   Schedule for Later
                 </Button>
@@ -280,7 +281,7 @@ export default function SMSUSSDManagement() {
 
               {/* Quick Templates */}
               <div className="mt-6">
-                <h4 className="font-medium mb-2">Quick Templates</h4>
+                <h4 className="font-medium text-white mb-2">Quick Templates</h4>
                 <div className="flex flex-wrap gap-2">
                   {[
                     'Price Update: [Product] now at [Price] RWF in [Market].',
@@ -292,7 +293,7 @@ export default function SMSUSSDManagement() {
                       variant="outline"
                       size="sm"
                       onClick={() => setBulkMessage(template)}
-                      className="text-xs"
+                      className="text-xs btn-outline-premium"
                     >
                       Template {i + 1}
                     </Button>
@@ -304,19 +305,19 @@ export default function SMSUSSDManagement() {
 
           {/* Price Alerts Tab */}
           <TabsContent value="alerts" className="p-6">
-            <h3 className="font-semibold mb-4">Active Price Alerts ({activeAlerts.length})</h3>
+            <h3 className="font-semibold gradient-text mb-4">Active Price Alerts ({activeAlerts.length})</h3>
             <div className="space-y-3">
               {activeAlerts.map((alert) => (
                 <div
                   key={alert.id}
-                  className="flex items-center justify-between p-4 bg-gradient-to-r from-green-950 to-green-900 rounded-lg border border-green-700"
+                  className="flex items-center justify-between p-4 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 transition-colors flex-wrap gap-3"
                 >
                   <div className="flex items-center gap-4">
-                    <div className="p-2 bg-green-900 rounded-lg">
-                      <Bell className="h-5 w-5 text-green-500" />
+                    <div className="p-2 rounded-lg bg-primary/20">
+                      <Bell className="h-5 w-5 text-primary" />
                     </div>
                     <div>
-                      <p className="font-medium">{alert.phone}</p>
+                      <p className="font-medium text-white">{alert.phone}</p>
                       <p className="text-sm text-muted-foreground">
                         {alert.product} • Target: {alert.targetPrice} RWF • Current: {alert.currentPrice} RWF
                       </p>
@@ -327,11 +328,11 @@ export default function SMSUSSDManagement() {
                   </div>
                   <div className="text-right">
                     {alert.currentPrice <= alert.targetPrice ? (
-                      <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
+                      <span className="px-2 py-1 rounded-full text-xs font-medium bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
                         Triggered
                       </span>
                     ) : (
-                      <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-900 text-green-100">
+                      <span className="px-2 py-1 rounded-full text-xs font-medium bg-primary/20 text-primary border border-primary/30">
                         Watching
                       </span>
                     )}
@@ -345,15 +346,15 @@ export default function SMSUSSDManagement() {
           <TabsContent value="settings" className="p-6">
             <div className="space-y-6">
               <div>
-                <h3 className="font-semibold mb-4">SMS Gateway Configuration</h3>
+                <h3 className="font-semibold gradient-text mb-4">SMS Gateway Configuration</h3>
                 <div className="grid md:grid-cols-2 gap-4">
                   <div>
-                    <Label>SMS Provider</Label>
+                    <Label className="text-white">SMS Provider</Label>
                     <Select defaultValue="africas_talking">
-                      <SelectTrigger className="mt-1">
+                      <SelectTrigger className="mt-1 bg-white/5 border-white/10 text-white">
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="dark-glass border-white/10">
                         <SelectItem value="africas_talking">Africa's Talking</SelectItem>
                         <SelectItem value="twilio">Twilio</SelectItem>
                         <SelectItem value="infobip">Infobip</SelectItem>
@@ -362,39 +363,39 @@ export default function SMSUSSDManagement() {
                     </Select>
                   </div>
                   <div>
-                    <Label>Sender ID</Label>
-                    <Input defaultValue="SMPMPS" className="mt-1" />
+                    <Label className="text-white">Sender ID</Label>
+                    <Input defaultValue="SMPMPS" className="mt-1 bg-white/5 border-white/10 text-white" />
                   </div>
                   <div>
-                    <Label>API Key</Label>
-                    <Input type="password" defaultValue="••••••••••••" className="mt-1" />
+                    <Label className="text-white">API Key</Label>
+                    <Input type="password" defaultValue="••••••••••••" className="mt-1 bg-white/5 border-white/10 text-white" />
                   </div>
                   <div>
-                    <Label>USSD Short Code</Label>
-                    <Input defaultValue="*123#" className="mt-1" />
+                    <Label className="text-white">USSD Short Code</Label>
+                    <Input defaultValue="*123#" className="mt-1 bg-white/5 border-white/10 text-white" />
                   </div>
                 </div>
               </div>
 
               <div>
-                <h3 className="font-semibold mb-4">Notification Settings</h3>
+                <h3 className="font-semibold gradient-text mb-4">Notification Settings</h3>
                 <div className="space-y-3">
-                  <label className="flex items-center gap-3">
-                    <input type="checkbox" defaultChecked className="rounded" />
-                    <span className="text-sm">Send price alerts when threshold is met</span>
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input type="checkbox" defaultChecked className="rounded border-white/20 bg-white/5" />
+                    <span className="text-sm text-white">Send price alerts when threshold is met</span>
                   </label>
-                  <label className="flex items-center gap-3">
-                    <input type="checkbox" defaultChecked className="rounded" />
-                    <span className="text-sm">Send daily price summary to subscribed users</span>
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input type="checkbox" defaultChecked className="rounded border-white/20 bg-white/5" />
+                    <span className="text-sm text-white">Send daily price summary to subscribed users</span>
                   </label>
-                  <label className="flex items-center gap-3">
-                    <input type="checkbox" className="rounded" />
-                    <span className="text-sm">Send weekly market report</span>
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input type="checkbox" className="rounded border-white/20 bg-white/5" />
+                    <span className="text-sm text-white">Send weekly market report</span>
                   </label>
                 </div>
               </div>
 
-              <Button className="bg-gradient-to-r from-blue-500 to-purple-500">
+              <Button className="bg-primary hover:bg-primary/90">
                 <CheckCircle2 className="h-4 w-4 mr-2" />
                 Save Settings
               </Button>
@@ -402,6 +403,21 @@ export default function SMSUSSDManagement() {
           </TabsContent>
         </Tabs>
       </Card>
+
+      <style>{`
+        .btn-outline-premium {
+          background: rgba(255, 255, 255, 0.05);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          color: hsl(var(--foreground));
+          transition: all 0.2s ease;
+        }
+
+        .btn-outline-premium:hover {
+          background: rgba(255, 255, 255, 0.1);
+          border-color: rgba(255, 255, 255, 0.2);
+          transform: translateY(-1px);
+        }
+      `}</style>
     </div>
   );
 }
