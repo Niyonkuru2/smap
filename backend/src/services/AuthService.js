@@ -375,88 +375,129 @@ async verifyEmailCode(email, code) {
         }
     }
 
-    async forgotPassword(email, language = 'en') {
-        try {
-            const user = await this.userRepo.findByEmail(email);
-            
-            if (!user || !user.verified) {
-                return {
-                    success: true,
-                    message: 'If an account exists, you will receive a password reset link.',
-                    emailSent: false
-                };
-            }
+   async forgotPassword(email, language = 'en') {
+    try {
+        const user = await this.userRepo.findByEmail(email);
 
-            const resetCode = Math.floor(100000 + Math.random() * 900000).toString();
-            const resetToken = crypto.randomBytes(32).toString('hex');
-            const resetExpires = new Date(Date.now() + 60 * 60 * 1000);
-
-            await this.userRepo.update(user.id, {
-                reset_token: resetToken,
-                reset_code: resetCode,
-                reset_expires: resetExpires
-            });
-
-            await this.emailService.sendPasswordResetEmail(email, user.name, resetToken, resetCode, language);
-
+        if (!user || !user.verified) {
             return {
                 success: true,
-                message: 'If an account exists, you will receive a password reset link.',
-                emailSent: true
-            };
-        } catch (error) {
-            console.error('Forgot password error:', error);
-            return {
-                success: false,
-                message: error.message || 'Failed to process request',
+                message: 'If an account exists, you will receive a password reset code.',
                 emailSent: false
             };
         }
+
+        const resetCode = Math.floor(100000 + Math.random() * 900000).toString();
+        const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 min
+
+        // Delete old codes for this email (important)
+        await pool.query(
+            'DELETE FROM verification_codes WHERE email = $1',
+            [email]
+        );
+
+        
+        await pool.query(
+            `INSERT INTO verification_codes (email, code, expires_at)
+             VALUES ($1, $2, $3)`,
+            [email, resetCode, expiresAt]
+        );
+
+        // Send email (only code now)
+        await this.emailService.sendPasswordResetEmail(
+            email,
+            user.name,
+            resetCode,
+            language
+        );
+
+        return {
+            success: true,
+            message: 'Reset code sent to your email.',
+            emailSent: true
+        };
+
+    } catch (error) {
+        console.error('Forgot password error:', error);
+        return {
+            success: false,
+            message: error.message || 'Failed to process request',
+            emailSent: false
+        };
     }
+}
 
-    async resetPassword(email, code, newPassword) {
-        try {
-            const user = await this.userRepo.findByEmail(email);
-            
-            if (!user || !user.reset_code || user.reset_code !== code) {
-                return {
-                    success: false,
-                    message: 'Invalid reset code',
-                    reset: false
-                };
-            }
+async resetPassword(email, code, newPassword) {
+    try {
+        const user = await this.userRepo.findByEmail(email);
 
-            if (new Date() > new Date(user.reset_expires)) {
-                return {
-                    success: false,
-                    message: 'Reset code has expired',
-                    reset: false
-                };
-            }
-
-            const password_hash = await bcrypt.hash(newPassword, 12);
-            
-            await this.userRepo.update(user.id, {
-                password_hash,
-                reset_token: null,
-                reset_code: null,
-                reset_expires: null
-            });
-
-            return {
-                success: true,
-                message: 'Password reset successfully',
-                reset: true
-            };
-        } catch (error) {
-            console.error('Reset password error:', error);
+        if (!user) {
             return {
                 success: false,
-                message: error.message || 'Password reset failed',
+                message: 'User not found',
                 reset: false
             };
         }
+
+        const record = await this.userRepo.getLatestVerificationCode(email);
+
+        if (!record) {
+            return {
+                success: false,
+                message: 'No reset request found',
+                reset: false
+            };
+        }
+
+        if (record.used) {
+            return {
+                success: false,
+                message: 'Reset code already used',
+                reset: false
+            };
+        }
+
+        if (String(record.code).trim() !== String(code).trim()) {
+            return {
+                success: false,
+                message: 'Invalid reset code',
+                reset: false
+            };
+        }
+
+        if (new Date() > new Date(record.expires_at)) {
+            return {
+                success: false,
+                message: 'Reset code has expired',
+                reset: false
+            };
+        }
+
+        const password_hash = await bcrypt.hash(newPassword, 12);
+
+        await this.userRepo.update(user.id, {
+            password_hash
+        });
+
+        //  mark as used AFTER success
+        await this.userRepo.markVerificationCodeAsUsed(record.id);
+
+        return {
+            success: true,
+            message: 'Password reset successfully',
+            reset: true
+        };
+
+    } catch (error) {
+        console.error('Reset password error:', error);
+
+        return {
+            success: false,
+            message: error.message || 'Password reset failed',
+            reset: false
+        };
     }
+}
 
     async changePassword(userId, currentPassword, newPassword) {
         try {

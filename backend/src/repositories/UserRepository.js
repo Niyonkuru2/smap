@@ -1,6 +1,11 @@
 import pool from '../config/database.js';
 
 class UserRepository {
+
+    // =============================
+    // USER BASIC METHODS
+    // =============================
+
     async findByEmail(email) {
         const result = await pool.query(
             'SELECT * FROM users WHERE email = $1',
@@ -19,7 +24,7 @@ class UserRepository {
 
     async create(userData) {
         const { email, password_hash, name, role = 'consumer', phone = null, market_id = null, province = null, district = null } = userData;
-        
+
         const result = await pool.query(
             `INSERT INTO users (email, password_hash, name, role, phone, market_id, province, district, verified, created_at, updated_at)
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW())
@@ -31,16 +36,20 @@ class UserRepository {
 
     async createWithVerification(userData) {
         const { email, password_hash, name, role = 'consumer', verified = false } = userData;
-        
+
         const result = await pool.query(
             `INSERT INTO users (email, password_hash, name, role, verified, created_at, updated_at)
              VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
              RETURNING *`,
             [email.toLowerCase(), password_hash, name, role, verified]
         );
-        
+
         return result.rows[0];
     }
+
+    // =============================
+    // VERIFICATION CODE METHODS
+    // =============================
 
     async storeVerificationCode(email, code, expiresAt) {
         const result = await pool.query(
@@ -52,6 +61,41 @@ class UserRepository {
         return result.rows[0];
     }
 
+    // 🔥 NEW: get latest code (DO NOT mark as used)
+    async getLatestVerificationCode(email) {
+        const result = await pool.query(
+            `SELECT * FROM verification_codes
+             WHERE email = $1
+             ORDER BY created_at DESC
+             LIMIT 1`,
+            [email.toLowerCase()]
+        );
+
+        return result.rows[0];
+    }
+
+    // 🔥 NEW: mark code as used manually
+    async markVerificationCodeAsUsed(id) {
+        const result = await pool.query(
+            `UPDATE verification_codes
+             SET used = true
+             WHERE id = $1
+             RETURNING *`,
+            [id]
+        );
+
+        return result.rows[0];
+    }
+
+    // 🔥 OPTIONAL (cleanup)
+    async deleteVerificationCodes(email) {
+        await pool.query(
+            `DELETE FROM verification_codes WHERE email = $1`,
+            [email.toLowerCase()]
+        );
+    }
+
+    // ⚠️ existing method (kept for email verification flow)
     async verifyCode(email, code) {
         const result = await pool.query(
             `SELECT * FROM verification_codes 
@@ -63,7 +107,7 @@ class UserRepository {
              LIMIT 1`,
             [email.toLowerCase(), code]
         );
-        
+
         if (result.rows.length > 0) {
             await pool.query(
                 'UPDATE verification_codes SET used = true WHERE id = $1',
@@ -74,35 +118,43 @@ class UserRepository {
         return null;
     }
 
+    // =============================
+    // USER UPDATE METHODS
+    // =============================
+
     async update(id, updates) {
-    const allowedFields = [
-        'name', 'phone', 'market_id', 'province', 'district', 
-        'verified', 'last_login', 'password_hash', 'is_active', 'avatar_url',
-        'registration_completed'  // Add this line
-    ];
-    const fields = [];
-    const values = [];
-    let index = 1;
+        const allowedFields = [
+            'name', 'phone', 'market_id', 'province', 'district',
+            'verified', 'last_login', 'password_hash', 'is_active', 'avatar_url',
+            'registration_completed'
+        ];
 
-    for (const [key, value] of Object.entries(updates)) {
-        if (allowedFields.includes(key) && value !== undefined) {
-            fields.push(`${key} = $${index}`);
-            values.push(value);
-            index++;
+        const fields = [];
+        const values = [];
+        let index = 1;
+
+        for (const [key, value] of Object.entries(updates)) {
+            if (allowedFields.includes(key) && value !== undefined) {
+                fields.push(`${key} = $${index}`);
+                values.push(value);
+                index++;
+            }
         }
+
+        if (fields.length === 0) return null;
+
+        values.push(id);
+
+        const query = `
+            UPDATE users 
+            SET ${fields.join(', ')}, updated_at = NOW() 
+            WHERE id = $${index} 
+            RETURNING *
+        `;
+
+        const result = await pool.query(query, values);
+        return result.rows[0];
     }
-
-    if (fields.length === 0) return null;
-
-    values.push(id);
-    const query = `UPDATE users SET ${fields.join(', ')}, updated_at = NOW() WHERE id = $${index} RETURNING *`;
-    
-    console.log('Update query:', query);
-    console.log('Update values:', values);
-    
-    const result = await pool.query(query, values);
-    return result.rows[0];
-}
 
     async verifyUser(email) {
         const result = await pool.query(
@@ -122,6 +174,10 @@ class UserRepository {
         );
         return result.rows[0];
     }
+
+    // =============================
+    // LEGACY RESET TOKEN (optional)
+    // =============================
 
     async storeResetToken(email, token, code, expiresAt) {
         const result = await pool.query(
@@ -155,12 +211,16 @@ class UserRepository {
         return result.rows[0];
     }
 
+    // =============================
+    // ADMIN METHODS
+    // =============================
+
     async getAllUsers(limit = 100, offset = 0) {
         const result = await pool.query(
-            `SELECT id, email, name, role, phone, market_id, province, district, 
+            `SELECT id, email, name, role, phone, market_id, province, district,
                     verified, is_active, last_login, created_at, updated_at
-             FROM users 
-             ORDER BY created_at DESC 
+             FROM users
+             ORDER BY created_at DESC
              LIMIT $1 OFFSET $2`,
             [limit, offset]
         );

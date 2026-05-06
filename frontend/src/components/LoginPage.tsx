@@ -26,7 +26,7 @@ import {
   sendVerificationEmail, 
   verifyEmailForSignup, 
   requestPasswordReset, 
-  verifyResetToken, 
+  verifyResetCode, 
   resetPassword 
 } from '../lib/api';
 import { toast } from 'sonner';
@@ -288,7 +288,7 @@ export default function LoginPage() {
 
     setLoading(true);
     try {
-      await verifyResetToken(resetToken);
+      await verifyResetCode(recoveryEmail, resetToken);
       setRecoveryStage('reset');
       toast.success('Code verified! Please enter your new password.');
     } catch (error: any) {
@@ -318,7 +318,7 @@ export default function LoginPage() {
 
     setLoading(true);
     try {
-      await resetPassword(resetToken, newPassword);
+      await resetPassword(recoveryEmail, resetToken, newPassword);
       toast.success('Password reset successful! Please login with your new password.');
       closeRecoveryModal();
     } catch (error: any) {

@@ -160,7 +160,7 @@ export default function ConsumerDashboard({ user, onLogout, isAdminViewing, onRe
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           {/* Desktop Tab Navigation */}
           <TabsList className="mb-6 p-1 dark-glass border border-white/10 shadow-lg rounded-xl flex-wrap gap-1 h-auto hidden md:flex">
-            <TabsTrigger value="search" className="tab-trigger-premium data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg">
+            <TabsTrigger value="search" className="">
               <Search className="h-4 w-4 mr-2" />
               {t('searchProducts')}
             </TabsTrigger>

@@ -256,32 +256,47 @@ export const updateProfile = async (req, res) => {
     }
 };
 
-export const verifyResetToken = async (req, res) => {
-    const { token } = req.body;
-    
-    if (!token) {
+export const verifyResetCode = async (req, res) => {
+    const { email, code } = req.body;
+
+    if (!email || !code) {
         return res.status(400).json({
             success: false,
-            message: 'Token is required',
+            message: 'Email and code are required',
         });
     }
 
-    const user = await pool.query(
-        'SELECT * FROM users WHERE reset_token = $1 AND reset_expires > NOW()',
-        [token]
-    );
+    try {
+        const result = await pool.query(
+            `SELECT * FROM verification_codes
+             WHERE email = $1
+             AND code = $2
+             AND used = false
+             AND expires_at > NOW()
+             ORDER BY created_at DESC
+             LIMIT 1`,
+            [email, code]
+        );
 
-    if (user.rows.length === 0) {
-        return res.status(400).json({
+        if (result.rows.length === 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid or expired code',
+                valid: false,
+            });
+        }
+
+        return res.json({
+            success: true,
+            message: 'Code is valid',
+            valid: true,
+        });
+
+    } catch (error) {
+        console.error('Verify reset code error:', error);
+        return res.status(500).json({
             success: false,
-            message: 'Invalid or expired reset token',
-            valid: false,
+            message: 'Server error',
         });
     }
-
-    res.json({
-        success: true,
-        message: 'Token is valid',
-        valid: true,
-    });
 };

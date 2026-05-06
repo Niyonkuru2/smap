@@ -3,7 +3,7 @@
 // ============================================
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
-console.log('🔗 API_BASE_URL:', API_BASE_URL);
+console.log('API_BASE_URL:', API_BASE_URL);
 
 // ============================================
 // UTILITY FUNCTIONS
@@ -328,24 +328,25 @@ export async function requestPasswordReset(
 }
 
 /**
- * Verify reset token
+ * Verify reset code
  */
-export async function verifyResetToken(
-  token: string
+export async function verifyResetCode(
+  email: string,
+  code: string
 ): Promise<{ success: boolean; message: string; valid: boolean }> {
-  const response = await fetch(`${API_BASE_URL}/auth/verify-reset-token`, {
+  const response = await fetch(`${API_BASE_URL}/auth/verify-reset-code`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ token }),
+    body: JSON.stringify({ email, code }),
     credentials: 'include'
   });
-  
+
   const data = await response.json();
-  
+
   if (!response.ok) {
-    throw new Error(data.message || data.error || 'Invalid reset token');
+    throw new Error(data.message || data.error || 'Invalid reset code');
   }
-  
+
   return data;
 }
 
@@ -353,22 +354,23 @@ export async function verifyResetToken(
  * Reset password with token
  */
 export async function resetPassword(
-  token: string,
+  email: string,
+  code: string,
   newPassword: string
 ): Promise<{ success: boolean; message: string; reset: boolean }> {
   const response = await fetch(`${API_BASE_URL}/auth/reset-password`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ token, newPassword }),
+    body: JSON.stringify({ email, code, newPassword }),
     credentials: 'include'
   });
-  
+
   const data = await response.json();
-  
+
   if (!response.ok) {
     throw new Error(data.message || data.error || 'Failed to reset password');
   }
-  
+
   return data;
 }
 
@@ -584,7 +586,7 @@ export default {
   verifyEmailForSignup,
   resendVerificationCode,
   requestPasswordReset,
-  verifyResetToken,
+  verifyResetCode,
   resetPassword,
   changePassword,
   getAccessToken,
