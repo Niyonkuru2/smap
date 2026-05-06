@@ -76,14 +76,14 @@ export default function ConsumerDashboard({ user, onLogout, isAdminViewing, onRe
                 <ThemeToggle />
                 <LanguageSwitcher />
                 <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={onLogout} 
-                  className="btn-outline-premium"
-                >
-                  <LogOut className="h-4 w-4 mr-2" />
-                  {t('logout')}
-                </Button>
+  variant="outline" 
+  size="sm" 
+  onClick={onLogout} 
+  className="bg-red-500/10 border border-red-500/30 text-red-400 hover:bg-red-500/20 hover:text-red-300 hover:border-red-500/50 transition-all duration-200 focus:outline-none focus:ring-0"
+>
+  <LogOut className="h-4 w-4 mr-2" />
+  {t('logout')}
+</Button>
               </div>
             </div>
           </div>
