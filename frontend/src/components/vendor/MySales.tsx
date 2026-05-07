@@ -51,72 +51,72 @@ export default function MySales({ vendorName, vendorId }: MySalesProps) {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="mb-1 text-white text-2xl font-bold">My Sales Performance</h2>
-        <p className="text-green-300 text-sm">
+        <h2 className="mb-1 text-2xl font-bold gradient-text">My Sales Performance</h2>
+        <p className="text-sm text-muted-foreground">
           Track your sales and revenue
         </p>
       </div>
 
       {/* Sales Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="bg-gradient-to-br from-green-900 to-green-950 border-green-700">
+        <Card className="rounded-xl dark-glass border-white/10 shadow-lg">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-sm text-green-300">Total Sales</CardTitle>
-              <Package className="h-4 w-4 text-green-300" />
+              <CardTitle className="text-sm text-muted-foreground">Total Sales</CardTitle>
+              <Package className="h-4 w-4 text-primary" />
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl text-white font-bold">{salesStats.totalSales}</div>
-            <p className="text-xs text-green-400 mt-1">All time</p>
+            <div className="text-2xl font-bold text-white">{salesStats.totalSales}</div>
+            <p className="text-xs text-muted-foreground mt-1">All time</p>
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-green-900 to-green-950 border-green-700">
+        <Card className="rounded-xl dark-glass border-white/10 shadow-lg">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-sm text-green-300">Revenue</CardTitle>
-              <DollarSign className="h-4 w-4 text-green-300" />
+              <CardTitle className="text-sm text-muted-foreground">Revenue</CardTitle>
+              <DollarSign className="h-4 w-4 text-primary" />
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl text-white font-bold">{salesStats.revenue}</div>
-            <p className="text-xs text-green-400 mt-1">Total earned</p>
+            <div className="text-2xl font-bold text-white">{salesStats.revenue}</div>
+            <p className="text-xs text-muted-foreground mt-1">Total earned</p>
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-green-900 to-green-950 border-green-700">
+        <Card className="rounded-xl dark-glass border-white/10 shadow-lg">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-sm text-green-300">Top Product</CardTitle>
-              <TrendingUp className="h-4 w-4 text-green-300" />
+              <CardTitle className="text-sm text-muted-foreground">Top Product</CardTitle>
+              <TrendingUp className="h-4 w-4 text-primary" />
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl truncate text-white font-bold">{salesStats.topProduct}</div>
-            <p className="text-xs text-green-400 mt-1">Best seller</p>
+            <div className="text-2xl truncate font-bold text-white">{salesStats.topProduct}</div>
+            <p className="text-xs text-muted-foreground mt-1">Best seller</p>
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-green-900 to-green-950 border-green-700">
+        <Card className="rounded-xl dark-glass border-white/10 shadow-lg">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-sm text-green-300">Growth</CardTitle>
-              <BarChart3 className="h-4 w-4 text-green-300" />
+              <CardTitle className="text-sm text-muted-foreground">Growth</CardTitle>
+              <BarChart3 className="h-4 w-4 text-emerald-400" />
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl text-green-300 font-bold">{salesStats.trend}</div>
-            <p className="text-xs text-green-400 mt-1">This month</p>
+            <div className="text-2xl font-bold text-emerald-400">{salesStats.trend}</div>
+            <p className="text-xs text-muted-foreground mt-1">This month</p>
           </CardContent>
         </Card>
       </div>
 
       {/* Recent Sales */}
-      <Card className="bg-gradient-to-br from-green-900 to-green-950 border-green-700">
+      <Card className="rounded-xl dark-glass border-white/10 shadow-lg">
         <CardHeader>
           <CardTitle className="text-white">Recent Sales</CardTitle>
-          <CardDescription className="text-green-300">
+          <CardDescription className="text-muted-foreground">
             Your latest sales transactions
           </CardDescription>
         </CardHeader>
@@ -125,20 +125,20 @@ export default function MySales({ vendorName, vendorId }: MySalesProps) {
             {recentSales.map((sale) => (
               <div
                 key={sale.id}
-                className="flex items-center justify-between p-4 border border-green-700 rounded-lg bg-green-950 hover:bg-green-900 transition-colors"
+                className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all cursor-pointer flex-wrap gap-3"
               >
-                <div className="flex-1">
+                <div className="flex-1 min-w-[180px]">
                   <div className="flex items-center gap-2">
-                    <Package className="h-4 w-4 text-green-300" />
-                    <p className="text-white">{sale.product}</p>
+                    <Package className="h-4 w-4 text-primary" />
+                    <p className="font-medium text-white">{sale.product}</p>
                   </div>
-                  <p className="text-sm text-green-400 mt-1">
+                  <p className="text-sm text-muted-foreground mt-1">
                     {sale.market} • {sale.date}
                   </p>
                 </div>
                 <div className="text-right">
-                  <p className="text-white font-semibold">{sale.total}</p>
-                  <p className="text-sm text-green-400">
+                  <p className="font-semibold text-white">{sale.total}</p>
+                  <p className="text-sm text-muted-foreground">
                     {sale.quantity} × {sale.price}
                   </p>
                 </div>
@@ -147,10 +147,10 @@ export default function MySales({ vendorName, vendorId }: MySalesProps) {
           </div>
 
           {recentSales.length === 0 && (
-            <div className="text-center py-8 text-green-300">
-              <Package className="h-12 w-12 mx-auto mb-2 opacity-20" />
-              <p>No sales yet</p>
-              <p className="text-sm">Your sales will appear here</p>
+            <div className="text-center py-12">
+              <Package className="h-12 w-12 mx-auto mb-3 text-muted-foreground opacity-30" />
+              <p className="text-muted-foreground">No sales yet</p>
+              <p className="text-sm text-muted-foreground mt-1">Your sales will appear here</p>
             </div>
           )}
         </CardContent>
@@ -158,4 +158,3 @@ export default function MySales({ vendorName, vendorId }: MySalesProps) {
     </div>
   );
 }
-

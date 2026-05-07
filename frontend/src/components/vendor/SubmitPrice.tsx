@@ -90,10 +90,10 @@ export default function SubmitPrice({ vendorName, vendorId }: SubmitPriceProps) 
 
   if (isLoading) {
     return (
-      <Card className="p-6 bg-card">
+      <Card className="p-6 rounded-xl dark-glass border-white/10 shadow-lg">
         <div className="flex items-center justify-center py-8">
-          <Loader2 className="h-8 w-8 animate-spin text-green-600" />
-          <span className="ml-2 text-gray-600">Loading...</span>
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <span className="ml-2 text-muted-foreground">Loading...</span>
         </div>
       </Card>
     );
@@ -103,17 +103,17 @@ export default function SubmitPrice({ vendorName, vendorId }: SubmitPriceProps) 
 
   return (
     <div className="max-w-2xl mx-auto">
-      <Card className="p-6 bg-gradient-to-br from-green-900 to-green-950">
-        <h2 className="text-2xl font-bold mb-6 text-white">{t('submitNewPrice')}</h2>
+      <Card className="p-6 rounded-xl dark-glass border-white/10 shadow-lg">
+        <h2 className="text-2xl font-bold mb-6 gradient-text">{t('submitNewPrice')}</h2>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
             <Label htmlFor="category" className="text-white font-semibold text-base">{t('category')}</Label>
             <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-              <SelectTrigger id="category" className="mt-1.5 bg-green-800 border-green-600 text-white">
+              <SelectTrigger id="category" className="mt-1.5 bg-white/5 border-white/10 text-white">
                 <SelectValue placeholder={t('selectCategory')} />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="dark-glass border-white/10">
                 {categories.map(category => (
                   <SelectItem key={category} value={category}>
                     {category}
@@ -126,10 +126,10 @@ export default function SubmitPrice({ vendorName, vendorId }: SubmitPriceProps) 
           <div>
             <Label htmlFor="product" className="text-white font-semibold text-base">{t('product')}</Label>
             <Select value={selectedProduct} onValueChange={setSelectedProduct}>
-              <SelectTrigger id="product" className="mt-1.5 bg-green-800 border-green-600 text-white">
+              <SelectTrigger id="product" className="mt-1.5 bg-white/5 border-white/10 text-white">
                 <SelectValue placeholder={t('selectProduct')} />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="dark-glass border-white/10">
                 {filteredProducts.map(product => (
                   <SelectItem key={product.id} value={product.id}>
                     {product.name} ({t('per')} {product.unit})
@@ -142,10 +142,10 @@ export default function SubmitPrice({ vendorName, vendorId }: SubmitPriceProps) 
           <div>
             <Label htmlFor="market" className="text-white font-semibold text-base">{t('marketLocation')}</Label>
             <Select value={selectedMarket} onValueChange={setSelectedMarket}>
-              <SelectTrigger id="market" className="mt-1.5 bg-green-800 border-green-600 text-white">
+              <SelectTrigger id="market" className="mt-1.5 bg-white/5 border-white/10 text-white">
                 <SelectValue placeholder={t('selectMarket')} />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="dark-glass border-white/10">
                 {markets.map(market => (
                   <SelectItem key={market.id} value={market.id}>
                     {market.name} - {market.location}
@@ -164,10 +164,10 @@ export default function SubmitPrice({ vendorName, vendorId }: SubmitPriceProps) 
                 value={price}
                 onChange={(e) => setPrice(e.target.value)}
                 placeholder={t('enterPrice')}
-                className="mt-1.5 bg-green-800 border-green-600 text-white placeholder:text-green-300"
+                className="mt-1.5 bg-white/5 border-white/10 text-white placeholder:text-muted-foreground"
               />
               {selectedProductData && (
-                <p className="text-xs text-green-200 mt-1">
+                <p className="text-xs text-muted-foreground mt-1">
                   {t('per')} {selectedProductData.unit}
                 </p>
               )}
@@ -182,14 +182,14 @@ export default function SubmitPrice({ vendorName, vendorId }: SubmitPriceProps) 
                 onChange={(e) => setQuantity(e.target.value)}
                 placeholder="1"
                 min="1"
-                className="mt-1.5 bg-green-800 border-green-600 text-white placeholder:text-green-300"
+                className="mt-1.5 bg-white/5 border-white/10 text-white placeholder:text-muted-foreground"
               />
             </div>
           </div>
 
-          <div className="bg-green-950 border border-green-700 rounded-lg p-4">
-            <h4 className="font-medium text-green-100 mb-2">{t('submissionGuidelines')}</h4>
-            <ul className="text-sm text-green-300 space-y-1">
+          <div className="rounded-lg p-4 bg-white/5 border border-white/10">
+            <h4 className="font-medium text-primary mb-2">{t('submissionGuidelines')}</h4>
+            <ul className="text-sm text-muted-foreground space-y-1">
               <li>• {t('guidelineAccurate')}</li>
               <li>• {t('guidelineReview')}</li>
               <li>• {t('guidelineUpdate')}</li>
@@ -200,7 +200,7 @@ export default function SubmitPrice({ vendorName, vendorId }: SubmitPriceProps) 
           <Button
             type="submit"
             disabled={!isFormValid || submitted || submitting}
-            className="w-full"
+            className="w-full bg-primary hover:bg-primary/90"
           >
             {submitting ? (
               <>
@@ -224,4 +224,3 @@ export default function SubmitPrice({ vendorName, vendorId }: SubmitPriceProps) 
     </div>
   );
 }
-
