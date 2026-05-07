@@ -40,12 +40,12 @@ export default function BusinessAnalytics() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
-          <h2 className="text-2xl">Business Analytics</h2>
+          <h2 className="text-2xl gradient-text">Business Analytics</h2>
           <p className="text-muted-foreground">Insights to help optimize your purchasing decisions</p>
         </div>
-        <Button variant="outline" size="sm" onClick={handleExport}>
+        <Button variant="outline" size="sm" onClick={handleExport} className="btn-outline-premium">
           <Download className="h-4 w-4 mr-2" />
           Export Report
         </Button>
@@ -53,43 +53,43 @@ export default function BusinessAnalytics() {
 
       {/* Key Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card className="p-4">
+        <Card className="p-4 rounded-xl dark-glass border-white/10 shadow-lg">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-muted-foreground">Tracked Products</p>
-              <p className="text-2xl font-semibold">12</p>
+              <p className="text-2xl font-semibold text-white">12</p>
             </div>
-            <ShoppingCart className="h-8 w-8 text-green-500" />
+            <ShoppingCart className="h-8 w-8 text-primary/70" />
           </div>
         </Card>
 
-        <Card className="p-4">
+        <Card className="p-4 rounded-xl dark-glass border-white/10 shadow-lg">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-muted-foreground">Avg Monthly Spend</p>
-              <p className="text-2xl font-semibold">2.4M RWF</p>
+              <p className="text-2xl font-semibold text-white">2.4M RWF</p>
             </div>
-            <DollarSign className="h-8 w-8 text-green-500" />
+            <DollarSign className="h-8 w-8 text-primary/70" />
           </div>
         </Card>
 
-        <Card className="p-4">
+        <Card className="p-4 rounded-xl dark-glass border-white/10 shadow-lg">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-muted-foreground">Potential Savings</p>
-              <p className="text-2xl font-semibold text-green-600">31.5K RWF</p>
+              <p className="text-2xl font-semibold text-emerald-400">31.5K RWF</p>
             </div>
-            <TrendingDown className="h-8 w-8 text-green-500" />
+            <TrendingDown className="h-8 w-8 text-emerald-400" />
           </div>
         </Card>
 
-        <Card className="p-4">
+        <Card className="p-4 rounded-xl dark-glass border-white/10 shadow-lg">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-muted-foreground">Price Alerts</p>
-              <p className="text-2xl font-semibold">8</p>
+              <p className="text-2xl font-semibold text-white">8</p>
             </div>
-            <TrendingUp className="h-8 w-8 text-green-500" />
+            <TrendingUp className="h-8 w-8 text-primary/70" />
           </div>
         </Card>
       </div>
@@ -97,110 +97,138 @@ export default function BusinessAnalytics() {
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Price Trends */}
-        <Card className="p-6">
-          <h3 className="text-lg mb-4">Monthly Price Trends</h3>
+        <Card className="p-6 rounded-xl dark-glass border-white/10 shadow-lg">
+          <h3 className="text-lg mb-4 gradient-text">Monthly Price Trends</h3>
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={weeklyPriceData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(160, 35%, 30%)" />
-              <XAxis dataKey="week" stroke="hsl(160, 40%, 60%)" />
-              <YAxis stroke="hsl(160, 40%, 60%)" />
-              <Tooltip />
-              <Line type="monotone" dataKey="rice" stroke="#10B981" strokeWidth={2} name="Rice" />
-              <Line type="monotone" dataKey="beans" stroke="#059669" strokeWidth={2} name="Beans" />
-              <Line type="monotone" dataKey="tomatoes" stroke="#047857" strokeWidth={2} name="Tomatoes" />
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+              <XAxis dataKey="week" stroke="hsl(var(--muted-foreground))" />
+              <YAxis stroke="hsl(var(--muted-foreground))" />
+              <Tooltip 
+                contentStyle={{ 
+                  backgroundColor: 'rgba(10,15,45,0.9)', 
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  borderRadius: '0.5rem',
+                  color: 'white'
+                }}
+              />
+              <Line type="monotone" dataKey="rice" stroke="#3B82F6" strokeWidth={2} name="Rice" />
+              <Line type="monotone" dataKey="beans" stroke="#10B981" strokeWidth={2} name="Beans" />
+              <Line type="monotone" dataKey="tomatoes" stroke="#8B5CF6" strokeWidth={2} name="Tomatoes" />
             </LineChart>
           </ResponsiveContainer>
         </Card>
 
         {/* Potential Savings */}
-        <Card className="p-6">
-          <h3 className="text-lg mb-4">Potential Monthly Savings</h3>
+        <Card className="p-6 rounded-xl dark-glass border-white/10 shadow-lg">
+          <h3 className="text-lg mb-4 gradient-text">Potential Monthly Savings</h3>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={savingsData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-              <XAxis dataKey="product" stroke="#6b7280" />
-              <YAxis stroke="#6b7280" />
-              <Tooltip />
-              <Bar dataKey="potentialSavings" fill="#10B981" name="Savings (RWF)" />
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+              <XAxis dataKey="product" stroke="hsl(var(--muted-foreground))" />
+              <YAxis stroke="hsl(var(--muted-foreground))" />
+              <Tooltip 
+                contentStyle={{ 
+                  backgroundColor: 'rgba(10,15,45,0.9)', 
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  borderRadius: '0.5rem',
+                  color: 'white'
+                }}
+              />
+              <Bar dataKey="potentialSavings" fill="#3B82F6" name="Savings (RWF)" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </Card>
       </div>
 
       {/* Recommendations */}
-      <Card className="p-6">
-        <h3 className="text-lg mb-4">Purchase Recommendations</h3>
+      <Card className="p-6 rounded-xl dark-glass border-white/10 shadow-lg">
+        <h3 className="text-lg mb-4 gradient-text">Purchase Recommendations</h3>
         <div className="space-y-3">
-          <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
-            <div className="flex items-start justify-between">
+          <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 hover:bg-emerald-500/15 transition-colors">
+            <div className="flex items-start justify-between flex-wrap gap-3">
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-1">
-                  <TrendingDown className="h-5 w-5 text-green-600" />
-                  <h4 className="font-medium text-green-900">Best Time to Buy Rice</h4>
+                  <TrendingDown className="h-5 w-5 text-emerald-400" />
+                  <h4 className="font-medium text-white">Best Time to Buy Rice</h4>
                 </div>
-                <p className="text-sm text-green-800">
+                <p className="text-sm text-muted-foreground">
                   Prices at Nyabugogo Market are 8% below average. Consider stocking up now.
                 </p>
               </div>
-              <Badge className="bg-green-600">Save 12K RWF</Badge>
+              <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30">Save 12K RWF</Badge>
             </div>
           </div>
 
-          <div className="p-4 bg-green-900 border border-green-700 rounded-lg">
-            <div className="flex items-start justify-between">
+          <div className="p-4 rounded-xl bg-yellow-500/10 border border-yellow-500/30 hover:bg-yellow-500/15 transition-colors">
+            <div className="flex items-start justify-between flex-wrap gap-3">
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-1">
-                  <TrendingUp className="h-5 w-5 text-green-300" />
-                  <h4 className="font-medium text-green-300">Cooking Oil Prices Rising</h4>
+                  <TrendingUp className="h-5 w-5 text-yellow-400" />
+                  <h4 className="font-medium text-white">Cooking Oil Prices Rising</h4>
                 </div>
-                <p className="text-sm text-green-200">
+                <p className="text-sm text-muted-foreground">
                   Prices have increased 5% this week across all markets. Monitor closely.
                 </p>
               </div>
-              <Badge className="bg-green-700">Watch</Badge>
+              <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500/30">Watch</Badge>
             </div>
           </div>
 
-          <div className="p-4 bg-green-900 border border-green-700 rounded-lg">
-            <div className="flex items-start justify-between">
+          <div className="p-4 rounded-xl bg-primary/10 border border-primary/30 hover:bg-primary/15 transition-colors">
+            <div className="flex items-start justify-between flex-wrap gap-3">
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-1">
-                  <DollarSign className="h-5 w-5 text-green-300" />
-                  <h4 className="font-medium text-green-300">Bulk Purchase Opportunity</h4>
+                  <DollarSign className="h-5 w-5 text-primary" />
+                  <h4 className="font-medium text-white">Bulk Purchase Opportunity</h4>
                 </div>
-                <p className="text-sm text-green-200">
+                <p className="text-sm text-muted-foreground">
                   Beans prices are stable. Good time for bulk purchasing to lock in current rates.
                 </p>
               </div>
-              <Badge className="bg-green-700">Opportunity</Badge>
+              <Badge className="bg-primary/20 text-primary border-primary/30">Opportunity</Badge>
             </div>
           </div>
         </div>
       </Card>
 
       {/* Market Comparison */}
-      <Card className="p-6">
-        <h3 className="text-lg mb-4">Best Markets for Your Products</h3>
+      <Card className="p-6 rounded-xl dark-glass border-white/10 shadow-lg">
+        <h3 className="text-lg mb-4 gradient-text">Best Markets for Your Products</h3>
         <div className="space-y-3">
           {[
             { product: 'Rice (Local)', market: 'Nyabugogo Market', price: 1150, savings: '8% below average' },
             { product: 'Tomatoes', market: 'Kimironko Market', price: 780, savings: '12% below average' },
             { product: 'Beans', market: 'Remera Market', price: 940, savings: '6% below average' }
           ].map((item, index) => (
-            <div key={index} className="flex items-center justify-between p-3 bg-secondary rounded-lg">
+            <div key={index} className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors flex-wrap gap-3">
               <div className="flex-1">
-                <p className="font-medium">{item.product}</p>
+                <p className="font-medium text-white">{item.product}</p>
                 <p className="text-sm text-muted-foreground">{item.market}</p>
               </div>
               <div className="text-right">
                 <p className="font-semibold text-primary">{item.price.toLocaleString()} RWF</p>
-                <p className="text-sm text-green-600">{item.savings}</p>
+                <p className="text-sm text-emerald-400">{item.savings}</p>
               </div>
             </div>
           ))}
         </div>
       </Card>
+
+      <style>{`
+        .btn-outline-premium {
+          background: rgba(255, 255, 255, 0.05);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          color: hsl(var(--foreground));
+          transition: all 0.2s ease;
+        }
+
+        .btn-outline-premium:hover {
+          background: rgba(255, 255, 255, 0.1);
+          border-color: rgba(255, 255, 255, 0.2);
+          transform: translateY(-1px);
+        }
+      `}</style>
     </div>
   );
 }
-

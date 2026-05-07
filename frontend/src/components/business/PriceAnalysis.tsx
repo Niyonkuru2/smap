@@ -35,10 +35,32 @@ export default function PriceAnalysis() {
     }
   ];
 
+  const getTrendColor = (trend: string) => {
+    switch (trend) {
+      case 'up':
+        return 'text-emerald-400';
+      case 'down':
+        return 'text-red-400';
+      default:
+        return 'text-muted-foreground';
+    }
+  };
+
+  const getTrendIcon = (trend: string) => {
+    switch (trend) {
+      case 'up':
+        return <TrendingUp className="h-5 w-5 text-emerald-400" />;
+      case 'down':
+        return <TrendingDown className="h-5 w-5 text-red-400" />;
+      default:
+        return null;
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="mb-1">Price Analysis</h2>
+        <h2 className="mb-1 gradient-text text-2xl font-bold">Price Analysis</h2>
         <p className="text-muted-foreground text-sm">
           Compare prices across markets and identify trends
         </p>
@@ -46,47 +68,43 @@ export default function PriceAnalysis() {
 
       <div className="grid gap-4">
         {priceData.map((item, index) => (
-          <Card key={index}>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Package className="h-5 w-5 text-green-500" />
-                  <CardTitle className="text-lg">{item.product}</CardTitle>
+          <Card 
+            key={index} 
+            className="rounded-xl dark-glass border-white/10 shadow-lg hover:border-primary/30 transition-all"
+          >
+            <CardHeader className="border-b border-white/10 pb-4">
+              <div className="flex items-center justify-between flex-wrap gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-primary/20">
+                    <Package className="h-5 w-5 text-primary" />
+                  </div>
+                  <CardTitle className="text-lg text-white">{item.product}</CardTitle>
                 </div>
                 <div className="flex items-center gap-2">
-                  {item.trend === 'up' && (
-                    <TrendingUp className="h-5 w-5 text-green-500" />
-                  )}
-                  {item.trend === 'down' && (
-                    <TrendingDown className="h-5 w-5 text-green-600" />
-                  )}
-                  <span className={`text-sm ${
-                    item.trend === 'up' ? 'text-green-500' :
-                    item.trend === 'down' ? 'text-green-600' :
-                    'text-gray-600'
-                  }`}>
+                  {getTrendIcon(item.trend)}
+                  <span className={`text-sm font-medium ${getTrendColor(item.trend)}`}>
                     {item.change}
                   </span>
                 </div>
               </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-6">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div>
-                  <p className="text-sm text-muted-foreground">Current Price</p>
-                  <p className="text-lg mt-1">{item.currentPrice}</p>
+                <div className="p-3 rounded-lg bg-white/5 border border-white/10">
+                  <p className="text-xs text-muted-foreground">Current Price</p>
+                  <p className="text-base font-semibold text-white mt-1">{item.currentPrice}</p>
                 </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Previous Price</p>
-                  <p className="text-lg mt-1">{item.previousPrice}</p>
+                <div className="p-3 rounded-lg bg-white/5 border border-white/10">
+                  <p className="text-xs text-muted-foreground">Previous Price</p>
+                  <p className="text-base font-semibold text-white mt-1">{item.previousPrice}</p>
                 </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Lowest Market</p>
-                  <p className="text-lg mt-1">{item.lowestMarket}</p>
+                <div className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30">
+                  <p className="text-xs text-emerald-400">Lowest Market</p>
+                  <p className="text-base font-semibold text-emerald-400 mt-1">{item.lowestMarket}</p>
                 </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Highest Market</p>
-                  <p className="text-lg mt-1">{item.highestMarket}</p>
+                <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30">
+                  <p className="text-xs text-red-400">Highest Market</p>
+                  <p className="text-base font-semibold text-red-400 mt-1">{item.highestMarket}</p>
                 </div>
               </div>
             </CardContent>
