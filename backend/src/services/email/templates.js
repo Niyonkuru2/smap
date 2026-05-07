@@ -313,9 +313,74 @@ export const getWelcomeTemplate = (userName, language = 'en') => {
             </div>
         `
     };
-
     return {
         subject: subjects[language] || subjects.en,
         html: templates[language] || templates.en
     };
+};
+
+/**
+ * Get vendor credentials email content
+ */
+export const getVendorCredentialsTemplate = (
+  userName,
+  email,
+  password,
+  language = 'en'
+) => {
+  const subjects = {
+    en: 'Your Vendor Account Credentials - SMPMPS',
+    fr: 'Vos identifiants de fournisseur - SMPMPS',
+    rw: 'Amakuru ya Konti ya Vendor - SMPMPS'
+  };
+
+  const templates = {
+    en: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto;">
+        <h2>Welcome ${userName} 👋</h2>
+        <p>Your vendor account has been created successfully.</p>
+
+        <p><strong>Login Credentials:</strong></p>
+        <ul>
+          <li>Email: ${email}</li>
+          <li>Password: ${password}</li>
+        </ul>
+
+        <p>Please login and <strong>change your password immediately</strong>.</p>
+      </div>
+    `,
+    fr: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto;">
+        <h2>Bienvenue ${userName} 👋</h2>
+        <p>Votre compte fournisseur a été créé avec succès.</p>
+
+        <p><strong>Identifiants de connexion :</strong></p>
+        <ul>
+          <li>Email : ${email}</li>
+          <li>Mot de passe : ${password}</li>
+        </ul>
+
+        <p>Veuillez vous connecter et <strong>changer votre mot de passe immédiatement</strong>.</p>
+      </div>
+    `,
+    rw: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto;">
+        <h2>Murakaza neza ${userName} 👋</h2>
+        <p>Konti yawe ya vendor yashyizweho neza.</p>
+
+        <p><strong>Amakuru yo kwinjira:</strong></p>
+        <ul>
+          <li>Email: ${email}</li>
+          <li>Password: ${password}</li>
+        </ul>
+
+        <p>Nyamuneka injira uhite uhindura ijambo ryibanga.</p>
+      </div>
+    `
+  };
+
+  return {
+    subject: subjects[language] || subjects.en,
+    html: templates[language] || templates.en
+  };
 };
