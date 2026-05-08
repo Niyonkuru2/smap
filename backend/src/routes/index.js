@@ -1,6 +1,7 @@
 import express from 'express';
 import authRoutes from './authRoutes.js';
 import vendorRoutes from './vendorRoute.js';
+import categoryRoutes from './categoryRoutes.js';
 import priceRoutes from './priceRoutes.js';
 import marketRoutes from './marketRoutes.js';
 import productRoutes from './productRoutes.js';
@@ -22,6 +23,7 @@ const router = express.Router();
 // Mount all route modules
 router.use('/auth', authRoutes);
 router.use('/vendor', vendorRoutes);
+router.use('/api/categories', categoryRoutes);
 router.use('/prices', priceRoutes);
 router.use('/markets', marketRoutes);
 router.use('/products', productRoutes);

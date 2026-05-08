@@ -1,8 +1,10 @@
+// src/middleware/auth.js
+
 import jwt from 'jsonwebtoken';
 import UserRepository from '../repositories/UserRepository.js';
 
 // JWT Configuration
-const JWT_SECRET = process.env.JWT_SECRET
+const JWT_SECRET = process.env.JWT_SECRET;
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '24h';
 const JWT_REFRESH_EXPIRES_IN = process.env.JWT_REFRESH_EXPIRES_IN || '7d';
 
@@ -18,8 +20,6 @@ export const jwtConfig = {
 
 /**
  * Generate access token for a user
- * @param {Object} user - User object with id, email, role
- * @returns {string} JWT token
  */
 export const generateAccessToken = (user) => {
     return jwt.sign(
@@ -36,8 +36,6 @@ export const generateAccessToken = (user) => {
 
 /**
  * Generate refresh token for a user
- * @param {Object} user - User object with id
- * @returns {string} Refresh token
  */
 export const generateRefreshToken = (user) => {
     return jwt.sign(
@@ -49,15 +47,11 @@ export const generateRefreshToken = (user) => {
 
 /**
  * Verify access token
- * @param {string} token - JWT token to verify
- * @returns {Object} Decoded token payload
- * @throws {Error} If token is invalid or expired
  */
 export const verifyAccessToken = (token) => {
     try {
         const decoded = jwt.verify(token, JWT_SECRET);
         
-        // Check if it's a refresh token being used as access token
         if (decoded.type === 'refresh') {
             throw new Error('Invalid token type');
         }
@@ -76,8 +70,6 @@ export const verifyAccessToken = (token) => {
 
 /**
  * Verify refresh token
- * @param {string} token - Refresh token to verify
- * @returns {Object} Decoded token payload
  */
 export const verifyRefreshToken = (token) => {
     try {
@@ -98,18 +90,14 @@ export const verifyRefreshToken = (token) => {
 
 /**
  * Extract token from Authorization header
- * @param {string} authHeader - Authorization header value
- * @returns {string|null} Extracted token or null
  */
 export const extractTokenFromHeader = (authHeader) => {
     if (!authHeader) return null;
     
-    // Check for Bearer token
     if (authHeader.startsWith('Bearer ')) {
         return authHeader.substring(7);
     }
     
-    // Check for simple token
     if (authHeader.length > 20) {
         return authHeader;
     }
@@ -117,9 +105,11 @@ export const extractTokenFromHeader = (authHeader) => {
     return null;
 };
 
+
+
+
 /**
  * Authenticate JWT token middleware
- * Extracts token from Authorization header and validates it
  */
 export const authenticateToken = async (req, res, next) => {
     try {
@@ -134,10 +124,7 @@ export const authenticateToken = async (req, res, next) => {
             });
         }
 
-        // Verify token
         const decoded = verifyAccessToken(token);
-        
-        // Get user from database to ensure they still exist and are active
         const user = await UserRepository.findById(decoded.id);
         
         if (!user) {
@@ -147,19 +134,12 @@ export const authenticateToken = async (req, res, next) => {
                 message: 'User not found. Please login again.'
             });
         }
-if (user.verified === false && req.originalUrl !== '/api/auth/verify-code' && req.originalUrl !== '/api/auth/resend-verification') {
-    return res.status(403).json({ 
-        success: false,
-        error: 'Email not verified',
-        message: 'Please verify your email address before accessing this resource.',
-        requiresVerification: true
-    });
-}
+
+        // Check email verification for non-verification routes
+        const isVerificationRoute = req.originalUrl === '/api/auth/verify-code' || 
+                                     req.originalUrl === '/api/auth/resend-verification';
         
-        // Check if email is verified (optional - can be removed if not required for all routes)
-        if (user.is_verified === false && req.originalUrl !== '/api/auth/verify-code' && req.originalUrl !== '/api/auth/resend-verification') {
-            // Allow unverified users to access verification endpoints only
-            // For all other endpoints, require verification
+        if (user.verified === false && !isVerificationRoute) {
             return res.status(403).json({ 
                 success: false,
                 error: 'Email not verified',
@@ -178,7 +158,7 @@ if (user.verified === false && req.originalUrl !== '/api/auth/verify-code' && re
             market_id: user.market_id,
             province: user.province,
             district: user.district,
-            is_verified: user.is_verified,
+            is_verified: user.verified,
             is_active: user.is_active
         };
         
@@ -210,6 +190,8 @@ if (user.verified === false && req.originalUrl !== '/api/auth/verify-code' && re
     }
 };
 
+export const authenticate = authenticateToken;
+
 /**
  * Optional authentication - doesn't require token but attaches user if present
  */
@@ -232,25 +214,22 @@ export const optionalAuth = async (req, res, next) => {
                         market_id: user.market_id,
                         province: user.province,
                         district: user.district,
-                        is_verified: user.is_verified,
+                        is_verified: user.verified,
                         is_active: user.is_active
                     };
                 }
             } catch (tokenError) {
                 // Token invalid but that's fine for optional auth
-                console.log('Optional auth: Invalid token provided');
             }
         }
         next();
     } catch (error) {
-        // Continue without user
         next();
     }
 };
 
 /**
  * Role-based authorization middleware
- * @param {...string} allowedRoles - Roles allowed to access the route
  */
 export const authorize = (...allowedRoles) => {
     return (req, res, next) => {
@@ -398,7 +377,7 @@ export const canSubmitPrice = (req, res, next) => {
 };
 
 /**
- * Check if user is not a consumer (for submission routes)
+ * Check if user is not a consumer
  */
 export const notConsumer = (req, res, next) => {
     if (!req.user) {
@@ -421,8 +400,7 @@ export const notConsumer = (req, res, next) => {
 };
 
 /**
- * Resource ownership check - ensures user can only access their own resources
- * @param {Function} getResourceOwnerId - Function that returns owner ID from request params/body
+ * Resource ownership check
  */
 export const ownsResource = (getResourceOwnerId) => {
     return async (req, res, next) => {
@@ -435,7 +413,6 @@ export const ownsResource = (getResourceOwnerId) => {
                 });
             }
             
-            // Admin can access any resource
             if (req.user.role === 'admin') {
                 return next();
             }
@@ -450,7 +427,7 @@ export const ownsResource = (getResourceOwnerId) => {
                 });
             }
             
-            if (ownerId !== req.user.id) {
+            if (parseInt(ownerId) !== parseInt(req.user.id)) {
                 return res.status(403).json({ 
                     success: false,
                     error: 'Access denied',
@@ -473,8 +450,7 @@ export const ownsResource = (getResourceOwnerId) => {
 };
 
 /**
- * Check if user can access market data (for market-specific routes)
- * @param {Function} getMarketId - Function that returns market ID from request
+ * Check if user can access market data
  */
 export const canAccessMarket = (getMarketId) => {
     return async (req, res, next) => {
@@ -487,7 +463,6 @@ export const canAccessMarket = (getMarketId) => {
                 });
             }
             
-            // Admin can access any market
             if (req.user.role === 'admin') {
                 return next();
             }
@@ -495,11 +470,9 @@ export const canAccessMarket = (getMarketId) => {
             const marketId = await getMarketId(req);
             
             if (!marketId) {
-                return next(); // No specific market restriction
+                return next();
             }
             
-            // Check if user has access to this market
-            // Vendors can only access their assigned market
             if (req.user.role === 'vendor' && req.user.market_id !== marketId) {
                 return res.status(403).json({ 
                     success: false,
@@ -524,21 +497,16 @@ export const canAccessMarket = (getMarketId) => {
 
 /**
  * Rate limit for authenticated users
- * @param {number} maxRequests - Maximum requests per window
- * @param {number} windowMs - Time window in milliseconds
  */
 export const authenticateAndRateLimit = (maxRequests = 100, windowMs = 60000) => {
     const requests = new Map();
     
     return async (req, res, next) => {
-        // First authenticate
         await authenticateToken(req, res, async () => {
-            // Then apply rate limiting
             const userId = req.user.id;
             const now = Date.now();
             const userRequests = requests.get(userId) || [];
             
-            // Clean old requests
             const recentRequests = userRequests.filter(time => now - time < windowMs);
             
             if (recentRequests.length >= maxRequests) {
@@ -550,7 +518,6 @@ export const authenticateAndRateLimit = (maxRequests = 100, windowMs = 60000) =>
                 });
             }
             
-            // Add current request
             recentRequests.push(now);
             requests.set(userId, recentRequests);
             
@@ -559,7 +526,7 @@ export const authenticateAndRateLimit = (maxRequests = 100, windowMs = 60000) =>
     };
 };
 
-// Export all middleware functions
+// Default export
 export default {
     jwtConfig,
     generateAccessToken,
@@ -568,6 +535,7 @@ export default {
     verifyRefreshToken,
     extractTokenFromHeader,
     authenticateToken,
+    authenticate,  // Alias for authenticateToken
     optionalAuth,
     authorize,
     adminOnly,

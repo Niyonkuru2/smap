@@ -1,8 +1,3 @@
-/**
- * API Response Optimization Middleware
- * Reduces payload size through pagination and field selection
- */
-
 // Field selector - allows clients to request only needed fields
 function fieldSelector(req, res, next) {
   const originalJson = res.json.bind(res);
