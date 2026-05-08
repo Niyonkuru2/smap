@@ -1,7 +1,7 @@
 ﻿import { useState, useEffect } from 'react';
 import { Button } from '../ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
-import { LogOut, BarChart3, CheckSquare, Users, Settings, Bell, Download, Upload, UserCog, Mail, Smartphone, Brain, Megaphone, AlertTriangle, MoreVertical, X, Store, Plus } from 'lucide-react';
+import { LogOut, BarChart3, CheckSquare, Users, Settings, Bell, Download, Upload, UserCog, Mail, Smartphone, Brain, Megaphone, AlertTriangle, MoreVertical, X, Store, Plus, Briefcase } from 'lucide-react';
 import type { User, UserRole } from '../../App';
 import { globalNotifications } from '../../state/globalState';
 import PriceApprovals from './PriceApprovals';
@@ -22,7 +22,8 @@ import { useLanguage } from '../../contexts/LanguageContext';
 import { Badge } from '../ui/badge';
 import ThemeToggle from '../ThemeToggle';
 import TabCarousel from '../mobile/TabCarousel';
-import VendorManagement from './VendorManagement'; 
+import VendorManagement from './VendorManagement';
+import BusinessUserManagement from './BusinessUserManagement'; 
 
 interface AdminDashboardProps {
   user: User;
@@ -43,6 +44,7 @@ export default function AdminDashboard({ user, onLogout, onViewAsRole }: AdminDa
     { id: 'categories', label: t('categories'), icon: <Settings className="h-5 w-5" /> },
     { id: 'users', label: t('users'), icon: <Users className="h-5 w-5" /> },
     { id: 'vendors', label: t('vendors') || 'Vendors', icon: <Store className="h-5 w-5" /> },
+    { id: 'businesses', label: 'Businesses', icon: <Briefcase className="h-5 w-5" /> },
     { id: 'notifications', label: t('notifications'), icon: <Bell className="h-5 w-5" />, badge: notificationCount },
     { id: 'import', label: t('bulkPriceImport'), icon: <Upload className="h-5 w-5" /> },
     { id: 'emails', label: t('emailTemplates'), icon: <Mail className="h-5 w-5" /> },
@@ -198,6 +200,10 @@ export default function AdminDashboard({ user, onLogout, onViewAsRole }: AdminDa
               <Store className="h-4 w-4 mr-2" />
               {t('vendors') || 'Vendors'}
             </TabsTrigger>
+            <TabsTrigger value="businesses" className="tab-trigger-premium data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg">
+  <Briefcase className="h-4 w-4 mr-2" />
+  Businesses
+</TabsTrigger>
             <TabsTrigger value="notifications" className="tab-trigger-premium data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg">
               <Bell className="h-4 w-4 mr-2" />
               {t('notifications')}

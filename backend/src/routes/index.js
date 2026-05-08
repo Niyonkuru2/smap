@@ -1,5 +1,6 @@
 import express from 'express';
 import authRoutes from './authRoutes.js';
+import vendorRoutes from './vendorRoute.js';
 import priceRoutes from './priceRoutes.js';
 import marketRoutes from './marketRoutes.js';
 import productRoutes from './productRoutes.js';
@@ -20,6 +21,7 @@ const router = express.Router();
 
 // Mount all route modules
 router.use('/auth', authRoutes);
+router.use('/vendors', vendorRoutes);
 router.use('/prices', priceRoutes);
 router.use('/markets', marketRoutes);
 router.use('/products', productRoutes);

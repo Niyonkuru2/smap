@@ -132,7 +132,7 @@ export default function VendorManagement() {
   const getStatusBadge = (status: Vendor['status']) => {
     switch (status) {
       case 'active':
-        return <Badge className="bg-green-500/20 text-green-400 border-green-500/30"><CheckCircle className="h-3 w-3 mr-1" /> Active</Badge>;
+        return <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30"><CheckCircle className="h-3 w-3 mr-1" /> Active</Badge>;
       case 'inactive':
         return <Badge className="bg-red-500/20 text-red-400 border-red-500/30"><XCircle className="h-3 w-3 mr-1" /> Inactive</Badge>;
       case 'pending':
@@ -171,7 +171,7 @@ export default function VendorManagement() {
             <CardTitle className="text-sm font-medium text-muted-foreground">{t('activeVendors') || 'Active Vendors'}</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-400">{vendors.filter(v => v.status === 'active').length}</div>
+            <div className="text-2xl font-bold text-emerald-400">{vendors.filter(v => v.status === 'active').length}</div>
           </CardContent>
         </Card>
         <Card className="dark-glass border-white/10">
@@ -261,17 +261,17 @@ export default function VendorManagement() {
                           variant="ghost"
                           size="sm"
                           onClick={() => handleEditVendor(vendor)}
-                          className="h-8 w-8 p-0"
+                          className="h-8 w-8 p-0 hover:bg-white/10"
                         >
-                          <Pencil className="h-4 w-4" />
+                          <Pencil className="h-4 w-4 text-muted-foreground hover:text-white" />
                         </Button>
                         <Button
                           variant="ghost"
                           size="sm"
                           onClick={() => handleDeleteVendor(vendor.id)}
-                          className="h-8 w-8 p-0 text-red-400 hover:text-red-300"
+                          className="h-8 w-8 p-0 hover:bg-red-500/10"
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <Trash2 className="h-4 w-4 text-red-400 hover:text-red-300" />
                         </Button>
                       </div>
                     </TableCell>
@@ -283,65 +283,75 @@ export default function VendorManagement() {
         </CardContent>
       </Card>
 
-      {/* Add/Edit Vendor Dialog */}
+      {/* Add/Edit Vendor Dialog - Optimized with proper sizing and scroll */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="dark-glass border-white/10">
-          <DialogHeader>
-            <DialogTitle className="gradient-text">
+        <DialogContent className="dark-glass border-white/10 sm:max-w-[500px] md:max-w-[550px] lg:max-w-[600px] w-full max-h-[90vh] overflow-y-auto">
+          <DialogHeader className="sticky top-0 bg-inherit pb-4 border-b border-white/10">
+            <DialogTitle className="gradient-text text-xl">
               {editingVendor ? (t('editVendor') || 'Edit Vendor') : (t('addNewVendor') || 'Add New Vendor')}
             </DialogTitle>
-            <DialogDescription>
+            <DialogDescription className="text-muted-foreground">
               {t('vendorDialogDesc') || 'Fill in the vendor details below'}
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
+          
+          <div className="space-y-5 py-4 px-1">
+            {/* Vendor Name */}
             <div className="space-y-2">
-              <Label>{t('vendorName') || 'Vendor Name'}</Label>
+              <Label className="text-white font-medium">{t('vendorName') || 'Vendor Name'}</Label>
               <Input
                 placeholder={t('enterVendorName') || 'Enter vendor name'}
                 value={formData.name || ''}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                className="bg-white/5 border-white/10"
+                className="bg-white/5 border-white/10 text-white placeholder:text-muted-foreground focus:border-primary/50"
               />
             </div>
+
+            {/* Email */}
             <div className="space-y-2">
-              <Label>{t('email') || 'Email'}</Label>
+              <Label className="text-white font-medium">{t('email') || 'Email'}</Label>
               <Input
                 type="email"
                 placeholder="vendor@example.com"
                 value={formData.email || ''}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                className="bg-white/5 border-white/10"
+                className="bg-white/5 border-white/10 text-white placeholder:text-muted-foreground focus:border-primary/50"
               />
             </div>
+
+            {/* Phone */}
             <div className="space-y-2">
-              <Label>{t('phone') || 'Phone'}</Label>
+              <Label className="text-white font-medium">{t('phone') || 'Phone'}</Label>
               <Input
                 placeholder="+250 XXX XXX XXX"
                 value={formData.phone || ''}
                 onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                className="bg-white/5 border-white/10"
+                className="bg-white/5 border-white/10 text-white placeholder:text-muted-foreground focus:border-primary/50"
               />
             </div>
+
+            {/* Address */}
             <div className="space-y-2">
-              <Label>{t('address') || 'Address'}</Label>
+              <Label className="text-white font-medium">{t('address') || 'Address'}</Label>
               <Input
                 placeholder="Enter business address"
                 value={formData.address || ''}
                 onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                className="bg-white/5 border-white/10"
+                className="bg-white/5 border-white/10 text-white placeholder:text-muted-foreground focus:border-primary/50"
               />
             </div>
+
+            {/* Category */}
             <div className="space-y-2">
-              <Label>{t('category') || 'Category'}</Label>
+              <Label className="text-white font-medium">{t('category') || 'Category'}</Label>
               <Select
                 value={formData.category || ''}
                 onValueChange={(value) => setFormData({ ...formData, category: value })}
               >
-                <SelectTrigger className="bg-white/5 border-white/10">
+                <SelectTrigger className="bg-white/5 border-white/10 text-white focus:border-primary/50">
                   <SelectValue placeholder={t('selectCategory') || 'Select category'} />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="dark-glass border-white/10">
                   <SelectItem value="Groceries">Groceries</SelectItem>
                   <SelectItem value="Electronics">Electronics</SelectItem>
                   <SelectItem value="Fashion">Fashion</SelectItem>
@@ -350,16 +360,18 @@ export default function VendorManagement() {
                 </SelectContent>
               </Select>
             </div>
+
+            {/* Status */}
             <div className="space-y-2">
-              <Label>{t('status') || 'Status'}</Label>
+              <Label className="text-white font-medium">{t('status') || 'Status'}</Label>
               <Select
                 value={formData.status || 'pending'}
                 onValueChange={(value: Vendor['status']) => setFormData({ ...formData, status: value })}
               >
-                <SelectTrigger className="bg-white/5 border-white/10">
+                <SelectTrigger className="bg-white/5 border-white/10 text-white focus:border-primary/50">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="dark-glass border-white/10">
                   <SelectItem value="active">Active</SelectItem>
                   <SelectItem value="inactive">Inactive</SelectItem>
                   <SelectItem value="pending">Pending</SelectItem>
@@ -367,11 +379,19 @@ export default function VendorManagement() {
               </Select>
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+
+          <DialogFooter className="sticky bottom-0 bg-inherit pt-4 border-t border-white/10 gap-3">
+            <Button 
+              variant="outline" 
+              onClick={() => setIsDialogOpen(false)}
+              className="btn-outline-premium flex-1 sm:flex-none"
+            >
               {t('cancel') || 'Cancel'}
             </Button>
-            <Button onClick={handleSaveVendor} className="btn-premium">
+            <Button 
+              onClick={handleSaveVendor} 
+              className="btn-premium flex-1 sm:flex-none"
+            >
               {editingVendor ? (t('update') || 'Update') : (t('add') || 'Add')}
             </Button>
           </DialogFooter>
