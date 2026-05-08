@@ -1,14 +1,4 @@
-/**
- * Price History & Trends Module
- * Tracks price changes over time and provides analytics
- */
-
-// In-memory storage for price history (use database in production)
-const priceHistory = new Map(); // productId-marketId -> [{ price, timestamp, vendorId }]
-
-/**
- * Record a price point in history
- */
+const priceHistory = new Map();
 function recordPrice(productId, marketId, price, vendorId = null, metadata = {}) {
     const key = `${productId}-${marketId}`;
     const history = priceHistory.get(key) || [];
@@ -19,8 +9,6 @@ function recordPrice(productId, marketId, price, vendorId = null, metadata = {})
         vendorId,
         ...metadata
     });
-    
-    // Keep last 1000 entries per product-market combination
     if (history.length > 1000) {
         history.shift();
     }

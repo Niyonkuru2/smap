@@ -1,229 +1,329 @@
-import pool from '../config/database.js';
-import UserPriceAlertModel from '../models/UserPriceAlertModel.js';
+// src/repositories/priceRepository.js
+import pool from '../config/database.js';  // Using default import like UserRepository
+import { 
+    recordPrice, 
+    getHistory, 
+    calculateTrend, 
+    forecastPrice,
+    getSeasonalAnalysis,
+    getMarketComparisonReport 
+} from '../services/PriceService.js';
 
-class PriceAlertRepository {
-    constructor() {
-        this.pool = pool;
-    }
-
+class PriceRepository {
     /**
-     * Get all active alerts for a user
-     * @param {number} userId - User ID
-     * @returns {Promise<Array>} - Array of alert models
+     * Get all prices with optional filters
      */
-    async getByUser(userId) {
-        const result = await this.pool.query(
-            `SELECT pa.*, 
-                    p.name as product_name, 
-                    m.name as market_name
-             FROM price_alerts pa
-             LEFT JOIN products p ON pa.product_id = p.id
-             LEFT JOIN markets m ON pa.market_id = m.id
-             WHERE pa.user_id = $1 AND pa.is_active = true
-             ORDER BY pa.created_at DESC`,
-            [userId]
-        );
-        return UserPriceAlertModel.fromDatabaseArray(result.rows);
-    }
-
-    /**
-     * Get all active alerts (for price change monitoring)
-     * @returns {Promise<Array>} - Array of alert models with current prices
-     */
-    async getAllActiveAlerts() {
-        const result = await this.pool.query(`
-            SELECT pa.*, 
-                   p.name as product_name,
+    async getAll(filters = {}) {
+        let query = `
+            SELECT p.*, 
+                   pr.name as product_name, 
                    m.name as market_name,
-                   pr.price as current_price,
-                   pr.previous_price
-            FROM price_alerts pa
-            JOIN products p ON pa.product_id = p.id
-            JOIN markets m ON pa.market_id = m.id
-            LEFT JOIN LATERAL (
-                SELECT price, previous_price 
-                FROM prices 
-                WHERE product_id = pa.product_id 
-                  AND market_id = pa.market_id 
-                  AND status = 'approved'
-                ORDER BY created_at DESC 
-                LIMIT 1
-            ) pr ON true
-            WHERE pa.is_active = true
-        `);
-        return UserPriceAlertModel.fromDatabaseArray(result.rows);
+                   u.name as vendor_name
+            FROM prices p
+            LEFT JOIN products pr ON p.product_id = pr.id
+            LEFT JOIN markets m ON p.market_id = m.id
+            LEFT JOIN users u ON p.vendor_id = u.id
+            WHERE 1=1
+        `;
+        const params = [];
+        let paramIndex = 1;
+
+        if (filters.productId) {
+            query += ` AND p.product_id = $${paramIndex++}`;
+            params.push(filters.productId);
+        }
+
+        if (filters.marketId) {
+            query += ` AND p.market_id = $${paramIndex++}`;
+            params.push(filters.marketId);
+        }
+
+        if (filters.vendorId) {
+            query += ` AND p.vendor_id = $${paramIndex++}`;
+            params.push(filters.vendorId);
+        }
+
+        if (filters.status) {
+            query += ` AND p.status = $${paramIndex++}`;
+            params.push(filters.status);
+        }
+
+        query += ` ORDER BY p.created_at DESC`;
+
+        if (filters.limit) {
+            query += ` LIMIT $${paramIndex++}`;
+            params.push(filters.limit);
+        }
+
+        const result = await pool.query(query, params);
+        return result.rows;
     }
 
     /**
-     * Create a new price alert
-     * @param {Object} alertData - Alert data
-     * @returns {Promise<UserPriceAlertModel>} - Created alert
+     * Get price by ID
      */
-    async create(alertData) {
-        const { user_id, product_id, market_id, target_price, alert_type, percentage_threshold, notification_method } = alertData;
-        
-        const result = await this.pool.query(
-            `INSERT INTO price_alerts 
-             (user_id, product_id, market_id, target_price, alert_condition, percentage_threshold, notification_method)
-             VALUES ($1, $2, $3, $4, $5, $6, $7)
-             RETURNING *`,
-            [user_id, product_id, market_id, target_price, alert_type || 'below', percentage_threshold || null, notification_method || 'email']
-        );
-        
-        return new UserPriceAlertModel(result.rows[0]);
+    async getById(id) {
+        const query = `
+            SELECT p.*, 
+                   pr.name as product_name, 
+                   m.name as market_name,
+                   u.name as vendor_name
+            FROM prices p
+            LEFT JOIN products pr ON p.product_id = pr.id
+            LEFT JOIN markets m ON p.market_id = m.id
+            LEFT JOIN users u ON p.vendor_id = u.id
+            WHERE p.id = $1
+        `;
+        const result = await pool.query(query, [id]);
+        return result.rows[0];
     }
 
     /**
-     * Update an existing alert
-     * @param {number} alertId - Alert ID
-     * @param {number} userId - User ID (for ownership check)
-     * @param {Object} updates - Updates to apply
-     * @returns {Promise<UserPriceAlertModel|null>} - Updated alert or null
+     * Get prices by product and market
      */
-    async update(alertId, userId, updates) {
-        const allowedFields = ['target_price', 'alert_condition', 'percentage_threshold', 'notification_method', 'is_active'];
-        const setClause = [];
-        const values = [alertId, userId];
-        let paramCount = 2;
+    async getByProductAndMarket(productId, marketId, limit = 10) {
+        const query = `
+            SELECT p.*, u.name as vendor_name
+            FROM prices p
+            LEFT JOIN users u ON p.vendor_id = u.id
+            WHERE p.product_id = $1 AND p.market_id = $2
+            ORDER BY p.created_at DESC
+            LIMIT $3
+        `;
+        const result = await pool.query(query, [productId, marketId, limit]);
+        return result.rows;
+    }
+
+    /**
+     * Get latest price for a product at a market
+     */
+    async getLatestPrice(productId, marketId) {
+        const query = `
+            SELECT p.*, u.name as vendor_name
+            FROM prices p
+            LEFT JOIN users u ON p.vendor_id = u.id
+            WHERE p.product_id = $1 AND p.market_id = $2
+            ORDER BY p.created_at DESC
+            LIMIT 1
+        `;
+        const result = await pool.query(query, [productId, marketId]);
+        return result.rows[0];
+    }
+
+    /**
+     * Create new price record
+     */
+    async create(priceData) {
+        const query = `
+            INSERT INTO prices (
+                product_id, market_id, vendor_id, price, 
+                quantity, unit, status, created_at, updated_at
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())
+            RETURNING *
+        `;
+        const values = [
+            priceData.product_id,
+            priceData.market_id,
+            priceData.vendor_id || null,
+            priceData.price,
+            priceData.quantity || 1,
+            priceData.unit || 'kg',
+            priceData.status || 'pending'
+        ];
+        const result = await pool.query(query, values);
         
-        for (const [key, value] of Object.entries(updates)) {
-            if (allowedFields.includes(key)) {
-                paramCount++;
-                setClause.push(`${key} = $${paramCount}`);
-                values.push(value);
+        // Record in price history service
+        if (priceData.status === 'approved') {
+            recordPrice(
+                priceData.product_id,
+                priceData.market_id,
+                priceData.price,
+                priceData.vendor_id,
+                { status: 'approved' }
+            );
+        }
+        
+        return result.rows[0];
+    }
+
+    /**
+     * Update price record
+     */
+    async update(id, priceData) {
+        const updates = [];
+        const values = [];
+        let paramIndex = 1;
+
+        if (priceData.price !== undefined) {
+            updates.push(`price = $${paramIndex++}`);
+            values.push(priceData.price);
+        }
+        if (priceData.status !== undefined) {
+            updates.push(`status = $${paramIndex++}`);
+            values.push(priceData.status);
+        }
+        if (priceData.quantity !== undefined) {
+            updates.push(`quantity = $${paramIndex++}`);
+            values.push(priceData.quantity);
+        }
+        if (priceData.unit !== undefined) {
+            updates.push(`unit = $${paramIndex++}`);
+            values.push(priceData.unit);
+        }
+
+        updates.push(`updated_at = NOW()`);
+        values.push(id);
+
+        const query = `
+            UPDATE prices 
+            SET ${updates.join(', ')}
+            WHERE id = $${paramIndex}
+            RETURNING *
+        `;
+        const result = await pool.query(query, values);
+        
+        // Update price history if approved
+        if (result.rows[0] && priceData.status === 'approved') {
+            recordPrice(
+                result.rows[0].product_id,
+                result.rows[0].market_id,
+                result.rows[0].price,
+                result.rows[0].vendor_id,
+                { status: 'approved', updated: true }
+            );
+        }
+        
+        return result.rows[0];
+    }
+
+    /**
+     * Delete price record
+     */
+    async delete(id) {
+        const query = `DELETE FROM prices WHERE id = $1 RETURNING *`;
+        const result = await pool.query(query, [id]);
+        return result.rows[0];
+    }
+
+    /**
+     * Get price history with analytics
+     */
+    async getPriceHistory(productId, marketId, options = {}) {
+        // First try to get from database
+        const dbHistory = await this.getByProductAndMarket(productId, marketId, options.limit || 100);
+        
+        if (dbHistory.length > 0) {
+            return {
+                productId,
+                marketId,
+                entries: dbHistory.map(h => ({
+                    price: parseFloat(h.price),
+                    timestamp: h.created_at,
+                    vendorId: h.vendor_id,
+                    vendorName: h.vendor_name
+                })),
+                count: dbHistory.length,
+                source: 'database'
+            };
+        }
+        
+        // Fallback to in-memory history
+        return getHistory(productId, marketId, options);
+    }
+
+    /**
+     * Get price trend analysis
+     */
+    async getPriceTrend(productId, marketId, days = 7) {
+        // Try to get from database first
+        const dbHistory = await this.getByProductAndMarket(productId, marketId, 30);
+        
+        if (dbHistory.length >= 2) {
+            // Calculate trend from database data
+            const recentPrices = dbHistory.slice(0, Math.min(days, dbHistory.length));
+            if (recentPrices.length >= 2) {
+                const oldPrice = parseFloat(recentPrices[recentPrices.length - 1].price);
+                const newPrice = parseFloat(recentPrices[0].price);
+                const changePercent = ((newPrice - oldPrice) / oldPrice) * 100;
+                
+                let trend = 'stable';
+                if (changePercent > 5) trend = 'rising';
+                else if (changePercent < -5) trend = 'falling';
+                
+                return {
+                    trend,
+                    change: parseFloat(changePercent.toFixed(2)),
+                    dataPoints: recentPrices.length,
+                    confidence: recentPrices.length > 10 ? 'high' : recentPrices.length > 5 ? 'medium' : 'low',
+                    period: `${days} days`,
+                    source: 'database'
+                };
             }
         }
         
-        if (setClause.length === 0) {
-            return null;
-        }
-        
-        setClause.push('updated_at = CURRENT_TIMESTAMP');
-        
-        const result = await this.pool.query(
-            `UPDATE price_alerts 
-             SET ${setClause.join(', ')}
-             WHERE id = $1 AND user_id = $2
-             RETURNING *`,
-            values
-        );
-        
-        return result.rows[0] ? new UserPriceAlertModel(result.rows[0]) : null;
+        // Fallback to in-memory
+        return calculateTrend(productId, marketId, days);
     }
 
     /**
-     * Delete (deactivate) a price alert
-     * @param {number} alertId - Alert ID
-     * @param {number} userId - User ID (for ownership check)
-     * @returns {Promise<Object>} - Success status
+     * Get price forecast
      */
-    async delete(alertId, userId) {
-        const result = await this.pool.query(
-            `UPDATE price_alerts 
-             SET is_active = false, updated_at = CURRENT_TIMESTAMP
-             WHERE id = $1 AND user_id = $2
-             RETURNING id`,
-            [alertId, userId]
-        );
-        
-        return { success: result.rows.length > 0 };
+    async getPriceForecast(productId, marketId, daysAhead = 7) {
+        return forecastPrice(productId, marketId, daysAhead);
     }
 
     /**
-     * Hard delete a price alert (admin only)
-     * @param {number} alertId - Alert ID
-     * @returns {Promise<Object>} - Success status
+     * Get seasonal analysis
      */
-    async hardDelete(alertId) {
-        const result = await this.pool.query(
-            `DELETE FROM price_alerts WHERE id = $1 RETURNING id`,
-            [alertId]
-        );
-        
-        return { success: result.rows.length > 0 };
+    async getSeasonalAnalysis(productId, marketId) {
+        return getSeasonalAnalysis(productId, marketId);
     }
 
     /**
-     * Mark alert as triggered
-     * @param {number} alertId - Alert ID
-     * @returns {Promise<void>}
+     * Get market comparison
      */
-    async markAsTriggered(alertId) {
-        await this.pool.query(
-            `UPDATE price_alerts 
-             SET last_triggered_at = CURRENT_TIMESTAMP, 
-                 trigger_count = trigger_count + 1,
-                 updated_at = CURRENT_TIMESTAMP
-             WHERE id = $1`,
-            [alertId]
-        );
+    async getMarketComparison(productId, markets) {
+        return getMarketComparisonReport(productId, markets);
     }
 
     /**
-     * Get alert by ID
-     * @param {number} alertId - Alert ID
-     * @returns {Promise<UserPriceAlertModel|null>} - Alert model or null
+     * Get current market prices
      */
-    async findById(alertId) {
-        const result = await this.pool.query(
-            `SELECT * FROM price_alerts WHERE id = $1`,
-            [alertId]
-        );
-        return result.rows[0] ? new UserPriceAlertModel(result.rows[0]) : null;
+    async getCurrentMarketPrices(productId) {
+        const query = `
+            SELECT DISTINCT ON (p.market_id) 
+                   p.*, 
+                   m.name as market_name,
+                   m.location,
+                   pr.name as product_name
+            FROM prices p
+            JOIN markets m ON p.market_id = m.id
+            JOIN products pr ON p.product_id = pr.id
+            WHERE p.product_id = $1 
+              AND p.status = 'approved'
+            ORDER BY p.market_id, p.created_at DESC
+        `;
+        const result = await pool.query(query, [productId]);
+        return result.rows;
     }
 
     /**
-     * Get alerts for a specific product
-     * @param {number} productId - Product ID
-     * @param {number} marketId - Market ID
-     * @returns {Promise<Array>} - Array of alert models
+     * Get price statistics for dashboard
      */
-    async getByProductAndMarket(productId, marketId) {
-        const result = await this.pool.query(
-            `SELECT * FROM price_alerts 
-             WHERE product_id = $1 AND market_id = $2 AND is_active = true`,
-            [productId, marketId]
-        );
-        return UserPriceAlertModel.fromDatabaseArray(result.rows);
-    }
-
-    /**
-     * Get alert statistics
-     * @returns {Promise<Object>} - Statistics
-     */
-    async getStats() {
-        const result = await this.pool.query(`
+    async getPriceStats() {
+        const query = `
             SELECT 
-                COUNT(*) as total_alerts,
-                SUM(CASE WHEN is_active THEN 1 ELSE 0 END) as active_alerts,
-                COUNT(DISTINCT user_id) as unique_users,
-                COUNT(DISTINCT product_id) as unique_products
-            FROM price_alerts
-        `);
-        
-        return {
-            total_alerts: parseInt(result.rows[0].total_alerts || 0),
-            active_alerts: parseInt(result.rows[0].active_alerts || 0),
-            unique_users: parseInt(result.rows[0].unique_users || 0),
-            unique_products: parseInt(result.rows[0].unique_products || 0)
-        };
-    }
-
-    /**
-     * Clean up old inactive alerts
-     * @param {number} daysToKeep - Days to keep inactive alerts
-     * @returns {Promise<number>} - Number of alerts deleted
-     */
-    async cleanupOldAlerts(daysToKeep = 90) {
-        const result = await this.pool.query(
-            `DELETE FROM price_alerts 
-             WHERE is_active = false 
-               AND updated_at < NOW() - INTERVAL '${daysToKeep} days'
-             RETURNING id`
-        );
-        
-        return result.rows.length;
+                COUNT(*) as total_prices,
+                COUNT(DISTINCT product_id) as total_products,
+                COUNT(DISTINCT market_id) as total_markets,
+                COUNT(CASE WHEN status = 'pending' THEN 1 END) as pending_count,
+                COUNT(CASE WHEN status = 'approved' THEN 1 END) as approved_count,
+                COUNT(CASE WHEN status = 'rejected' THEN 1 END) as rejected_count
+            FROM prices
+        `;
+        const result = await pool.query(query);
+        return result.rows[0];
     }
 }
 
-export default new PriceAlertRepository();
+export default new PriceRepository();

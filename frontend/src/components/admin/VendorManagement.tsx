@@ -9,8 +9,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
 import { Badge } from '../ui/badge';
 import { useLanguage } from '../../contexts/LanguageContext';
-import { Plus, Pencil, Trash2, Store, Mail, Phone, MapPin, CheckCircle, XCircle } from 'lucide-react';
-import { Toast } from '../ui/toast';
+import { Plus, Pencil, Trash2, Store, Mail, Phone, MapPin, CheckCircle, XCircle, Loader2 } from 'lucide-react';
+import { getVendors, createVendor, updateVendor, deleteVendor, type Vendor as APIVendor } from '../../services/vendorService';
+import { toast } from 'sonner';
 
 interface Vendor {
   id: string;
@@ -30,51 +31,54 @@ export default function VendorManagement() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingVendor, setEditingVendor] = useState<Vendor | null>(null);
   const [formData, setFormData] = useState<Partial<Vendor>>({});
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   const { t } = useLanguage();
 
-  // Mock data - replace with actual API calls
+  // Fetch vendors from API
   useEffect(() => {
-    // Fetch vendors from API
-    const mockVendors: Vendor[] = [
-      {
-        id: '1',
-        name: 'Fresh Market Supplies',
-        email: 'contact@freshmarket.com',
-        phone: '+250 788 123 456',
-        address: 'Kigali, Rwanda',
-        category: 'Groceries',
-        status: 'active',
-        rating: 4.5,
-        joinDate: '2024-01-15',
-        totalProducts: 156
-      },
-      {
-        id: '2',
-        name: 'Tech Gadgets Rwanda',
-        email: 'sales@techgadgets.rw',
-        phone: '+250 788 789 012',
-        address: 'Kigali Heights, Rwanda',
-        category: 'Electronics',
-        status: 'active',
-        rating: 4.8,
-        joinDate: '2024-02-20',
-        totalProducts: 89
-      },
-      {
-        id: '3',
-        name: 'Fashion Hub',
-        email: 'info@fashionhub.com',
-        phone: '+250 788 345 678',
-        address: 'Kimironko, Kigali',
-        category: 'Fashion',
-        status: 'pending',
-        rating: 0,
-        joinDate: '2024-03-10',
-        totalProducts: 0
-      }
-    ];
-    setVendors(mockVendors);
+    fetchVendors();
   }, []);
+
+  const fetchVendors = async () => {
+    setIsLoading(true);
+    try {
+      const apiVendors = await getVendors();
+      
+      // Map API vendors to frontend Vendor format
+      const mappedVendors: Vendor[] = apiVendors.map((vendor: APIVendor) => {
+        // Determine status based on backend fields
+        let status: 'active' | 'inactive' | 'pending' = 'pending';
+        if (vendor.is_active === true && vendor.verified === true) {
+          status = 'active';
+        } else if (vendor.is_active === false) {
+          status = 'inactive';
+        } else if (vendor.is_active === true && vendor.verified === false) {
+          status = 'pending';
+        }
+
+        return {
+          id: vendor.id?.toString() || '',
+          name: vendor.name,
+          email: vendor.email,
+          phone: vendor.phone || '',
+          address: vendor.address || '',
+          category: vendor.category || '',
+          status: status,
+          rating: 0,
+          joinDate: vendor.created_at ? new Date(vendor.created_at).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+          totalProducts: 0
+        };
+      });
+      
+      setVendors(mappedVendors);
+    } catch (error: any) {
+      console.error('Error fetching vendors:', error);
+      toast.error(error.response?.data?.message || 'Failed to load vendors');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleAddVendor = () => {
     setEditingVendor(null);
@@ -97,36 +101,57 @@ export default function VendorManagement() {
 
   const handleDeleteVendor = async (vendorId: string) => {
     if (window.confirm(t('confirmDeleteVendor') || 'Are you sure you want to delete this vendor?')) {
-      // API call to delete vendor
-      setVendors(vendors.filter(v => v.id !== vendorId));
+      try {
+        await deleteVendor(vendorId);
+        toast.success('Vendor deleted successfully');
+        await fetchVendors();
+      } catch (error: any) {
+        console.error('Error deleting vendor:', error);
+        toast.error(error.response?.data?.message || 'Failed to delete vendor');
+      }
     }
   };
 
   const handleSaveVendor = async () => {
     if (!formData.name || !formData.email) {
-      // Show error toast
+      toast.error('Please fill in all required fields');
       return;
     }
 
-    if (editingVendor) {
-      // Update existing vendor
-      setVendors(vendors.map(v => 
-        v.id === editingVendor.id ? { ...v, ...formData as Vendor } : v
-      ));
-    } else {
-      // Add new vendor
-      const newVendor: Vendor = {
-        id: Date.now().toString(),
-        ...formData as Vendor,
-        rating: 0,
-        joinDate: new Date().toISOString().split('T')[0],
-        totalProducts: 0
-      };
-      setVendors([...vendors, newVendor]);
+    setIsSaving(true);
+    try {
+      if (editingVendor) {
+        await updateVendor(editingVendor.id, {
+          name: formData.name,
+          email: formData.email,
+          phone: formData.phone,
+          address: formData.address,
+          category: formData.category,
+          status: formData.status
+        });
+        toast.success('Vendor updated successfully');
+      } else {
+        await createVendor({
+          name: formData.name || '',
+          email: formData.email || '',
+          phone: formData.phone,
+          address: formData.address,
+          category: formData.category,
+          status: formData.status
+        });
+        toast.success('Vendor added successfully');
+      }
+      
+      setIsDialogOpen(false);
+      setEditingVendor(null);
+      setFormData({});
+      await fetchVendors();
+    } catch (error: any) {
+      console.error('Error saving vendor:', error);
+      toast.error(error.response?.data?.message || (editingVendor ? 'Failed to update vendor' : 'Failed to add vendor'));
+    } finally {
+      setIsSaving(false);
     }
-    setIsDialogOpen(false);
-    setEditingVendor(null);
-    setFormData({});
   };
 
   const getStatusBadge = (status: Vendor['status']) => {
@@ -141,6 +166,15 @@ export default function VendorManagement() {
         return <Badge>{status}</Badge>;
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <span className="ml-2 text-muted-foreground">Loading vendors...</span>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -240,7 +274,7 @@ export default function VendorManagement() {
                     </TableCell>
                     <TableCell>
                       <Badge variant="outline" className="border-primary/30 text-primary">
-                        {vendor.category}
+                        {vendor.category || 'N/A'}
                       </Badge>
                     </TableCell>
                     <TableCell>{getStatusBadge(vendor.status)}</TableCell>
@@ -283,7 +317,7 @@ export default function VendorManagement() {
         </CardContent>
       </Card>
 
-      {/* Add/Edit Vendor Dialog - Optimized with proper sizing and scroll */}
+      {/* Add/Edit Vendor Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="dark-glass border-white/10 sm:max-w-[500px] md:max-w-[550px] lg:max-w-[600px] w-full max-h-[90vh] overflow-y-auto">
           <DialogHeader className="sticky top-0 bg-inherit pb-4 border-b border-white/10">
@@ -296,9 +330,8 @@ export default function VendorManagement() {
           </DialogHeader>
           
           <div className="space-y-5 py-4 px-1">
-            {/* Vendor Name */}
             <div className="space-y-2">
-              <Label className="text-white font-medium">{t('vendorName') || 'Vendor Name'}</Label>
+              <Label className="text-white font-medium">{t('vendorName') || 'Vendor Name'} *</Label>
               <Input
                 placeholder={t('enterVendorName') || 'Enter vendor name'}
                 value={formData.name || ''}
@@ -307,9 +340,8 @@ export default function VendorManagement() {
               />
             </div>
 
-            {/* Email */}
             <div className="space-y-2">
-              <Label className="text-white font-medium">{t('email') || 'Email'}</Label>
+              <Label className="text-white font-medium">{t('email') || 'Email'} *</Label>
               <Input
                 type="email"
                 placeholder="vendor@example.com"
@@ -319,7 +351,6 @@ export default function VendorManagement() {
               />
             </div>
 
-            {/* Phone */}
             <div className="space-y-2">
               <Label className="text-white font-medium">{t('phone') || 'Phone'}</Label>
               <Input
@@ -330,7 +361,6 @@ export default function VendorManagement() {
               />
             </div>
 
-            {/* Address */}
             <div className="space-y-2">
               <Label className="text-white font-medium">{t('address') || 'Address'}</Label>
               <Input
@@ -341,7 +371,6 @@ export default function VendorManagement() {
               />
             </div>
 
-            {/* Category */}
             <div className="space-y-2">
               <Label className="text-white font-medium">{t('category') || 'Category'}</Label>
               <Select
@@ -357,11 +386,12 @@ export default function VendorManagement() {
                   <SelectItem value="Fashion">Fashion</SelectItem>
                   <SelectItem value="Home & Living">Home & Living</SelectItem>
                   <SelectItem value="Health & Beauty">Health & Beauty</SelectItem>
+                  <SelectItem value="Agriculture">Agriculture</SelectItem>
+                  <SelectItem value="Retail">Retail</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
-            {/* Status */}
             <div className="space-y-2">
               <Label className="text-white font-medium">{t('status') || 'Status'}</Label>
               <Select
@@ -384,15 +414,24 @@ export default function VendorManagement() {
             <Button 
               variant="outline" 
               onClick={() => setIsDialogOpen(false)}
+              disabled={isSaving}
               className="btn-outline-premium flex-1 sm:flex-none"
             >
               {t('cancel') || 'Cancel'}
             </Button>
             <Button 
               onClick={handleSaveVendor} 
+              disabled={isSaving}
               className="btn-premium flex-1 sm:flex-none"
             >
-              {editingVendor ? (t('update') || 'Update') : (t('add') || 'Add')}
+              {isSaving ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  {editingVendor ? 'Updating...' : 'Adding...'}
+                </>
+              ) : (
+                editingVendor ? (t('update') || 'Update') : (t('add') || 'Add')
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
