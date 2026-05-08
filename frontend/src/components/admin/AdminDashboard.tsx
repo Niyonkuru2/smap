@@ -260,6 +260,10 @@ export default function AdminDashboard({ user, onLogout, onViewAsRole }: AdminDa
             <VendorManagement />
           </TabsContent>
 
+          <TabsContent value="businesses" className="animate-fadeIn">
+  <BusinessUserManagement />
+</TabsContent>
+
           <TabsContent value="notifications" className="animate-fadeIn">
             <NotificationManagement />
           </TabsContent>

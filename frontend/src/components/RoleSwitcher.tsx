@@ -23,7 +23,7 @@ export default function RoleSwitcher({ currentRole, onRoleChange }: RoleSwitcher
 
   const handleValueChange = (value: string) => {
     if (value === 'admin') {
-      onRoleChange(null); // null means show admin's own dashboard
+      onRoleChange(null);
     } else {
       onRoleChange(value as UserRole);
     }
