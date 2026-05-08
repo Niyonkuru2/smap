@@ -3,7 +3,8 @@ import {
     getVerificationTemplate,
     getPasswordResetTemplate,
     getPriceAlertTemplate,
-    getWelcomeTemplate
+    getWelcomeTemplate,
+    getVendorCredentialsTemplate
 } from './email/templates.js';
 
 // TRANSPORTER SETUP
@@ -176,6 +177,21 @@ export const sendWelcomeEmail = async (to, name, lang = 'en') => {
     return sendEmail({ to, subject, html });
 };
 
+export const sendVendorCredentialsEmail = async (to, name, email, password) => {
+    const { subject, html } = getVendorCredentialsTemplate(
+        name,
+        email,
+        password,
+        'en'
+    );
+
+    return sendEmail({
+        to,
+        subject,
+        html
+    });
+};
+
 // SERVICE EXPORT
 
 export default {
@@ -185,5 +201,6 @@ export default {
     sendVerificationEmail,
     sendPasswordResetEmail,
     sendPriceAlertEmail,
-    sendWelcomeEmail
+    sendWelcomeEmail,
+     sendVendorCredentialsEmail
 };

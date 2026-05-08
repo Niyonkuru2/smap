@@ -18,6 +18,9 @@ CREATE TABLE IF NOT EXISTS users (
     market_id VARCHAR(100),
     province VARCHAR(100),
     district VARCHAR(100),
+    address TEXT,
+    category VARCHAR(100),
+
     verified BOOLEAN DEFAULT FALSE,
     avatar_url TEXT,
     is_active BOOLEAN DEFAULT TRUE,

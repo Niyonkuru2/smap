@@ -134,33 +134,6 @@ app.get('/diagnostic', (req, res) => {
 // ============================================
 
 app.use('/api', router);
-
-// backward compatibility routes
-app.use('/auth', router);
-app.use('/prices', router);
-app.use('/markets', router);
-app.use('/products', router);
-app.use('/favorites', router);
-app.use('/alerts', router);
-app.use('/notifications', router);
-app.use('/admin', router);
-app.use('/search', router);
-app.use('/export', router);
-app.use('/import', router);
-app.use('/verify', router);
-app.use('/community', router);
-app.use('/ratings', router);
-app.use('/history', router);
-app.use('/trends', router);
-app.use('/forecast', router);
-app.use('/predict', router);
-app.use('/sms', router);
-app.use('/ussd', router);
-app.use('/seasonal', router);
-app.use('/compare', router);
-app.use('/searches', router);
-app.use('/profile', router);
-
 // ============================================
 // ERROR HANDLING (MUST BE LAST)
 // ============================================

@@ -21,7 +21,7 @@ const router = express.Router();
 
 // Mount all route modules
 router.use('/auth', authRoutes);
-router.use('/vendors', vendorRoutes);
+router.use('/vendor', vendorRoutes);
 router.use('/prices', priceRoutes);
 router.use('/markets', marketRoutes);
 router.use('/products', productRoutes);

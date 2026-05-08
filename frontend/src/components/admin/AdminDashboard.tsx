@@ -201,9 +201,9 @@ export default function AdminDashboard({ user, onLogout, onViewAsRole }: AdminDa
               {t('vendors') || 'Vendors'}
             </TabsTrigger>
             <TabsTrigger value="businesses" className="tab-trigger-premium data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg">
-  <Briefcase className="h-4 w-4 mr-2" />
-  Businesses
-</TabsTrigger>
+               <Briefcase className="h-4 w-4 mr-2" />
+                Businesses
+             </TabsTrigger>
             <TabsTrigger value="notifications" className="tab-trigger-premium data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg">
               <Bell className="h-4 w-4 mr-2" />
               {t('notifications')}
