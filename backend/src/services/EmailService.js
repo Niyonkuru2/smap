@@ -192,6 +192,49 @@ export const sendVendorCredentialsEmail = async (to, name, email, password) => {
     });
 };
 
+export const sendSubscriptionNotification = async (email, name, planName, action, endDate, reason = null) => {
+    const subject = getSubscriptionEmailSubject(action);
+    const html = getSubscriptionEmailHtml(name, planName, action, endDate, reason);
+    
+    // Use your existing email sending method
+    await sendEmail(email, subject, html);
+};
+
+const getSubscriptionEmailSubject = (action) => {
+    const subjects = {
+        'created': 'Subscription Request Received',
+        'approved': 'Subscription Approved! 🎉',
+        'rejected': 'Subscription Request Update',
+        'cancelled': 'Subscription Cancelled'
+    };
+    return subjects[action] || 'Subscription Update';
+};
+
+const getSubscriptionEmailHtml = (name, planName, action, endDate, reason) => {
+    if (action === 'approved') {
+        return `
+            <div style="font-family: Arial, sans-serif; max-width: 600px;">
+                <h2>Subscription Approved! 🎉</h2>
+                <p>Dear ${name},</p>
+                <p>Great news! Your <strong>${planName}</strong> subscription has been approved.</p>
+                <p>Your subscription is now active and will remain active until <strong>${new Date(endDate).toLocaleDateString()}</strong>.</p>
+                <p>Thank you for choosing our service!</p>
+            </div>
+        `;
+    } else if (action === 'rejected') {
+        return `
+            <div style="font-family: Arial, sans-serif; max-width: 600px;">
+                <h2>Subscription Request Update</h2>
+                <p>Dear ${name},</p>
+                <p>Your request for the <strong>${planName}</strong> plan requires attention.</p>
+                ${reason ? `<p><strong>Reason:</strong> ${reason}</p>` : ''}
+                <p>Please contact support for assistance with your subscription.</p>
+            </div>
+        `;
+    }
+    // Add other templates...
+};
+
 // SERVICE EXPORT
 
 export default {
@@ -202,5 +245,6 @@ export default {
     sendPasswordResetEmail,
     sendPriceAlertEmail,
     sendWelcomeEmail,
-     sendVendorCredentialsEmail
+    sendVendorCredentialsEmail,
+    sendSubscriptionNotification
 };

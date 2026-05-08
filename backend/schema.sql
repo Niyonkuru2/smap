@@ -3,10 +3,6 @@
 -- Smart Market Price Monitoring and Prediction System
 -- =============================================
 
--- =============================================
--- 1. USERS & AUTHENTICATION
--- =============================================
-
 -- Users table (Enhanced)
 CREATE TABLE IF NOT EXISTS users (
     id SERIAL PRIMARY KEY,

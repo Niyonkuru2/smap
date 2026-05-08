@@ -1,11 +1,5 @@
 import pool from '../config/database.js';
-
 class UserRepository {
-
-    // =============================
-    // USER BASIC METHODS
-    // =============================
-
     async findByEmail(email) {
         const result = await pool.query(
             'SELECT * FROM users WHERE email = $1',
@@ -61,7 +55,6 @@ class UserRepository {
         return result.rows[0];
     }
 
-    // 🔥 NEW: get latest code (DO NOT mark as used)
     async getLatestVerificationCode(email) {
         const result = await pool.query(
             `SELECT * FROM verification_codes
@@ -74,7 +67,6 @@ class UserRepository {
         return result.rows[0];
     }
 
-    // 🔥 NEW: mark code as used manually
     async markVerificationCodeAsUsed(id) {
         const result = await pool.query(
             `UPDATE verification_codes
@@ -87,7 +79,6 @@ class UserRepository {
         return result.rows[0];
     }
 
-    // 🔥 OPTIONAL (cleanup)
     async deleteVerificationCodes(email) {
         await pool.query(
             `DELETE FROM verification_codes WHERE email = $1`,
@@ -95,7 +86,6 @@ class UserRepository {
         );
     }
 
-    // ⚠️ existing method (kept for email verification flow)
     async verifyCode(email, code) {
         const result = await pool.query(
             `SELECT * FROM verification_codes 
@@ -210,10 +200,9 @@ class UserRepository {
         );
         return result.rows[0];
     }
-
-    // =============================
-    // ADMIN METHODS
-    // =============================
+    async getAll(limit = 100, offset = 0) {
+        return this.getAllUsers(limit, offset);
+    }
 
     async getAllUsers(limit = 100, offset = 0) {
         const result = await pool.query(
