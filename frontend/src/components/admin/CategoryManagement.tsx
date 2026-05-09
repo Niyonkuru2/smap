@@ -5,7 +5,7 @@ import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Badge } from '../ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import { Plus, Edit, Trash2, MapPin, Tag, Loader2 } from 'lucide-react';
+import { Plus, Edit, Trash2, MapPin, Tag, Loader2, DollarSign, Calendar, Store, FileText } from 'lucide-react';
 import { useMarkets, useProducts } from '../../hooks/useAppData';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '../ui/dialog';
 import { useLanguage } from '../../contexts/LanguageContext';
@@ -15,42 +15,116 @@ import {
   createCategory,
   updateCategory,
   deleteCategory,
-  getCategoryTree,
   type Category
 } from '../../services/categoryService';
+import referencePriceService, { 
+  type ReferencePriceWithDetails, 
+  type ProductWithReferencePrice,
+  type CreateProductWithPriceRequest 
+} from '../../services/referencePriceService';
+
+// Extended Product type with reference prices
+interface ProductWithDetails {
+  id: number;
+  name: string;
+  unit: string;
+  description?: string;
+  image_url?: string;
+  category_id?: number;
+  category_name?: string;
+  reference_prices: {
+    market_id: string;
+    market_name: string;
+    province: string;
+    district: string;
+    reference_price: number;
+    reference_price_id: number;
+    effective_date: string;
+    expiry_date: string | null;
+    is_current: boolean;
+  }[];
+}
 
 export default function CategoryManagement() {
   const [isAddCategoryOpen, setIsAddCategoryOpen] = useState(false);
   const [isEditCategoryOpen, setIsEditCategoryOpen] = useState(false);
   const [isAddMarketOpen, setIsAddMarketOpen] = useState(false);
   const [isAddProductOpen, setIsAddProductOpen] = useState(false);
+  const [isSetPriceOpen, setIsSetPriceOpen] = useState(false);
+  const [isEditPriceOpen, setIsEditPriceOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [products, setProducts] = useState<ProductWithDetails[]>([]);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+  const [editingPrice, setEditingPrice] = useState<ReferencePriceWithDetails | null>(null);
+  const [selectedProduct, setSelectedProduct] = useState<ProductWithDetails | null>(null);
   const [newCategory, setNewCategory] = useState({ name: '', description: '', type: 'product' });
   const [editCategoryData, setEditCategoryData] = useState({ name: '', description: '', type: 'product' });
   const [newMarket, setNewMarket] = useState({ name: '', location: '', district: '' });
-  const [newProduct, setNewProduct] = useState({ name: '', categoryId: '', unit: '' });
-  
+  const [newProduct, setNewProduct] = useState<CreateProductWithPriceRequest>({ 
+    product_name: '', 
+    product_unit: '', 
+    product_description: '',
+    category_id: undefined,
+    market_id: '',
+    reference_price: 0,
+    price_unit: '',
+    effective_date: new Date().toISOString().split('T')[0],
+    expiry_date: '',
+    notes: ''
+  });
+  const [priceData, setPriceData] = useState({
+    product_id: 0,
+    market_id: '',
+    price: 0,
+    unit: '',
+    effective_date: new Date().toISOString().split('T')[0],
+    expiry_date: '',
+    notes: ''
+  });
+
   const { t } = useLanguage();
   const { markets } = useMarkets();
-  const { products } = useProducts();
 
-  // Fetch categories from API
+  // Fetch categories and products with prices
   useEffect(() => {
-    fetchCategories();
+    fetchAllData();
   }, []);
 
-  const fetchCategories = async () => {
+  const fetchAllData = async () => {
     setIsLoading(true);
+    try {
+      await Promise.all([
+        fetchCategories(),
+        fetchProductsWithPrices()
+      ]);
+    } catch (error) {
+      console.error('Error fetching data:', error);
+      toast.error('Failed to load data');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const fetchCategories = async () => {
     try {
       const data = await getAllCategories();
       setCategories(data);
     } catch (error) {
       console.error('Error fetching categories:', error);
       toast.error('Failed to load categories');
-    } finally {
-      setIsLoading(false);
+    }
+  };
+
+  const fetchProductsWithPrices = async () => {
+    try {
+      const result = await referencePriceService.getProductsWithPrices({ limit: 100 });
+      if (result.success && result.data) {
+        setProducts(result.data);
+      }
+    } catch (error) {
+      console.error('Error fetching products with prices:', error);
+      toast.error('Failed to load products');
     }
   };
 
@@ -119,26 +193,133 @@ export default function CategoryManagement() {
     }
   };
 
-  const handleAddMarket = () => {
-    if (newMarket.name && newMarket.location && newMarket.district) {
-      // TODO: Implement market creation API
-      toast.info('Market creation API will be implemented soon');
-      setNewMarket({ name: '', location: '', district: '' });
-      setIsAddMarketOpen(false);
-    } else {
-      toast.error('Please fill in all market fields');
+  // Product Management Functions
+  const handleAddProduct = async () => {
+    if (!newProduct.product_name.trim()) {
+      toast.error('Product name is required');
+      return;
+    }
+    if (!newProduct.product_unit.trim()) {
+      toast.error('Product unit is required');
+      return;
+    }
+    if (!newProduct.market_id) {
+      toast.error('Please select a market');
+      return;
+    }
+    if (!newProduct.reference_price || newProduct.reference_price <= 0) {
+      toast.error('Please enter a valid reference price');
+      return;
+    }
+
+    try {
+      await referencePriceService.createProductWithReferencePrice(newProduct);
+      toast.success('Product and reference price created successfully');
+      setNewProduct({ 
+        product_name: '', 
+        product_unit: '', 
+        product_description: '',
+        category_id: undefined,
+        market_id: '',
+        reference_price: 0,
+        price_unit: '',
+        effective_date: new Date().toISOString().split('T')[0],
+        expiry_date: '',
+        notes: ''
+      });
+      setIsAddProductOpen(false);
+      await fetchProductsWithPrices();
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to create product');
     }
   };
 
-  const handleAddProduct = () => {
-    if (newProduct.name && newProduct.categoryId && newProduct.unit) {
-      // TODO: Implement product creation API
-      toast.info('Product creation API will be implemented soon');
-      setNewProduct({ name: '', categoryId: '', unit: '' });
-      setIsAddProductOpen(false);
-    } else {
-      toast.error('Please fill in all product fields');
+  const handleSetPrice = async () => {
+    if (!priceData.product_id || !priceData.market_id || !priceData.price) {
+      toast.error('Please fill in all required fields');
+      return;
     }
+
+    try {
+      await referencePriceService.setReferencePrice(priceData);
+      toast.success('Reference price set successfully');
+      setPriceData({
+        product_id: 0,
+        market_id: '',
+        price: 0,
+        unit: '',
+        effective_date: new Date().toISOString().split('T')[0],
+        expiry_date: '',
+        notes: ''
+      });
+      setIsSetPriceOpen(false);
+      setSelectedProduct(null);
+      await fetchProductsWithPrices();
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to set reference price');
+    }
+  };
+
+  const handleEditPrice = async () => {
+    if (!editingPrice) return;
+
+    try {
+      await referencePriceService.updateReferencePrice(editingPrice.id!, {
+        price: editingPrice.price,
+        unit: editingPrice.unit,
+        effective_date: editingPrice.effective_date,
+        expiry_date: editingPrice.expiry_date,
+        notes: editingPrice.notes
+      });
+      toast.success('Reference price updated successfully');
+      setIsEditPriceOpen(false);
+      setEditingPrice(null);
+      await fetchProductsWithPrices();
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to update reference price');
+    }
+  };
+
+  const handleDeletePrice = async (priceId: number, productName: string, marketName: string) => {
+    if (window.confirm(`Are you sure you want to delete the reference price for "${productName}" at "${marketName}"?`)) {
+      try {
+        await referencePriceService.deleteReferencePrice(priceId);
+        toast.success('Reference price deleted successfully');
+        await fetchProductsWithPrices();
+      } catch (error: any) {
+        toast.error(error.message || 'Failed to delete reference price');
+      }
+    }
+  };
+
+  const handleDeleteProduct = async (productId: number, productName: string) => {
+    if (window.confirm(`Are you sure you want to delete "${productName}"? This will also delete all its reference prices.`)) {
+      try {
+        // Note: You need to implement product deletion endpoint
+        toast.info('Product deletion will be implemented soon');
+      } catch (error: any) {
+        toast.error(error.message || 'Failed to delete product');
+      }
+    }
+  };
+
+  const openSetPriceDialog = (product: ProductWithDetails) => {
+    setSelectedProduct(product);
+    setPriceData({
+      product_id: product.product_id,
+      market_id: '',
+      price: 0,
+      unit: product.product_unit,
+      effective_date: new Date().toISOString().split('T')[0],
+      expiry_date: '',
+      notes: ''
+    });
+    setIsSetPriceOpen(true);
+  };
+
+  const openEditPriceDialog = (price: ReferencePriceWithDetails) => {
+    setEditingPrice(price);
+    setIsEditPriceOpen(true);
   };
 
   const getCategoryTypeColor = (type: string) => {
@@ -329,7 +510,10 @@ export default function CategoryManagement() {
                   <Button variant="outline" onClick={() => setIsAddMarketOpen(false)} className="btn-outline-premium">
                     Cancel
                   </Button>
-                  <Button onClick={handleAddMarket} className="bg-primary hover:bg-primary/90">
+                  <Button onClick={() => {
+                    toast.info('Market creation API will be implemented soon');
+                    setIsAddMarketOpen(false);
+                  }} className="bg-primary hover:bg-primary/90">
                     {t('addMarket')}
                   </Button>
                 </DialogFooter>
@@ -361,39 +545,60 @@ export default function CategoryManagement() {
         </Card>
       </div>
 
-      {/* Products List */}
+      {/* Products with Reference Prices */}
       <Card className="p-6 rounded-xl dark-glass border-white/10 shadow-lg">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg gradient-text">{t('allProducts')} ({products.length})</h3>
+          <div>
+            <h3 className="text-lg gradient-text">{t('allProducts')} ({products.length})</h3>
+            <p className="text-sm text-muted-foreground mt-1">Manage products and their reference prices across markets</p>
+          </div>
           <Dialog open={isAddProductOpen} onOpenChange={setIsAddProductOpen}>
             <DialogTrigger asChild>
               <Button size="sm" className="bg-primary hover:bg-primary/90">
                 <Plus className="h-4 w-4 mr-2" />
-                {t('addProduct')}
+                Add Product with Price
               </Button>
             </DialogTrigger>
-            <DialogContent className="dark-glass border-white/10 sm:max-w-[450px]">
+            <DialogContent className="dark-glass border-white/10 sm:max-w-[550px] max-h-[90vh] overflow-y-auto">
               <DialogHeader>
-                <DialogTitle className="gradient-text">{t('addProduct')}</DialogTitle>
+                <DialogTitle className="gradient-text">Add New Product with Reference Price</DialogTitle>
               </DialogHeader>
               <div className="space-y-4 py-4">
                 <div>
-                  <Label className="text-white">{t('productName')} *</Label>
+                  <Label className="text-white">Product Name *</Label>
                   <Input
-                    value={newProduct.name}
-                    onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })}
-                    placeholder="e.g., Tomatoes"
+                    value={newProduct.product_name}
+                    onChange={(e) => setNewProduct({ ...newProduct, product_name: e.target.value })}
+                    placeholder="e.g., Organic Red Beans"
                     className="mt-1.5 bg-white/5 border-white/10 text-white"
                   />
                 </div>
                 <div>
-                  <Label className="text-white">{t('selectCategory')} *</Label>
+                  <Label className="text-white">Product Unit *</Label>
+                  <Input
+                    value={newProduct.product_unit}
+                    onChange={(e) => setNewProduct({ ...newProduct, product_unit: e.target.value })}
+                    placeholder="e.g., kg, piece, liter"
+                    className="mt-1.5 bg-white/5 border-white/10 text-white"
+                  />
+                </div>
+                <div>
+                  <Label className="text-white">Description</Label>
+                  <Input
+                    value={newProduct.product_description}
+                    onChange={(e) => setNewProduct({ ...newProduct, product_description: e.target.value })}
+                    placeholder="Product description (optional)"
+                    className="mt-1.5 bg-white/5 border-white/10 text-white"
+                  />
+                </div>
+                <div>
+                  <Label className="text-white">Category</Label>
                   <Select 
-                    value={newProduct.categoryId} 
-                    onValueChange={(value) => setNewProduct({ ...newProduct, categoryId: value })}
+                    value={newProduct.category_id?.toString() || ''} 
+                    onValueChange={(value) => setNewProduct({ ...newProduct, category_id: parseInt(value) })}
                   >
                     <SelectTrigger className="mt-1.5 bg-white/5 border-white/10 text-white">
-                      <SelectValue placeholder="Select product category" />
+                      <SelectValue placeholder="Select category (optional)" />
                     </SelectTrigger>
                     <SelectContent className="dark-glass border-white/10">
                       {productCategories.map((cat) => (
@@ -405,11 +610,57 @@ export default function CategoryManagement() {
                   </Select>
                 </div>
                 <div>
-                  <Label className="text-white">{t('unit')} *</Label>
+                  <Label className="text-white">Market *</Label>
+                  <Select 
+                    value={newProduct.market_id} 
+                    onValueChange={(value) => setNewProduct({ ...newProduct, market_id: value })}
+                  >
+                    <SelectTrigger className="mt-1.5 bg-white/5 border-white/10 text-white">
+                      <SelectValue placeholder="Select market" />
+                    </SelectTrigger>
+                    <SelectContent className="dark-glass border-white/10">
+                      {markets.map((market) => (
+                        <SelectItem key={market.id} value={market.id}>
+                          {market.name} - {market.location}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-white">Reference Price *</Label>
                   <Input
-                    value={newProduct.unit}
-                    onChange={(e) => setNewProduct({ ...newProduct, unit: e.target.value })}
-                    placeholder="e.g., kg, piece, liter"
+                    type="number"
+                    value={newProduct.reference_price || ''}
+                    onChange={(e) => setNewProduct({ ...newProduct, reference_price: parseFloat(e.target.value) })}
+                    placeholder="e.g., 1200"
+                    className="mt-1.5 bg-white/5 border-white/10 text-white"
+                  />
+                </div>
+                <div>
+                  <Label className="text-white">Effective Date</Label>
+                  <Input
+                    type="date"
+                    value={newProduct.effective_date}
+                    onChange={(e) => setNewProduct({ ...newProduct, effective_date: e.target.value })}
+                    className="mt-1.5 bg-white/5 border-white/10 text-white"
+                  />
+                </div>
+                <div>
+                  <Label className="text-white">Expiry Date (Optional)</Label>
+                  <Input
+                    type="date"
+                    value={newProduct.expiry_date}
+                    onChange={(e) => setNewProduct({ ...newProduct, expiry_date: e.target.value })}
+                    className="mt-1.5 bg-white/5 border-white/10 text-white"
+                  />
+                </div>
+                <div>
+                  <Label className="text-white">Notes</Label>
+                  <Input
+                    value={newProduct.notes}
+                    onChange={(e) => setNewProduct({ ...newProduct, notes: e.target.value })}
+                    placeholder="Additional notes (optional)"
                     className="mt-1.5 bg-white/5 border-white/10 text-white"
                   />
                 </div>
@@ -419,41 +670,301 @@ export default function CategoryManagement() {
                   Cancel
                 </Button>
                 <Button onClick={handleAddProduct} className="bg-primary hover:bg-primary/90">
-                  {t('addProduct')}
+                  Create Product & Set Price
                 </Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-          {products.slice(0, 12).map((product) => {
-            const category = productCategories.find(c => c.id.toString() === product.categoryId?.toString());
-            return (
-              <div key={product.id} className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors">
+
+        <div className="space-y-4">
+          {products.map((product) => (
+            <div key={product.product_id} className="border border-white/10 rounded-xl bg-white/5 overflow-hidden">
+              {/* Product Header */}
+              <div className="p-4 border-b border-white/10 bg-white/10 flex items-center justify-between flex-wrap gap-3">
                 <div>
-                  <p className="font-medium text-white">{product.name}</p>
-                  <div className="flex items-center gap-2 mt-1">
-                    {category && (
-                      <Badge className="bg-primary/20 text-primary border-primary/30 text-xs">
-                        {category.name}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h4 className="font-semibold text-white">{product.product_name}</h4>
+                    <Badge className="bg-primary/20 text-primary border-primary/30">
+                      {product.product_unit}
+                    </Badge>
+                    {product.category_name && (
+                      <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30">
+                        {product.category_name}
                       </Badge>
                     )}
-                    <span className="text-xs text-muted-foreground">per {product.unit}</span>
                   </div>
+                  {product.description && (
+                    <p className="text-sm text-muted-foreground mt-1">{product.description}</p>
+                  )}
                 </div>
-                <div className="flex gap-1">
-                  <Button variant="ghost" size="sm" className="hover:bg-white/10">
-                    <Edit className="h-3 w-3 text-muted-foreground hover:text-white" />
+                <div className="flex gap-2">
+                  <Button 
+                    size="sm" 
+                    variant="outline"
+                    onClick={() => openSetPriceDialog(product)}
+                    className="border-primary/50 text-primary hover:bg-primary/10"
+                  >
+                    <DollarSign className="h-4 w-4 mr-2" />
+                    Add Price
                   </Button>
-                  <Button variant="ghost" size="sm" className="hover:bg-red-500/10">
-                    <Trash2 className="h-3 w-3 text-red-400 hover:text-red-300" />
+                  <Button 
+                    size="sm" 
+                    variant="ghost"
+                    onClick={() => handleDeleteProduct(product.product_id, product.product_name)}
+                    className="hover:bg-red-500/10 text-red-400"
+                  >
+                    <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
               </div>
-            );
-          })}
+
+              {/* Reference Prices List */}
+              {product.reference_prices.length > 0 ? (
+                <div className="divide-y divide-white/10">
+                  {product.reference_prices.map((price) => (
+                    <div key={price.reference_price_id} className="p-4 flex items-center justify-between flex-wrap gap-3 hover:bg-white/5 transition-colors">
+                      <div className="flex items-center gap-4 flex-wrap">
+                        <div className="flex items-center gap-2">
+                          <Store className="h-4 w-4 text-primary" />
+                          <span className="font-medium text-white">{price.market_name}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {price.province}, {price.district}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <DollarSign className="h-4 w-4 text-emerald-400" />
+                          <span className="text-lg font-bold text-emerald-400">
+                            {price.reference_price.toLocaleString()} RWF
+                          </span>
+                          <span className="text-sm text-muted-foreground">per {product.product_unit}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <Calendar className="h-3 w-3" />
+                          <span>Effective: {new Date(price.effective_date).toLocaleDateString()}</span>
+                          {price.expiry_date && (
+                            <>
+                              <span>→</span>
+                              <span>Expires: {new Date(price.expiry_date).toLocaleDateString()}</span>
+                            </>
+                          )}
+                        </div>
+                        {!price.is_current && (
+                          <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500/30 text-xs">
+                            Expired
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="flex gap-2">
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => {
+                            const fullPrice: ReferencePriceWithDetails = {
+                              id: price.reference_price_id,
+                              product_id: product.product_id,
+                              market_id: price.market_id,
+                              price: price.reference_price,
+                              unit: product.product_unit,
+                              effective_date: price.effective_date,
+                              expiry_date: price.expiry_date,
+                              notes: '',
+                              product_name: product.product_name,
+                              market_name: price.market_name
+                            };
+                            openEditPriceDialog(fullPrice);
+                          }}
+                          className="hover:bg-white/10"
+                        >
+                          <Edit className="h-4 w-4 text-muted-foreground hover:text-white" />
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => handleDeletePrice(price.reference_price_id, product.product_name, price.market_name)}
+                          className="hover:bg-red-500/10"
+                        >
+                          <Trash2 className="h-4 w-4 text-red-400 hover:text-red-300" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="p-8 text-center text-muted-foreground">
+                  <DollarSign className="h-12 w-12 mx-auto mb-3 opacity-30" />
+                  <p>No reference prices set for this product</p>
+                  <Button 
+                    variant="link" 
+                    onClick={() => openSetPriceDialog(product)}
+                    className="text-primary mt-2"
+                  >
+                    Add Reference Price
+                  </Button>
+                </div>
+              )}
+            </div>
+          ))}
+
+          {products.length === 0 && (
+            <div className="text-center py-12 text-muted-foreground">
+              <FileText className="h-12 w-12 mx-auto mb-3 opacity-30" />
+              <p>No products found</p>
+              <p className="text-sm">Click "Add Product with Price" to create one</p>
+            </div>
+          )}
         </div>
       </Card>
+
+      {/* Set Reference Price Dialog */}
+      <Dialog open={isSetPriceOpen} onOpenChange={setIsSetPriceOpen}>
+        <DialogContent className="dark-glass border-white/10 sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle className="gradient-text">
+              Set Reference Price for {selectedProduct?.product_name}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div>
+              <Label className="text-white">Market *</Label>
+              <Select 
+                value={priceData.market_id} 
+                onValueChange={(value) => setPriceData({ ...priceData, market_id: value })}
+              >
+                <SelectTrigger className="mt-1.5 bg-white/5 border-white/10 text-white">
+                  <SelectValue placeholder="Select market" />
+                </SelectTrigger>
+                <SelectContent className="dark-glass border-white/10">
+                  {markets.map((market) => (
+                    <SelectItem key={market.id} value={market.id}>
+                      {market.name} - {market.location}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="text-white">Reference Price *</Label>
+              <Input
+                type="number"
+                value={priceData.price || ''}
+                onChange={(e) => setPriceData({ ...priceData, price: parseFloat(e.target.value) })}
+                placeholder="Enter price in RWF"
+                className="mt-1.5 bg-white/5 border-white/10 text-white"
+              />
+            </div>
+            <div>
+              <Label className="text-white">Unit</Label>
+              <Input
+                value={priceData.unit}
+                onChange={(e) => setPriceData({ ...priceData, unit: e.target.value })}
+                placeholder="e.g., kg, piece"
+                className="mt-1.5 bg-white/5 border-white/10 text-white"
+              />
+            </div>
+            <div>
+              <Label className="text-white">Effective Date</Label>
+              <Input
+                type="date"
+                value={priceData.effective_date}
+                onChange={(e) => setPriceData({ ...priceData, effective_date: e.target.value })}
+                className="mt-1.5 bg-white/5 border-white/10 text-white"
+              />
+            </div>
+            <div>
+              <Label className="text-white">Expiry Date (Optional)</Label>
+              <Input
+                type="date"
+                value={priceData.expiry_date}
+                onChange={(e) => setPriceData({ ...priceData, expiry_date: e.target.value })}
+                className="mt-1.5 bg-white/5 border-white/10 text-white"
+              />
+            </div>
+            <div>
+              <Label className="text-white">Notes</Label>
+              <Input
+                value={priceData.notes}
+                onChange={(e) => setPriceData({ ...priceData, notes: e.target.value })}
+                placeholder="Additional notes"
+                className="mt-1.5 bg-white/5 border-white/10 text-white"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsSetPriceOpen(false)} className="btn-outline-premium">
+              Cancel
+            </Button>
+            <Button onClick={handleSetPrice} className="bg-primary hover:bg-primary/90">
+              Set Reference Price
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Reference Price Dialog */}
+      <Dialog open={isEditPriceOpen} onOpenChange={setIsEditPriceOpen}>
+        <DialogContent className="dark-glass border-white/10 sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle className="gradient-text">
+              Edit Reference Price for {editingPrice?.product_name} at {editingPrice?.market_name}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div>
+              <Label className="text-white">Reference Price (RWF) *</Label>
+              <Input
+                type="number"
+                value={editingPrice?.price || ''}
+                onChange={(e) => setEditingPrice(prev => prev ? { ...prev, price: parseFloat(e.target.value) } : null)}
+                className="mt-1.5 bg-white/5 border-white/10 text-white"
+              />
+            </div>
+            <div>
+              <Label className="text-white">Unit</Label>
+              <Input
+                value={editingPrice?.unit || ''}
+                onChange={(e) => setEditingPrice(prev => prev ? { ...prev, unit: e.target.value } : null)}
+                className="mt-1.5 bg-white/5 border-white/10 text-white"
+              />
+            </div>
+            <div>
+              <Label className="text-white">Effective Date</Label>
+              <Input
+                type="date"
+                value={editingPrice?.effective_date?.split('T')[0] || ''}
+                onChange={(e) => setEditingPrice(prev => prev ? { ...prev, effective_date: e.target.value } : null)}
+                className="mt-1.5 bg-white/5 border-white/10 text-white"
+              />
+            </div>
+            <div>
+              <Label className="text-white">Expiry Date (Optional)</Label>
+              <Input
+                type="date"
+                value={editingPrice?.expiry_date?.split('T')[0] || ''}
+                onChange={(e) => setEditingPrice(prev => prev ? { ...prev, expiry_date: e.target.value } : null)}
+                className="mt-1.5 bg-white/5 border-white/10 text-white"
+              />
+            </div>
+            <div>
+              <Label className="text-white">Notes</Label>
+              <Input
+                value={editingPrice?.notes || ''}
+                onChange={(e) => setEditingPrice(prev => prev ? { ...prev, notes: e.target.value } : null)}
+                placeholder="Additional notes"
+                className="mt-1.5 bg-white/5 border-white/10 text-white"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditPriceOpen(false)} className="btn-outline-premium">
+              Cancel
+            </Button>
+            <Button onClick={handleEditPrice} className="bg-primary hover:bg-primary/90">
+              Update Reference Price
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Edit Category Dialog */}
       <Dialog open={isEditCategoryOpen} onOpenChange={setIsEditCategoryOpen}>
