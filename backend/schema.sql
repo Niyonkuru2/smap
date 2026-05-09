@@ -268,6 +268,12 @@ CREATE TABLE IF NOT EXISTS notifications (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS subscription_expiry_notifications (
+    id SERIAL PRIMARY KEY,
+    subscription_id INTEGER REFERENCES user_subscriptions(id) ON DELETE CASCADE,
+    notified_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(subscription_id)
+);
 -- Pending approvals tracking
 CREATE TABLE IF NOT EXISTS pending_approvals (
     id SERIAL PRIMARY KEY,
