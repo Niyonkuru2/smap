@@ -18,6 +18,7 @@ import communityRoutes from './communityRoutes.js';
 import ratingRoutes from './ratingRoutes.js';
 import historyRoutes from './historyRoutes.js';
 import predictionRoutes from './predictionRoutes.js';
+import adminPriceRoutes from './adminPriceRoutes.js';
 import smsRoutes from './smsRoutes.js';
 
 const router = express.Router();
@@ -35,6 +36,7 @@ router.use('/favorites', favoriteRoutes);
 router.use('/alerts', alertRoutes);
 router.use('/notifications', notificationRoutes);
 router.use('/admin', adminRoutes);
+router.use('/adminprices', adminPriceRoutes);
 router.use('/search', searchRoutes);
 router.use('/export', exportRoutes);
 router.use('/verify', verificationRoutes);

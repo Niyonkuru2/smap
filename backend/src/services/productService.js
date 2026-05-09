@@ -1,5 +1,6 @@
 // src/services/productService.js
 import pool from '../config/database.js';
+import adminReferencePriceService from './adminReferencePriceService.js';
 
 class ProductService {
     /**
@@ -32,6 +33,33 @@ class ProductService {
     }
 
     /**
+     * Get product with reference prices
+     */
+    async getProductWithReferencePrices(productId, marketId = null) {
+        const product = await this.getProductById(productId);
+        if (!product) return null;
+
+        let referencePrices = [];
+        if (marketId) {
+            const refPrice = await adminReferencePriceService.getCurrentReferencePrice(productId, marketId);
+            if (refPrice) {
+                referencePrices = [refPrice];
+            }
+        } else {
+            const result = await adminReferencePriceService.getAllReferencePrices({
+                product_id: productId,
+                is_current: true
+            });
+            referencePrices = result.data;
+        }
+
+        return {
+            ...product,
+            reference_prices: referencePrices
+        };
+    }
+
+    /**
      * Create product
      */
     async createProduct(productData) {
@@ -45,6 +73,46 @@ class ProductService {
         );
         
         return result.rows[0];
+    }
+
+    /**
+     * Create product and set reference price in one operation
+     */
+    async createProductWithReferencePrice(productData, referencePriceData, adminId) {
+        const client = await pool.connect();
+        
+        try {
+            await client.query('BEGIN');
+            
+            // Create product
+            const product = await this.createProduct(productData);
+            
+            // Set reference price
+            const referencePrice = await adminReferencePriceService.setReferencePrice({
+                product_id: product.id,
+                market_id: referencePriceData.market_id,
+                price: referencePriceData.price,
+                unit: product.unit,
+                effective_date: referencePriceData.effective_date || new Date(),
+                expiry_date: referencePriceData.expiry_date || null,
+                notes: referencePriceData.notes || 'Initial reference price',
+                admin_id: adminId
+            });
+            
+            await client.query('COMMIT');
+            
+            return {
+                product,
+                reference_price: referencePrice.data
+            };
+            
+        } catch (error) {
+            await client.query('ROLLBACK');
+            console.error('Error creating product with reference price:', error);
+            throw error;
+        } finally {
+            client.release();
+        }
     }
 
     /**
@@ -101,10 +169,45 @@ class ProductService {
         const result = await pool.query(`
             SELECT 
                 COUNT(*) as total_products,
-                COUNT(DISTINCT category_id) as total_categories
+                COUNT(DISTINCT category_id) as total_categories,
+                (
+                    SELECT COUNT(*) 
+                    FROM reference_prices 
+                    WHERE is_current = true
+                ) as total_reference_prices
             FROM products
         `);
         return result.rows[0];
+    }
+
+    /**
+     * Search products with filters
+     */
+    async searchProducts(searchTerm, categoryId = null, limit = 20) {
+        let query = `
+            SELECT p.id, p.name, p.category_id, p.unit, 
+                   c.name as category_name,
+                   EXISTS(
+                       SELECT 1 FROM reference_prices rp 
+                       WHERE rp.product_id = p.id AND rp.is_current = true
+                   ) as has_reference_price
+            FROM products p
+            LEFT JOIN categories c ON c.id = p.category_id
+            WHERE p.name ILIKE $1
+        `;
+        const params = [`%${searchTerm}%`];
+        let paramCounter = 2;
+
+        if (categoryId) {
+            query += ` AND p.category_id = $${paramCounter++}`;
+            params.push(categoryId);
+        }
+
+        query += ` ORDER BY p.name LIMIT $${paramCounter++}`;
+        params.push(limit);
+
+        const result = await pool.query(query, params);
+        return result.rows;
     }
 }
 

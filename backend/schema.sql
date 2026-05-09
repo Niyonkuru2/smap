@@ -1,35 +1,12 @@
 -- =============================================
 -- COMPLETE DATABASE SCHEMA FOR SMPMPS
 -- Smart Market Price Monitoring and Prediction System
+-- WITH ANOMALY DETECTION
 -- =============================================
 
 -- =============================================
 -- 1. CATEGORIES SYSTEM (Create FIRST - before any table that references it)
 -- =============================================
-
-DROP TABLE IF EXISTS subscription_expiry_notifications CASCADE;
-DROP TABLE IF EXISTS ad_statistics CASCADE;
-DROP TABLE IF EXISTS vendor_advertisements CASCADE;
-DROP TABLE IF EXISTS subscription_payments CASCADE;
-DROP TABLE IF EXISTS user_subscriptions CASCADE;
-DROP TABLE IF EXISTS subscription_plans CASCADE;
-DROP TABLE IF EXISTS user_price_alerts CASCADE;
-DROP TABLE IF EXISTS favorites CASCADE;
-DROP TABLE IF EXISTS price_change_history CASCADE;
-DROP TABLE IF EXISTS price_history CASCADE;
-DROP TABLE IF EXISTS prices CASCADE;
-DROP TABLE IF EXISTS business_markets CASCADE;
-DROP TABLE IF EXISTS business_users CASCADE;
-DROP TABLE IF EXISTS products CASCADE;
-DROP TABLE IF EXISTS markets CASCADE;
-DROP TABLE IF EXISTS pending_approvals CASCADE;
-DROP TABLE IF EXISTS reports CASCADE;
-DROP TABLE IF EXISTS vendor_metrics CASCADE;
-DROP TABLE IF EXISTS notifications CASCADE;
-DROP TABLE IF EXISTS sessions CASCADE;
-DROP TABLE IF EXISTS verification_codes CASCADE;
-DROP TABLE IF EXISTS users CASCADE;
-DROP TABLE IF EXISTS categories CASCADE;
 
 -- Categories table (for products, vendors, and businesses)
 CREATE TABLE IF NOT EXISTS categories (
@@ -199,6 +176,103 @@ CREATE TABLE IF NOT EXISTS price_change_history (
 );
 
 -- =============================================
+-- 5.1 ANOMALY DETECTION TABLES (NEW)
+-- =============================================
+
+-- Reference prices table (Admin's real/benchmark prices)
+CREATE TABLE IF NOT EXISTS reference_prices (
+    id SERIAL PRIMARY KEY,
+    product_id INTEGER REFERENCES products(id) ON DELETE CASCADE,
+    market_id VARCHAR(100) REFERENCES markets(id) ON DELETE CASCADE,
+    price DECIMAL(10, 2) NOT NULL,
+    unit VARCHAR(50) NOT NULL,
+    effective_date DATE NOT NULL DEFAULT CURRENT_DATE,
+    expiry_date DATE,
+    notes TEXT,
+    set_by INTEGER REFERENCES users(id),
+    is_current BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(product_id, market_id, effective_date)
+);
+
+-- Price anomalies table for detecting and tracking suspicious price submissions
+CREATE TABLE IF NOT EXISTS price_anomalies (
+    id SERIAL PRIMARY KEY,
+    price_id INTEGER REFERENCES prices(id) ON DELETE CASCADE,
+    product_id INTEGER REFERENCES products(id),
+    market_id VARCHAR(100) REFERENCES markets(id),
+    vendor_id INTEGER REFERENCES users(id),
+    reference_price_id INTEGER REFERENCES reference_prices(id),
+    
+    -- Price comparison data
+    reference_price DECIMAL(10, 2) NOT NULL,
+    vendor_price DECIMAL(10, 2) NOT NULL,
+    price_difference DECIMAL(10, 2),
+    deviation_percentage DECIMAL(5, 2) NOT NULL,
+    
+    -- Anomaly classification
+    anomaly_type VARCHAR(50) CHECK (anomaly_type IN (
+        'price_spike',      -- Price too high (vendor > reference)
+        'price_drop',       -- Price too low (vendor < reference)
+        'unusual_pattern',  -- Pattern doesn't match historical
+        'suspicious_vendor', -- Vendor has history of anomalies
+        'data_inconsistency' -- Data quality issue
+    )),
+    
+    severity VARCHAR(20) CHECK (severity IN ('low', 'medium', 'high', 'critical')),
+    
+    -- Status tracking
+    status VARCHAR(20) DEFAULT 'new' CHECK (status IN ('new', 'investigating', 'resolved', 'dismissed', 'auto_approved')),
+    
+    -- Additional context
+    details TEXT,
+    suggested_action TEXT,
+    
+    -- Assignment and resolution
+    assigned_to INTEGER REFERENCES users(id),
+    assigned_at TIMESTAMP,
+    resolved_by INTEGER REFERENCES users(id),
+    resolved_at TIMESTAMP,
+    resolution_notes TEXT,
+    
+    -- Auto-flagging
+    auto_flagged BOOLEAN DEFAULT FALSE,
+    flag_reason TEXT,
+    
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Anomaly resolution history
+CREATE TABLE IF NOT EXISTS anomaly_resolution_history (
+    id SERIAL PRIMARY KEY,
+    anomaly_id INTEGER REFERENCES price_anomalies(id) ON DELETE CASCADE,
+    action VARCHAR(50) CHECK (action IN ('created', 'assigned', 'investigated', 'resolved', 'dismissed', 'escalated')),
+    notes TEXT,
+    performed_by INTEGER REFERENCES users(id),
+    previous_status VARCHAR(20),
+    new_status VARCHAR(20),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Vendor anomaly score tracking
+CREATE TABLE IF NOT EXISTS vendor_anomaly_scores (
+    id SERIAL PRIMARY KEY,
+    vendor_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    total_anomalies INTEGER DEFAULT 0,
+    critical_anomalies INTEGER DEFAULT 0,
+    high_anomalies INTEGER DEFAULT 0,
+    medium_anomalies INTEGER DEFAULT 0,
+    low_anomalies INTEGER DEFAULT 0,
+    resolved_anomalies INTEGER DEFAULT 0,
+    dismissed_anomalies INTEGER DEFAULT 0,
+    trust_score DECIMAL(5, 2) DEFAULT 100.00,
+    last_anomaly_date TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- =============================================
 -- 6. USER FAVORITES & ALERTS
 -- =============================================
 
@@ -344,7 +418,8 @@ CREATE TABLE IF NOT EXISTS notifications (
     notification_type VARCHAR(50) CHECK (notification_type IN (
         'price_approval', 'price_rejection', 'subscription_activation', 
         'subscription_expiry', 'ad_approval', 'ad_rejection', 
-        'price_alert', 'system', 'price_submitted', 'payment_received'
+        'price_alert', 'system', 'price_submitted', 'payment_received',
+        'anomaly_detected', 'anomaly_resolved'
     )),
     data JSONB,
     priority VARCHAR(20) DEFAULT 'normal' CHECK (priority IN ('low', 'normal', 'high', 'urgent')),
@@ -377,7 +452,8 @@ CREATE TABLE IF NOT EXISTS reports (
     id SERIAL PRIMARY KEY,
     report_type VARCHAR(100) CHECK (report_type IN (
         'price_trends', 'vendor_performance', 'subscription_revenue',
-        'ad_performance', 'market_analysis', 'user_activity'
+        'ad_performance', 'market_analysis', 'user_activity',
+        'anomaly_report'
     )),
     generated_by INTEGER REFERENCES users(id),
     title VARCHAR(255),
@@ -442,6 +518,21 @@ CREATE INDEX IF NOT EXISTS idx_prices_created ON prices(created_at);
 CREATE INDEX IF NOT EXISTS idx_prices_approval ON prices(status, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_prices_vendor_status ON prices(vendor_id, status);
 
+-- Reference price indexes
+CREATE INDEX IF NOT EXISTS idx_ref_prices_product_market ON reference_prices(product_id, market_id, is_current);
+CREATE INDEX IF NOT EXISTS idx_ref_prices_effective ON reference_prices(effective_date);
+
+-- Anomaly indexes
+CREATE INDEX IF NOT EXISTS idx_price_anomalies_status ON price_anomalies(status, severity);
+CREATE INDEX IF NOT EXISTS idx_price_anomalies_product ON price_anomalies(product_id, market_id);
+CREATE INDEX IF NOT EXISTS idx_price_anomalies_vendor ON price_anomalies(vendor_id);
+CREATE INDEX IF NOT EXISTS idx_price_anomalies_created ON price_anomalies(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_price_anomalies_severity ON price_anomalies(severity, status);
+
+-- Vendor anomaly score indexes
+CREATE INDEX IF NOT EXISTS idx_vendor_anomaly_scores_vendor ON vendor_anomaly_scores(vendor_id);
+CREATE INDEX IF NOT EXISTS idx_vendor_anomaly_scores_trust ON vendor_anomaly_scores(trust_score);
+
 -- Notification indexes
 CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id);
 CREATE INDEX IF NOT EXISTS idx_notifications_user_read ON notifications(user_id, is_read);
@@ -472,10 +563,376 @@ CREATE INDEX IF NOT EXISTS idx_vendor_advertisements_dates ON vendor_advertiseme
 CREATE INDEX IF NOT EXISTS idx_vendor_metrics_vendor ON vendor_metrics(vendor_id, month_year);
 
 -- =============================================
--- 12. INITIAL DATA SEEDING (SIMPLIFIED - NO type column reference)
+-- 12. ANOMALY DETECTION FUNCTIONS AND TRIGGERS
 -- =============================================
 
--- Insert categories (without type column since it doesn't exist in your categories table)
+-- Function to update updated_at column
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = CURRENT_TIMESTAMP;
+    RETURN NEW;
+END;
+$$ language 'plpgsql';
+
+-- Function to get current reference price for product-market
+CREATE OR REPLACE FUNCTION get_current_reference_price(
+    p_product_id INTEGER,
+    p_market_id VARCHAR
+)
+RETURNS TABLE (
+    reference_price_id INTEGER,
+    reference_price DECIMAL(10, 2),
+    reference_unit VARCHAR(50)
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT 
+        rp.id,
+        rp.price,
+        rp.unit
+    FROM reference_prices rp
+    WHERE rp.product_id = p_product_id
+        AND rp.market_id = p_market_id
+        AND rp.is_current = TRUE
+        AND (rp.expiry_date IS NULL OR rp.expiry_date >= CURRENT_DATE)
+    ORDER BY rp.effective_date DESC
+    LIMIT 1;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to calculate anomaly severity based on deviation
+CREATE OR REPLACE FUNCTION calculate_anomaly_severity(deviation_percentage DECIMAL)
+RETURNS VARCHAR AS $$
+BEGIN
+    IF deviation_percentage > 50 THEN
+        RETURN 'critical';
+    ELSIF deviation_percentage > 30 THEN
+        RETURN 'high';
+    ELSIF deviation_percentage > 15 THEN
+        RETURN 'medium';
+    ELSIF deviation_percentage > 5 THEN
+        RETURN 'low';
+    ELSE
+        RETURN 'none';
+    END IF;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to determine anomaly type
+CREATE OR REPLACE FUNCTION determine_anomaly_type(
+    vendor_price DECIMAL,
+    reference_price DECIMAL,
+    vendor_id INTEGER
+)
+RETURNS VARCHAR AS $$
+DECLARE
+    vendor_trust_score DECIMAL;
+BEGIN
+    -- Get vendor's trust score
+    SELECT trust_score INTO vendor_trust_score
+    FROM vendor_anomaly_scores
+    WHERE vendor_id = determine_anomaly_type.vendor_id;
+    
+    IF vendor_trust_score IS NULL THEN
+        vendor_trust_score := 100;
+    END IF;
+    
+    -- Determine based on price comparison
+    IF vendor_price > reference_price THEN
+        IF vendor_trust_score < 50 THEN
+            RETURN 'suspicious_vendor';
+        ELSE
+            RETURN 'price_spike';
+        END IF;
+    ELSIF vendor_price < reference_price THEN
+        IF vendor_trust_score < 50 THEN
+            RETURN 'suspicious_vendor';
+        ELSE
+            RETURN 'price_drop';
+        END IF;
+    ELSE
+        RETURN 'data_inconsistency';
+    END IF;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Main anomaly detection function
+CREATE OR REPLACE FUNCTION detect_price_anomaly()
+RETURNS TRIGGER AS $$
+DECLARE
+    ref_price_record RECORD;
+    deviation_pct DECIMAL(5, 2);
+    anomaly_severity VARCHAR(20);
+    anomaly_type_val VARCHAR(50);
+    anomaly_id_val INTEGER;
+    vendor_trust_val DECIMAL;
+    is_critical BOOLEAN;
+BEGIN
+    -- Only check pending vendor prices (not reference prices)
+    IF NEW.status = 'pending' AND NEW.vendor_id IS NOT NULL THEN
+        
+        -- Get current reference price for this product and market
+        SELECT * INTO ref_price_record
+        FROM get_current_reference_price(NEW.product_id, NEW.market_id);
+        
+        -- If reference price exists, check for anomaly
+        IF ref_price_record.reference_price IS NOT NULL THEN
+            
+            -- Calculate deviation percentage
+            deviation_pct := ABS(((NEW.price - ref_price_record.reference_price) / ref_price_record.reference_price) * 100);
+            
+            -- Calculate severity
+            anomaly_severity := calculate_anomaly_severity(deviation_pct);
+            
+            -- Only create anomaly if deviation > 5%
+            IF deviation_pct > 5 THEN
+                
+                -- Determine anomaly type
+                anomaly_type_val := determine_anomaly_type(NEW.price, ref_price_record.reference_price, NEW.vendor_id);
+                
+                -- Create anomaly record
+                INSERT INTO price_anomalies (
+                    price_id,
+                    product_id,
+                    market_id,
+                    vendor_id,
+                    reference_price_id,
+                    reference_price,
+                    vendor_price,
+                    price_difference,
+                    deviation_percentage,
+                    anomaly_type,
+                    severity,
+                    status,
+                    details,
+                    auto_flagged,
+                    flag_reason,
+                    assigned_at
+                ) VALUES (
+                    NEW.id,
+                    NEW.product_id,
+                    NEW.market_id,
+                    NEW.vendor_id,
+                    ref_price_record.reference_price_id,
+                    ref_price_record.reference_price,
+                    NEW.price,
+                    NEW.price - ref_price_record.reference_price,
+                    deviation_pct,
+                    anomaly_type_val,
+                    anomaly_severity,
+                    CASE 
+                        WHEN anomaly_severity IN ('critical', 'high') THEN 'new'
+                        ELSE 'new'
+                    END,
+                    CASE
+                        WHEN NEW.price > ref_price_record.reference_price THEN
+                            'Price is ' || ROUND(deviation_pct, 1) || '% above reference price of ' || 
+                            ref_price_record.reference_price || ' RWF'
+                        ELSE
+                            'Price is ' || ROUND(deviation_pct, 1) || '% below reference price of ' || 
+                            ref_price_record.reference_price || ' RWF'
+                    END,
+                    CASE WHEN anomaly_severity IN ('critical', 'high') THEN TRUE ELSE FALSE END,
+                    CASE 
+                        WHEN anomaly_severity = 'critical' THEN 
+                            'Critical anomaly: Price deviation exceeds 50% from reference price'
+                        WHEN anomaly_severity = 'high' THEN 
+                            'High anomaly: Price deviation exceeds 30% from reference price'
+                        WHEN anomaly_severity = 'medium' THEN 
+                            'Medium anomaly: Price deviation exceeds 15% from reference price'
+                        ELSE
+                            'Low anomaly: Price deviation exceeds 5% from reference price'
+                    END,
+                    NOW()
+                )
+                RETURNING id INTO anomaly_id_val;
+                
+                -- Record in anomaly resolution history
+                INSERT INTO anomaly_resolution_history (
+                    anomaly_id,
+                    action,
+                    notes,
+                    previous_status,
+                    new_status
+                ) VALUES (
+                    anomaly_id_val,
+                    'created',
+                    'Anomaly automatically detected by system',
+                    NULL,
+                    'new'
+                );
+                
+                -- Update vendor anomaly score
+                INSERT INTO vendor_anomaly_scores (vendor_id, last_anomaly_date)
+                VALUES (NEW.vendor_id, NOW())
+                ON CONFLICT (vendor_id) DO UPDATE
+                SET 
+                    total_anomalies = vendor_anomaly_scores.total_anomalies + 1,
+                    last_anomaly_date = NOW(),
+                    updated_at = NOW();
+                
+                -- Update specific severity count
+                IF anomaly_severity = 'critical' THEN
+                    UPDATE vendor_anomaly_scores 
+                    SET critical_anomalies = critical_anomalies + 1
+                    WHERE vendor_id = NEW.vendor_id;
+                ELSIF anomaly_severity = 'high' THEN
+                    UPDATE vendor_anomaly_scores 
+                    SET high_anomalies = high_anomalies + 1
+                    WHERE vendor_id = NEW.vendor_id;
+                ELSIF anomaly_severity = 'medium' THEN
+                    UPDATE vendor_anomaly_scores 
+                    SET medium_anomalies = medium_anomalies + 1
+                    WHERE vendor_id = NEW.vendor_id;
+                ELSE
+                    UPDATE vendor_anomaly_scores 
+                    SET low_anomalies = low_anomalies + 1
+                    WHERE vendor_id = NEW.vendor_id;
+                END IF;
+                
+                -- Update trust score based on anomalies
+                UPDATE vendor_anomaly_scores
+                SET trust_score = GREATEST(0, 100 - (
+                    (critical_anomalies * 10) + 
+                    (high_anomalies * 5) + 
+                    (medium_anomalies * 2) + 
+                    (low_anomalies * 1)
+                ))
+                WHERE vendor_id = NEW.vendor_id;
+                
+                -- Auto-flag critical and high anomalies in prices table
+                IF anomaly_severity IN ('critical', 'high') THEN
+                    NEW.flagged := TRUE;
+                    NEW.flag_reason := 'Auto-flagged: ' || UPPER(anomaly_severity) || ' anomaly detected - Deviation of ' || 
+                                      ROUND(deviation_pct, 1) || '% from reference price';
+                    NEW.status := 'flagged';
+                    
+                    -- Create notification for admin
+                    INSERT INTO notifications (
+                        user_id,
+                        title,
+                        message,
+                        type,
+                        notification_type,
+                        priority,
+                        data,
+                        action_url
+                    ) VALUES (
+                        NULL, -- Will be sent to admins
+                        'Critical Price Anomaly Detected',
+                        'Vendor price submitted for ' || (SELECT name FROM products WHERE id = NEW.product_id) || 
+                        ' shows ' || ROUND(deviation_pct, 1) || '% deviation from reference price',
+                        'warning',
+                        'anomaly_detected',
+                        'urgent',
+                        jsonb_build_object(
+                            'anomaly_id', anomaly_id_val,
+                            'price_id', NEW.id,
+                            'product_id', NEW.product_id,
+                            'market_id', NEW.market_id,
+                            'vendor_id', NEW.vendor_id,
+                            'deviation', deviation_pct
+                        ),
+                        '/admin/anomalies/' || anomaly_id_val
+                    );
+                END IF;
+                
+                -- For medium anomalies, flag for review
+                IF anomaly_severity = 'medium' THEN
+                    NEW.flagged := TRUE;
+                    NEW.flag_reason := 'Flagged for review: Medium anomaly - ' || ROUND(deviation_pct, 1) || '% deviation';
+                END IF;
+            END IF;
+        END IF;
+    END IF;
+    
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Trigger for anomaly detection on price insert
+DROP TRIGGER IF EXISTS detect_price_anomaly_trigger ON prices;
+CREATE TRIGGER detect_price_anomaly_trigger
+    BEFORE INSERT ON prices
+    FOR EACH ROW
+    EXECUTE FUNCTION detect_price_anomaly();
+
+-- Function to update vendor trust score after anomaly resolution
+CREATE OR REPLACE FUNCTION update_trust_score_on_resolution()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF NEW.status IN ('resolved', 'dismissed') AND OLD.status != NEW.status THEN
+        -- Recalculate trust score
+        UPDATE vendor_anomaly_scores
+        SET 
+            resolved_anomalies = CASE WHEN NEW.status = 'resolved' 
+                THEN resolved_anomalies + 1 
+                ELSE resolved_anomalies 
+            END,
+            dismissed_anomalies = CASE WHEN NEW.status = 'dismissed' 
+                THEN dismissed_anomalies + 1 
+                ELSE dismissed_anomalies 
+            END,
+            trust_score = LEAST(100, trust_score + 
+                CASE 
+                    WHEN NEW.status = 'resolved' AND NEW.severity = 'critical' THEN 5
+                    WHEN NEW.status = 'resolved' AND NEW.severity = 'high' THEN 3
+                    WHEN NEW.status = 'resolved' AND NEW.severity = 'medium' THEN 2
+                    WHEN NEW.status = 'resolved' AND NEW.severity = 'low' THEN 1
+                    WHEN NEW.status = 'dismissed' AND NEW.severity = 'critical' THEN -2
+                    WHEN NEW.status = 'dismissed' AND NEW.severity = 'high' THEN -1
+                    ELSE 0
+                END
+            ),
+            updated_at = NOW()
+        WHERE vendor_id = NEW.vendor_id;
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Trigger for trust score update
+DROP TRIGGER IF EXISTS update_trust_score_trigger ON price_anomalies;
+CREATE TRIGGER update_trust_score_trigger
+    AFTER UPDATE OF status ON price_anomalies
+    FOR EACH ROW
+    EXECUTE FUNCTION update_trust_score_on_resolution();
+
+-- Function to automatically approve prices with no anomalies
+CREATE OR REPLACE FUNCTION auto_approve_price()
+RETURNS TRIGGER AS $$
+DECLARE
+    has_anomaly BOOLEAN;
+BEGIN
+    -- Check if this price has any anomalies
+    SELECT EXISTS(
+        SELECT 1 FROM price_anomalies 
+        WHERE price_id = NEW.id AND severity IN ('critical', 'high')
+    ) INTO has_anomaly;
+    
+    -- Auto-approve if no critical/high anomalies
+    IF NOT has_anomaly AND NEW.status = 'pending' THEN
+        NEW.status := 'approved';
+        NEW.approved_at := NOW();
+    END IF;
+    
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Trigger for auto-approval
+DROP TRIGGER IF EXISTS auto_approve_price_trigger ON prices;
+CREATE TRIGGER auto_approve_price_trigger
+    AFTER INSERT ON prices
+    FOR EACH ROW
+    EXECUTE FUNCTION auto_approve_price();
+
+-- =============================================
+-- 13. INITIAL DATA SEEDING
+-- =============================================
+
+-- Insert categories
 INSERT INTO categories (name, description) VALUES
 ('Grains', 'Cereal grains and grain products'),
 ('Legumes', 'Beans, lentils, and pulses'),
@@ -540,17 +997,82 @@ INSERT INTO markets (id, name, province, district, latitude, longitude) VALUES
 ON CONFLICT (id) DO NOTHING;
 
 -- =============================================
--- 13. TRIGGERS FOR UPDATED_AT
+-- 14. STORED PROCEDURES FOR ANOMALY MANAGEMENT
 -- =============================================
 
--- Function to update updated_at column
-CREATE OR REPLACE FUNCTION update_updated_at_column()
-RETURNS TRIGGER AS $$
+-- Procedure to get anomaly statistics
+CREATE OR REPLACE FUNCTION get_anomaly_statistics(
+    p_start_date DATE DEFAULT NULL,
+    p_end_date DATE DEFAULT NULL
+)
+RETURNS TABLE (
+    total_anomalies BIGINT,
+    critical_count BIGINT,
+    high_count BIGINT,
+    medium_count BIGINT,
+    low_count BIGINT,
+    resolved_count BIGINT,
+    investigating_count BIGINT,
+    new_count BIGINT,
+    avg_resolution_time_hours NUMERIC
+) AS $$
 BEGIN
-    NEW.updated_at = CURRENT_TIMESTAMP;
-    RETURN NEW;
+    RETURN QUERY
+    SELECT 
+        COUNT(*)::BIGINT,
+        COUNT(*) FILTER (WHERE severity = 'critical')::BIGINT,
+        COUNT(*) FILTER (WHERE severity = 'high')::BIGINT,
+        COUNT(*) FILTER (WHERE severity = 'medium')::BIGINT,
+        COUNT(*) FILTER (WHERE severity = 'low')::BIGINT,
+        COUNT(*) FILTER (WHERE status = 'resolved')::BIGINT,
+        COUNT(*) FILTER (WHERE status = 'investigating')::BIGINT,
+        COUNT(*) FILTER (WHERE status = 'new')::BIGINT,
+        AVG(EXTRACT(EPOCH FROM (resolved_at - created_at))/3600)::NUMERIC(10,2)
+    FROM price_anomalies pa
+    WHERE (p_start_date IS NULL OR DATE(pa.created_at) >= p_start_date)
+        AND (p_end_date IS NULL OR DATE(pa.created_at) <= p_end_date);
 END;
-$$ language 'plpgsql';
+$$ LANGUAGE plpgsql;
+
+-- Procedure to get vendor anomaly summary
+CREATE OR REPLACE FUNCTION get_vendor_anomaly_summary(p_vendor_id INTEGER)
+RETURNS TABLE (
+    vendor_name VARCHAR,
+    total_anomalies BIGINT,
+    trust_score DECIMAL,
+    recent_anomalies JSON
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT 
+        u.name,
+        COALESCE(vas.total_anomalies, 0)::BIGINT,
+        COALESCE(vas.trust_score, 100)::DECIMAL,
+        COALESCE((
+            SELECT json_agg(
+                json_build_object(
+                    'date', pa.created_at,
+                    'severity', pa.severity,
+                    'deviation', pa.deviation_percentage,
+                    'product', p.name,
+                    'status', pa.status
+                )
+            )
+            FROM price_anomalies pa
+            JOIN products p ON p.id = pa.product_id
+            WHERE pa.vendor_id = p_vendor_id
+            ORDER BY pa.created_at DESC
+            LIMIT 10
+        ), '[]'::json)::JSON
+    FROM users u
+    LEFT JOIN vendor_anomaly_scores vas ON vas.vendor_id = u.id
+    WHERE u.id = p_vendor_id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- =============================================
+-- 15. TRIGGERS FOR UPDATED_AT (Existing tables)
+-- =============================================
 
 -- Create triggers for tables with updated_at
 DROP TRIGGER IF EXISTS update_users_updated_at ON users;
@@ -583,7 +1105,17 @@ CREATE TRIGGER update_business_users_updated_at BEFORE UPDATE ON business_users 
 DROP TRIGGER IF EXISTS update_vendor_advertisements_updated_at ON vendor_advertisements;
 CREATE TRIGGER update_vendor_advertisements_updated_at BEFORE UPDATE ON vendor_advertisements FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+-- Triggers for new anomaly tables
+DROP TRIGGER IF EXISTS update_reference_prices_updated_at ON reference_prices;
+CREATE TRIGGER update_reference_prices_updated_at BEFORE UPDATE ON reference_prices FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_price_anomalies_updated_at ON price_anomalies;
+CREATE TRIGGER update_price_anomalies_updated_at BEFORE UPDATE ON price_anomalies FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_vendor_anomaly_scores_updated_at ON vendor_anomaly_scores;
+CREATE TRIGGER update_vendor_anomaly_scores_updated_at BEFORE UPDATE ON vendor_anomaly_scores FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
 -- =============================================
 -- SUCCESS MESSAGE
 -- =============================================
-SELECT 'Database setup complete! All tables created successfully.' as message;
+SELECT 'Database setup complete with anomaly detection! All tables created successfully.' as message;
