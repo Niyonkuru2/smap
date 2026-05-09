@@ -1,14 +1,12 @@
+// src/services/email/templates.js
+
 /**
  * Email templates for SMPMPS application
  */
 
-/**
- * Get verification email content
- * @param {string} userName - User's name
- * @param {string} verificationCode - 6-digit verification code
- * @param {string} language - Language preference (en, fr, rw)
- * @returns {Object} Subject and HTML content
- */
+// ============================================
+// VERIFICATION EMAIL
+// ============================================
 export const getVerificationTemplate = (userName, verificationCode, language = 'en') => {
     const subjects = {
         en: 'Verify Your Email - SMPMPS',
@@ -82,14 +80,9 @@ export const getVerificationTemplate = (userName, verificationCode, language = '
     };
 };
 
-/**
- * Get password reset email content
- * @param {string} userName - User's name
- * @param {string} resetToken - Password reset token
- * @param {string} resetCode - 6-digit reset code
- * @param {string} language - Language preference
- * @returns {Object} Subject and HTML content
- */
+// ============================================
+// PASSWORD RESET EMAIL
+// ============================================
 export const getPasswordResetTemplate = (userName, resetToken, resetCode, language = 'en') => {
     const frontendUrl = process.env.FRONTEND_URL || 'https://smpmps-test.onrender.com';
     const resetLink = `${frontendUrl}/reset-password?token=${resetToken}`;
@@ -169,12 +162,9 @@ export const getPasswordResetTemplate = (userName, resetToken, resetCode, langua
     };
 };
 
-/**
- * Get price alert email content
- * @param {string} userName - User's name
- * @param {Object} alertData - Alert information
- * @returns {Object} Subject and HTML content
- */
+// ============================================
+// PRICE ALERT EMAIL
+// ============================================
 export const getPriceAlertTemplate = (userName, alertData) => {
     const { productName, marketName, targetPrice, currentPrice, condition, actionUrl } = alertData;
     
@@ -211,18 +201,12 @@ export const getPriceAlertTemplate = (userName, alertData) => {
         </div>
     `;
     
-    return {
-        subject,
-        html
-    };
+    return { subject, html };
 };
 
-/**
- * Get welcome email content (after verification)
- * @param {string} userName - User's name
- * @param {string} language - Language preference
- * @returns {Object} Subject and HTML content
- */
+// ============================================
+// WELCOME EMAIL
+// ============================================
 export const getWelcomeTemplate = (userName, language = 'en') => {
     const subjects = {
         en: 'Welcome to SMPMPS! Account Verified',
@@ -313,74 +297,243 @@ export const getWelcomeTemplate = (userName, language = 'en') => {
             </div>
         `
     };
+    
     return {
         subject: subjects[language] || subjects.en,
         html: templates[language] || templates.en
     };
 };
 
-/**
- * Get vendor credentials email content
- */
-export const getVendorCredentialsTemplate = (
-  userName,
-  email,
-  password,
-  language = 'en'
-) => {
-  const subjects = {
-    en: 'Your Vendor Account Credentials - SMPMPS',
-    fr: 'Vos identifiants de fournisseur - SMPMPS',
-    rw: 'Amakuru ya Konti ya Vendor - SMPMPS'
-  };
+// ============================================
+// VENDOR CREDENTIALS EMAIL
+// ============================================
+export const getVendorCredentialsTemplate = (vendorName, email, password, language = 'en') => {
+    const subjects = {
+        en: 'Your Vendor Account Credentials - SMPMPS',
+        fr: 'Vos identifiants de fournisseur - SMPMPS',
+        rw: 'Amakuru ya Konti ya Vendor - SMPMPS'
+    };
 
-  const templates = {
-    en: `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto;">
-        <h2>Welcome ${userName} 👋</h2>
-        <p>Your vendor account has been created successfully.</p>
+    const templates = {
+        en: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto;">
+                <div style="background-color: #4CAF50; padding: 20px; text-align: center; border-radius: 5px 5px 0 0;">
+                    <h1 style="color: white; margin: 0;">SMPMPS</h1>
+                </div>
+                <div style="padding: 20px;">
+                    <h2>Welcome ${vendorName} 👋</h2>
+                    <p>Your vendor account has been created successfully.</p>
+                    <div style="background-color: #f4f4f4; padding: 15px; border-radius: 5px; margin: 20px 0;">
+                        <p><strong>Login Credentials:</strong></p>
+                        <p><strong>Email:</strong> ${email}</p>
+                        <p><strong>Password:</strong> ${password}</p>
+                    </div>
+                    <p style="color: #ff9800;"><strong>⚠️ Please login and change your password immediately.</strong></p>
+                    <hr style="margin: 20px 0;">
+                    <p style="color: #666; font-size: 12px;">SMPMPS - Smart Market Price Monitoring System</p>
+                </div>
+            </div>
+        `,
+        fr: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto;">
+                <div style="background-color: #4CAF50; padding: 20px; text-align: center; border-radius: 5px 5px 0 0;">
+                    <h1 style="color: white; margin: 0;">SMPMPS</h1>
+                </div>
+                <div style="padding: 20px;">
+                    <h2>Bienvenue ${vendorName} 👋</h2>
+                    <p>Votre compte fournisseur a été créé avec succès.</p>
+                    <div style="background-color: #f4f4f4; padding: 15px; border-radius: 5px; margin: 20px 0;">
+                        <p><strong>Identifiants de connexion:</strong></p>
+                        <p><strong>Email:</strong> ${email}</p>
+                        <p><strong>Mot de passe:</strong> ${password}</p>
+                    </div>
+                    <p style="color: #ff9800;"><strong>⚠️ Veuillez vous connecter et changer votre mot de passe immédiatement.</strong></p>
+                    <hr style="margin: 20px 0;">
+                    <p style="color: #666; font-size: 12px;">SMPMPS - Système de Surveillance des Prix du Marché</p>
+                </div>
+            </div>
+        `,
+        rw: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto;">
+                <div style="background-color: #4CAF50; padding: 20px; text-align: center; border-radius: 5px 5px 0 0;">
+                    <h1 style="color: white; margin: 0;">SMPMPS</h1>
+                </div>
+                <div style="padding: 20px;">
+                    <h2>Murakaza neza ${vendorName} 👋</h2>
+                    <p>Konti yawe ya vendor yashyizweho neza.</p>
+                    <div style="background-color: #f4f4f4; padding: 15px; border-radius: 5px; margin: 20px 0;">
+                        <p><strong>Amakuru yo kwinjira:</strong></p>
+                        <p><strong>Email:</strong> ${email}</p>
+                        <p><strong>Password:</strong> ${password}</p>
+                    </div>
+                    <p style="color: #ff9800;"><strong>⚠️ Nyamuneka injira uhite uhindura ijambo ryibanga.</strong></p>
+                    <hr style="margin: 20px 0;">
+                    <p style="color: #666; font-size: 12px;">SMPMPS - Sisitemu yo Gukurikirana Ibiciro ku Isoko</p>
+                </div>
+            </div>
+        `
+    };
 
-        <p><strong>Login Credentials:</strong></p>
-        <ul>
-          <li>Email: ${email}</li>
-          <li>Password: ${password}</li>
-        </ul>
+    return {
+        subject: subjects[language] || subjects.en,
+        html: templates[language] || templates.en
+    };
+};
 
-        <p>Please login and <strong>change your password immediately</strong>.</p>
-      </div>
-    `,
-    fr: `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto;">
-        <h2>Bienvenue ${userName} 👋</h2>
-        <p>Votre compte fournisseur a été créé avec succès.</p>
+// ============================================
+// BUSINESS CREDENTIALS EMAIL
+// ============================================
+export const getBusinessCredentialsTemplate = (businessName, ownerName, email, password, language = 'en') => {
+    const subjects = {
+        en: 'Your Business Account Credentials - SMPMPS',
+        fr: 'Vos identifiants professionnels - SMPMPS',
+        rw: 'Amakuru ya Konti y\'Ubucuruzi - SMPMPS'
+    };
 
-        <p><strong>Identifiants de connexion :</strong></p>
-        <ul>
-          <li>Email : ${email}</li>
-          <li>Mot de passe : ${password}</li>
-        </ul>
+    const templates = {
+        en: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto;">
+                <div style="background-color: #2196F3; padding: 20px; text-align: center; border-radius: 5px 5px 0 0;">
+                    <h1 style="color: white; margin: 0;">SMPMPS Business</h1>
+                </div>
+                <div style="padding: 20px;">
+                    <h2>Welcome ${ownerName} 👋</h2>
+                    <p>Your business account for <strong>${businessName}</strong> has been created successfully.</p>
+                    <div style="background-color: #f4f4f4; padding: 15px; border-radius: 5px; margin: 20px 0;">
+                        <p><strong>Login Credentials:</strong></p>
+                        <p><strong>Email:</strong> ${email}</p>
+                        <p><strong>Password:</strong> ${password}</p>
+                    </div>
+                    <p style="color: #ff9800;"><strong>⚠️ Please login and change your password immediately.</strong></p>
+                    <hr style="margin: 20px 0;">
+                    <p style="color: #666; font-size: 12px;">SMPMPS - Smart Market Price Monitoring System</p>
+                </div>
+            </div>
+        `,
+        fr: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto;">
+                <div style="background-color: #2196F3; padding: 20px; text-align: center; border-radius: 5px 5px 0 0;">
+                    <h1 style="color: white; margin: 0;">SMPMPS Business</h1>
+                </div>
+                <div style="padding: 20px;">
+                    <h2>Bienvenue ${ownerName} 👋</h2>
+                    <p>Votre compte professionnel pour <strong>${businessName}</strong> a été créé avec succès.</p>
+                    <div style="background-color: #f4f4f4; padding: 15px; border-radius: 5px; margin: 20px 0;">
+                        <p><strong>Identifiants de connexion:</strong></p>
+                        <p><strong>Email:</strong> ${email}</p>
+                        <p><strong>Mot de passe:</strong> ${password}</p>
+                    </div>
+                    <p style="color: #ff9800;"><strong>⚠️ Veuillez vous connecter et changer votre mot de passe immédiatement.</strong></p>
+                    <hr style="margin: 20px 0;">
+                    <p style="color: #666; font-size: 12px;">SMPMPS - Système de Surveillance des Prix du Marché</p>
+                </div>
+            </div>
+        `,
+        rw: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto;">
+                <div style="background-color: #2196F3; padding: 20px; text-align: center; border-radius: 5px 5px 0 0;">
+                    <h1 style="color: white; margin: 0;">SMPMPS Business</h1>
+                </div>
+                <div style="padding: 20px;">
+                    <h2>Murakaza neza ${ownerName} 👋</h2>
+                    <p>Konti y'ubucuruzi ya <strong>${businessName}</strong> yashyizweho neza.</p>
+                    <div style="background-color: #f4f4f4; padding: 15px; border-radius: 5px; margin: 20px 0;">
+                        <p><strong>Amakuru yo kwinjira:</strong></p>
+                        <p><strong>Email:</strong> ${email}</p>
+                        <p><strong>Password:</strong> ${password}</p>
+                    </div>
+                    <p style="color: #ff9800;"><strong>⚠️ Nyamuneka injira uhite uhindura ijambo ryibanga.</strong></p>
+                    <hr style="margin: 20px 0;">
+                    <p style="color: #666; font-size: 12px;">SMPMPS - Sisitemu yo Gukurikirana Ibiciro ku Isoko</p>
+                </div>
+            </div>
+        `
+    };
 
-        <p>Veuillez vous connecter et <strong>changer votre mot de passe immédiatement</strong>.</p>
-      </div>
-    `,
-    rw: `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto;">
-        <h2>Murakaza neza ${userName} 👋</h2>
-        <p>Konti yawe ya vendor yashyizweho neza.</p>
+    return {
+        subject: subjects[language] || subjects.en,
+        html: templates[language] || templates.en
+    };
+};
 
-        <p><strong>Amakuru yo kwinjira:</strong></p>
-        <ul>
-          <li>Email: ${email}</li>
-          <li>Password: ${password}</li>
-        </ul>
+// ============================================
+// SUBSCRIPTION NOTIFICATION TEMPLATE
+// ============================================
+export const getSubscriptionNotificationTemplate = (name, planName, action, endDate, reason = null, language = 'en') => {
+    const subjects = {
+        en: {
+            created: 'Subscription Request Received',
+            approved: 'Subscription Approved! 🎉',
+            rejected: 'Subscription Request Update',
+            cancelled: 'Subscription Cancelled',
+            expired: 'Subscription Expired'
+        },
+        fr: {
+            created: 'Demande d\'abonnement reçue',
+            approved: 'Abonnement approuvé! 🎉',
+            rejected: 'Mise à jour de la demande d\'abonnement',
+            cancelled: 'Abonnement annulé',
+            expired: 'Abonnement expiré'
+        },
+        rw: {
+            created: 'Ubusabe bwa kontrakte bwakiriwe',
+            approved: 'Kontrakte yemewe! 🎉',
+            rejected: 'Ubusabe bwa kontrakte bwasuzumwe',
+            cancelled: 'Kontrakte yahagaritswe',
+            expired: 'Kontrakte irangiye'
+        }
+    };
 
-        <p>Nyamuneka injira uhite uhindura ijambo ryibanga.</p>
-      </div>
-    `
-  };
+    const getMessage = () => {
+        const messages = {
+            en: {
+                approved: `<p>Great news! Your <strong>${planName}</strong> subscription has been approved.</p><p>Your subscription is now active and will remain active until <strong>${new Date(endDate).toLocaleDateString()}</strong>.</p><p>Thank you for choosing our service!</p>`,
+                rejected: `<p>Your request for the <strong>${planName}</strong> plan has been reviewed.</p>${reason ? `<p><strong>Reason:</strong> ${reason}</p>` : ''}<p>Please contact support for assistance.</p>`,
+                cancelled: `<p>Your <strong>${planName}</strong> subscription has been cancelled.</p><p>You will have access until <strong>${new Date(endDate).toLocaleDateString()}</strong>.</p>`,
+                created: `<p>Your request for the <strong>${planName}</strong> plan has been submitted.</p><p>We will notify you once your subscription is approved.</p>`,
+                expired: `<p>Your <strong>${planName}</strong> subscription has expired.</p><p>Please renew to continue enjoying the benefits.</p>`
+            },
+            fr: {
+                approved: `<p>Bonne nouvelle! Votre abonnement <strong>${planName}</strong> a été approuvé.</p><p>Votre abonnement est maintenant actif jusqu'au <strong>${new Date(endDate).toLocaleDateString()}</strong>.</p><p>Merci de choisir notre service!</p>`,
+                rejected: `<p>Votre demande d'abonnement <strong>${planName}</strong> a été examinée.</p>${reason ? `<p><strong>Raison:</strong> ${reason}</p>` : ''}<p>Veuillez contacter le support.</p>`,
+                cancelled: `<p>Votre abonnement <strong>${planName}</strong> a été annulé.</p><p>Vous aurez accès jusqu'au <strong>${new Date(endDate).toLocaleDateString()}</strong>.</p>`,
+                created: `<p>Votre demande d'abonnement <strong>${planName}</strong> a été soumise.</p><p>Nous vous notifierons une fois approuvé.</p>`,
+                expired: `<p>Votre abonnement <strong>${planName}</strong> a expiré.</p><p>Veuillez renouveler pour continuer à profiter des avantages.</p>`
+            },
+            rw: {
+                approved: `<p>Amakuru meza! Kontrakte yawe ya <strong>${planName}</strong> yemewe.</p><p>Kontrakte yawe ikora kugeza <strong>${new Date(endDate).toLocaleDateString()}</strong>.</p><p>Urakoze guhitamo serivisi yacu!</p>`,
+                rejected: `<p>Ubusabe bwa kontrakte ya <strong>${planName}</strong> bwasuzumwe.</p>${reason ? `<p><strong>Impamvu:</strong> ${reason}</p>` : ''}<p>Nyamuneka wakoranye na support.</p>`,
+                cancelled: `<p>Kontrakte yawe ya <strong>${planName}</strong> yahagaritswe.</p><p>Uzakomeza kugera kugeza <strong>${new Date(endDate).toLocaleDateString()}</strong>.</p>`,
+                created: `<p>Ubusabe bwa kontrakte ya <strong>${planName}</strong> bwatumwe.</p><p>Tuzakumenyesha iyo kontrakte yemewe.</p>`,
+                expired: `<p>Kontrakte yawe ya <strong>${planName}</strong> irangiye.</p><p>Nyamuneka vugurura kugirango ukomeze kubona ibyiza.</p>`
+            }
+        };
+        return messages[language]?.[action] || messages.en[action];
+    };
 
-  return {
-    subject: subjects[language] || subjects.en,
-    html: templates[language] || templates.en
-  };
+    const actionTitles = {
+        en: { approved: 'Subscription Approved! 🎉', rejected: 'Subscription Request Update', cancelled: 'Subscription Cancelled', created: 'Subscription Request Received', expired: 'Subscription Expired' },
+        fr: { approved: 'Abonnement approuvé! 🎉', rejected: 'Mise à jour', cancelled: 'Abonnement annulé', created: 'Demande reçue', expired: 'Abonnement expiré' },
+        rw: { approved: 'Kontrakte yemewe! 🎉', rejected: 'Ubusabe bwasuzumwe', cancelled: 'Kontrakte yahagaritswe', created: 'Ubusabe bwakiriwe', expired: 'Kontrakte irangiye' }
+    };
+
+    const html = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <div style="background-color: ${action === 'approved' ? '#4CAF50' : action === 'rejected' ? '#f44336' : '#2196F3'}; padding: 20px; text-align: center; border-radius: 5px 5px 0 0;">
+                <h1 style="color: white; margin: 0;">SMPMPS</h1>
+            </div>
+            <div style="padding: 20px; border: 1px solid #e0e0e0; border-top: none; border-radius: 0 0 5px 5px;">
+                <h2>${actionTitles[language]?.[action] || actionTitles.en[action]}</h2>
+                <p>Dear ${name},</p>
+                ${getMessage()}
+                <hr style="margin: 20px 0;">
+                <p style="color: #666; font-size: 12px;">SMPMPS - Smart Market Price Monitoring System</p>
+            </div>
+        </div>
+    `;
+
+    return {
+        subject: subjects[language]?.[action] || subjects.en[action],
+        html
+    };
 };

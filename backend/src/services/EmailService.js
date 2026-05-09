@@ -1,10 +1,13 @@
+// src/services/EmailService.js
 import nodemailer from 'nodemailer';
 import {
     getVerificationTemplate,
     getPasswordResetTemplate,
     getPriceAlertTemplate,
     getWelcomeTemplate,
-    getVendorCredentialsTemplate
+    getVendorCredentialsTemplate,
+    getBusinessCredentialsTemplate,
+    getSubscriptionNotificationTemplate
 } from './email/templates.js';
 
 // TRANSPORTER SETUP
@@ -12,7 +15,6 @@ let transporter = null;
 let isConfiguredFlag = false;
 
 function initializeTransporter() {
-
     // SENDGRID (priority)
     if (process.env.SENDGRID_API_KEY) {
         transporter = nodemailer.createTransport({
@@ -27,17 +29,14 @@ function initializeTransporter() {
             socketTimeout: 30000,
             family: 4
         });
-
         isConfiguredFlag = true;
         verifyTransporter('SendGrid');
         return transporter;
     }
 
-    // SMTP / GMAIL (FIXED)
+    // SMTP / GMAIL
     if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
-        const isGmail =
-            process.env.EMAIL_USER.includes('gmail.com') ||
-            process.env.SMTP_HOST?.includes('gmail');
+        const isGmail = process.env.EMAIL_USER.includes('gmail.com') || process.env.SMTP_HOST?.includes('gmail');
         const config = {
             host: process.env.SMTP_HOST || 'smtp.gmail.com',
             port: parseInt(process.env.SMTP_PORT || '587'),
@@ -54,9 +53,7 @@ function initializeTransporter() {
             socketTimeout: 30000,
             family: 4,
             requireTLS: true,
-            tls: {
-                rejectUnauthorized: false
-            }
+            tls: { rejectUnauthorized: false }
         });
 
         isConfiguredFlag = true;
@@ -64,13 +61,11 @@ function initializeTransporter() {
         return transporter;
     }
 
-    // NO CONFIG
     isConfiguredFlag = false;
     transporter = null;
     return null;
 }
 
-// VERIFY CONNECTION
 function verifyTransporter(name) {
     transporter.verify((error) => {
         if (error) {
@@ -82,7 +77,6 @@ function verifyTransporter(name) {
     });
 }
 
-// Initialize
 initializeTransporter();
 
 // HELPERS
@@ -90,8 +84,7 @@ export const isConfigured = () => isConfiguredFlag && transporter !== null;
 export const getTransporter = () => transporter;
 export const isEmailConfigured = () => isConfigured();
 
-
-// RETRY LOGIC (VERY IMPORTANT)
+// RETRY LOGIC
 const sendWithRetry = async (mailOptions, retries = 2) => {
     try {
         return await transporter.sendMail(mailOptions);
@@ -106,23 +99,14 @@ const sendWithRetry = async (mailOptions, retries = 2) => {
 };
 
 // SEND EMAIL
-
 export const sendEmail = async ({ to, subject, html, text }) => {
     if (!isConfigured()) {
         console.warn(`Email skipped → ${to}`);
-        return {
-            success: false,
-            skipped: true,
-            error: 'Email service not configured'
-        };
+        return { success: false, skipped: true, error: 'Email service not configured' };
     }
 
     try {
-        const from =
-            process.env.EMAIL_FROM ||
-            process.env.EMAIL_USER ||
-            'noreply@smpmps.com';
-
+        const from = process.env.EMAIL_FROM || process.env.EMAIL_USER || 'noreply@smpmps.com';
         const info = await sendWithRetry({
             from: `"SMPMPS" <${from}>`,
             to,
@@ -131,32 +115,19 @@ export const sendEmail = async ({ to, subject, html, text }) => {
             text: text || html?.replace(/<[^>]*>/g, '') || ''
         });
 
-        return {
-            success: true,
-            messageId: info.messageId
-        };
-
+        return { success: true, messageId: info.messageId };
     } catch (error) {
-        // CLEAN ERROR HANDLING
-        if (error.code === 'EAUTH') {
-            console.error('Auth failed (check App Password)');
-        } else if (error.code === 'ENETUNREACH') {
-            console.error('Network unreachable (SMTP blocked)');
-        } else if (error.message?.includes('timeout')) {
-            console.error('SMTP timeout');
-        }
-
-        return {
-            success: false,
-            error: error.message
-        };
+        if (error.code === 'EAUTH') console.error('Auth failed (check App Password)');
+        else if (error.code === 'ENETUNREACH') console.error('Network unreachable (SMTP blocked)');
+        else if (error.message?.includes('timeout')) console.error('SMTP timeout');
+        
+        return { success: false, error: error.message };
     }
 };
 
 // ============================================
-// EMAIL TYPES
+// EMAIL SENDER FUNCTIONS
 // ============================================
-
 export const sendVerificationEmail = async (to, name, code, lang = 'en') => {
     const { subject, html } = getVerificationTemplate(name, code, lang);
     return sendEmail({ to, subject, html });
@@ -177,66 +148,22 @@ export const sendWelcomeEmail = async (to, name, lang = 'en') => {
     return sendEmail({ to, subject, html });
 };
 
-export const sendVendorCredentialsEmail = async (to, name, email, password) => {
-    const { subject, html } = getVendorCredentialsTemplate(
-        name,
-        email,
-        password,
-        'en'
-    );
-
-    return sendEmail({
-        to,
-        subject,
-        html
-    });
+export const sendVendorCredentialsEmail = async (to, vendorName, email, password, lang = 'en') => {
+    const { subject, html } = getVendorCredentialsTemplate(vendorName, email, password, lang);
+    return sendEmail({ to, subject, html });
 };
 
-export const sendSubscriptionNotification = async (email, name, planName, action, endDate, reason = null) => {
-    const subject = getSubscriptionEmailSubject(action);
-    const html = getSubscriptionEmailHtml(name, planName, action, endDate, reason);
-    
-    // Use your existing email sending method
-    await sendEmail(email, subject, html);
+export const sendBusinessCredentialsEmail = async (to, businessName, ownerName, email, password, lang = 'en') => {
+    const { subject, html } = getBusinessCredentialsTemplate(businessName, ownerName, email, password, lang);
+    return sendEmail({ to, subject, html });
 };
 
-const getSubscriptionEmailSubject = (action) => {
-    const subjects = {
-        'created': 'Subscription Request Received',
-        'approved': 'Subscription Approved! 🎉',
-        'rejected': 'Subscription Request Update',
-        'cancelled': 'Subscription Cancelled'
-    };
-    return subjects[action] || 'Subscription Update';
+export const sendSubscriptionNotification = async (to, name, planName, action, endDate, reason = null, lang = 'en') => {
+    const { subject, html } = getSubscriptionNotificationTemplate(name, planName, action, endDate, reason, lang);
+    return sendEmail({ to, subject, html });
 };
 
-const getSubscriptionEmailHtml = (name, planName, action, endDate, reason) => {
-    if (action === 'approved') {
-        return `
-            <div style="font-family: Arial, sans-serif; max-width: 600px;">
-                <h2>Subscription Approved! 🎉</h2>
-                <p>Dear ${name},</p>
-                <p>Great news! Your <strong>${planName}</strong> subscription has been approved.</p>
-                <p>Your subscription is now active and will remain active until <strong>${new Date(endDate).toLocaleDateString()}</strong>.</p>
-                <p>Thank you for choosing our service!</p>
-            </div>
-        `;
-    } else if (action === 'rejected') {
-        return `
-            <div style="font-family: Arial, sans-serif; max-width: 600px;">
-                <h2>Subscription Request Update</h2>
-                <p>Dear ${name},</p>
-                <p>Your request for the <strong>${planName}</strong> plan requires attention.</p>
-                ${reason ? `<p><strong>Reason:</strong> ${reason}</p>` : ''}
-                <p>Please contact support for assistance with your subscription.</p>
-            </div>
-        `;
-    }
-    // Add other templates...
-};
-
-// SERVICE EXPORT
-
+// DEFAULT EXPORT
 export default {
     isConfigured,
     getTransporter,
@@ -246,5 +173,6 @@ export default {
     sendPriceAlertEmail,
     sendWelcomeEmail,
     sendVendorCredentialsEmail,
+    sendBusinessCredentialsEmail,
     sendSubscriptionNotification
 };
