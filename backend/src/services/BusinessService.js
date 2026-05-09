@@ -215,103 +215,111 @@ class BusinessService {
   }
 
   /**
-   * Update business user
+   * Update business user - FIXED VERSION
    */
   static async updateBusiness(id, data, currentUserRole) {
-    const allowedFields = ['phone', 'address'];
-    const adminOnlyFields = ['businessName', 'ownerName', 'businessType', 'tier', 'status', 'category', 'registrationNumber', 'taxId'];
-
+    // Separate arrays for each query to avoid parameter confusion
     const userUpdates = [];
+    const userValues = [];
     const businessUpdates = [];
-    const values = [];
-    let index = 1;
+    const businessValues = [];
+    let userIndex = 1;
+    let businessIndex = 1;
 
-    // Update user table fields
-    if (data.phone !== undefined) {
-      userUpdates.push(`phone = $${index++}`);
-      values.push(data.phone);
-    }
-    if (data.address !== undefined) {
-      userUpdates.push(`address = $${index++}`);
-      values.push(data.address);
-    }
-    if (data.is_active !== undefined && currentUserRole === 'admin') {
-      userUpdates.push(`is_active = $${index++}`);
-      values.push(data.is_active);
-    }
-
-    // Handle category (admin only)
-    if (data.category !== undefined && currentUserRole === 'admin') {
-      const categoryId = await this.getOrCreateCategory(data.category, 'business');
-      userUpdates.push(`category_id = $${index++}`);
-      values.push(categoryId);
-    }
-
-    // Update business table fields (admin only)
+    // Admin can update all fields
     if (currentUserRole === 'admin') {
+      // User table fields
+      if (data.phone !== undefined) {
+        userUpdates.push(`phone = $${userIndex++}`);
+        userValues.push(data.phone);
+      }
+      if (data.address !== undefined) {
+        userUpdates.push(`address = $${userIndex++}`);
+        userValues.push(data.address);
+      }
+      if (data.is_active !== undefined) {
+        userUpdates.push(`is_active = $${userIndex++}`);
+        userValues.push(data.is_active);
+      }
+      if (data.category !== undefined) {
+        const categoryId = await this.getOrCreateCategory(data.category, 'business');
+        userUpdates.push(`category_id = $${userIndex++}`);
+        userValues.push(categoryId);
+      }
+
+      // Business table fields
       if (data.businessName !== undefined) {
-        businessUpdates.push(`business_name = $${index++}`);
-        values.push(data.businessName);
+        businessUpdates.push(`business_name = $${businessIndex++}`);
+        businessValues.push(data.businessName);
       }
       if (data.ownerName !== undefined) {
-        businessUpdates.push(`owner_name = $${index++}`);
-        values.push(data.ownerName);
+        businessUpdates.push(`owner_name = $${businessIndex++}`);
+        businessValues.push(data.ownerName);
       }
       if (data.businessType !== undefined) {
-        businessUpdates.push(`business_type = $${index++}`);
-        values.push(data.businessType);
+        businessUpdates.push(`business_type = $${businessIndex++}`);
+        businessValues.push(data.businessType);
       }
       if (data.tier !== undefined) {
-        businessUpdates.push(`tier = $${index++}`);
-        values.push(data.tier);
+        businessUpdates.push(`tier = $${businessIndex++}`);
+        businessValues.push(data.tier);
       }
       if (data.status !== undefined) {
-        businessUpdates.push(`status = $${index++}`);
-        values.push(data.status);
+        businessUpdates.push(`status = $${businessIndex++}`);
+        businessValues.push(data.status);
+        
         // Also update user is_active based on status
         if (data.status === 'active') {
-          userUpdates.push(`is_active = $${index++}`);
-          values.push(true);
+          userUpdates.push(`is_active = $${userIndex++}`);
+          userValues.push(true);
         } else if (data.status === 'inactive' || data.status === 'suspended') {
-          userUpdates.push(`is_active = $${index++}`);
-          values.push(false);
+          userUpdates.push(`is_active = $${userIndex++}`);
+          userValues.push(false);
         }
       }
       if (data.registrationNumber !== undefined) {
-        businessUpdates.push(`registration_number = $${index++}`);
-        values.push(data.registrationNumber);
+        businessUpdates.push(`registration_number = $${businessIndex++}`);
+        businessValues.push(data.registrationNumber);
       }
       if (data.taxId !== undefined) {
-        businessUpdates.push(`tax_id = $${index++}`);
-        values.push(data.taxId);
+        businessUpdates.push(`tax_id = $${businessIndex++}`);
+        businessValues.push(data.taxId);
+      }
+    } else {
+      // Non-admin users can only update phone and address
+      if (data.phone !== undefined) {
+        userUpdates.push(`phone = $${userIndex++}`);
+        userValues.push(data.phone);
+      }
+      if (data.address !== undefined) {
+        userUpdates.push(`address = $${userIndex++}`);
+        userValues.push(data.address);
       }
     }
 
-    if (userUpdates.length === 0 && businessUpdates.length === 0) {
-      throw new Error('No valid fields to update');
-    }
-
-    values.push(id);
-
-    // Update users table
+    // Execute user update
     if (userUpdates.length > 0) {
       userUpdates.push(`updated_at = NOW()`);
+      userValues.push(id);
+      
       await pool.query(
         `UPDATE users 
          SET ${userUpdates.join(', ')}
-         WHERE id = $${index} AND role = 'business'`,
-        values
+         WHERE id = $${userValues.length} AND role = 'business'`,
+        userValues
       );
     }
 
-    // Update business_users table
-    if (businessUpdates.length > 0) {
+    // Execute business update (admin only)
+    if (businessUpdates.length > 0 && currentUserRole === 'admin') {
       businessUpdates.push(`updated_at = NOW()`);
+      businessValues.push(id);
+      
       await pool.query(
         `UPDATE business_users 
          SET ${businessUpdates.join(', ')}
-         WHERE user_id = $${index}`,
-        values
+         WHERE user_id = $${businessValues.length}`,
+        businessValues
       );
     }
 
