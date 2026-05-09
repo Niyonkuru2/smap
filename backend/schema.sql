@@ -3,6 +3,50 @@
 -- Smart Market Price Monitoring and Prediction System
 -- =============================================
 
+-- =============================================
+-- 1. CATEGORIES SYSTEM (Create FIRST - before any table that references it)
+-- =============================================
+
+DROP TABLE IF EXISTS subscription_expiry_notifications CASCADE;
+DROP TABLE IF EXISTS ad_statistics CASCADE;
+DROP TABLE IF EXISTS vendor_advertisements CASCADE;
+DROP TABLE IF EXISTS subscription_payments CASCADE;
+DROP TABLE IF EXISTS user_subscriptions CASCADE;
+DROP TABLE IF EXISTS subscription_plans CASCADE;
+DROP TABLE IF EXISTS user_price_alerts CASCADE;
+DROP TABLE IF EXISTS favorites CASCADE;
+DROP TABLE IF EXISTS price_change_history CASCADE;
+DROP TABLE IF EXISTS price_history CASCADE;
+DROP TABLE IF EXISTS prices CASCADE;
+DROP TABLE IF EXISTS business_markets CASCADE;
+DROP TABLE IF EXISTS business_users CASCADE;
+DROP TABLE IF EXISTS products CASCADE;
+DROP TABLE IF EXISTS markets CASCADE;
+DROP TABLE IF EXISTS pending_approvals CASCADE;
+DROP TABLE IF EXISTS reports CASCADE;
+DROP TABLE IF EXISTS vendor_metrics CASCADE;
+DROP TABLE IF EXISTS notifications CASCADE;
+DROP TABLE IF EXISTS sessions CASCADE;
+DROP TABLE IF EXISTS verification_codes CASCADE;
+DROP TABLE IF EXISTS users CASCADE;
+DROP TABLE IF EXISTS categories CASCADE;
+
+-- Categories table (for products, vendors, and businesses)
+CREATE TABLE IF NOT EXISTS categories (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) UNIQUE NOT NULL,
+    description TEXT,
+    type VARCHAR(50) DEFAULT 'product' CHECK (type IN ('product', 'vendor', 'business', 'all')),
+    parent_id INTEGER REFERENCES categories(id) ON DELETE SET NULL,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- =============================================
+-- 2. USERS & AUTHENTICATION
+-- =============================================
+
 -- Users table (Enhanced)
 CREATE TABLE IF NOT EXISTS users (
     id SERIAL PRIMARY KEY,
@@ -15,8 +59,7 @@ CREATE TABLE IF NOT EXISTS users (
     province VARCHAR(100),
     district VARCHAR(100),
     address TEXT,
-    category VARCHAR(100),
-
+    category_id INTEGER REFERENCES categories(id) ON DELETE SET NULL,
     verified BOOLEAN DEFAULT FALSE,
     avatar_url TEXT,
     is_active BOOLEAN DEFAULT TRUE,
@@ -46,18 +89,19 @@ CREATE TABLE IF NOT EXISTS sessions (
 );
 
 -- =============================================
--- 2. PRODUCTS & MARKETS
+-- 3. PRODUCTS & MARKETS
 -- =============================================
 
--- Products table
+-- Products table (with category relationship)
 CREATE TABLE IF NOT EXISTS products (
     id SERIAL PRIMARY KEY,
     name VARCHAR(255) UNIQUE NOT NULL,
-    category VARCHAR(100) NOT NULL,
+    category_id INTEGER REFERENCES categories(id) ON DELETE SET NULL,
     unit VARCHAR(50) NOT NULL,
     description TEXT,
     image_url TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Markets table
@@ -68,11 +112,44 @@ CREATE TABLE IF NOT EXISTS markets (
     district VARCHAR(100) NOT NULL,
     latitude DECIMAL(10, 8),
     longitude DECIMAL(11, 8),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- =============================================
--- 3. PRICE MANAGEMENT
+-- 4. BUSINESS USERS (Separate table for business info)
+-- =============================================
+
+-- Business users table (extends users table)
+CREATE TABLE IF NOT EXISTS business_users (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE UNIQUE,
+    business_name VARCHAR(255) NOT NULL,
+    owner_name VARCHAR(255) NOT NULL,
+    business_type VARCHAR(100),
+    category_id INTEGER REFERENCES categories(id) ON DELETE SET NULL,
+    registration_number VARCHAR(100) UNIQUE,
+    tax_id VARCHAR(100) UNIQUE,
+    tier VARCHAR(50) DEFAULT 'basic' CHECK (tier IN ('basic', 'premium', 'enterprise')),
+    status VARCHAR(50) DEFAULT 'pending' CHECK (status IN ('active', 'inactive', 'pending', 'suspended')),
+    total_purchases INTEGER DEFAULT 0,
+    total_spent DECIMAL(15, 2) DEFAULT 0,
+    rating DECIMAL(3, 2) DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Business markets (many-to-many relationship)
+CREATE TABLE IF NOT EXISTS business_markets (
+    id SERIAL PRIMARY KEY,
+    business_id INTEGER REFERENCES business_users(id) ON DELETE CASCADE,
+    market_id VARCHAR(100) REFERENCES markets(id) ON DELETE CASCADE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(business_id, market_id)
+);
+
+-- =============================================
+-- 5. PRICE MANAGEMENT
 -- =============================================
 
 -- Prices table with enhanced tracking
@@ -122,7 +199,7 @@ CREATE TABLE IF NOT EXISTS price_change_history (
 );
 
 -- =============================================
--- 4. USER FAVORITES & ALERTS
+-- 6. USER FAVORITES & ALERTS
 -- =============================================
 
 -- Favorites table
@@ -155,7 +232,7 @@ CREATE TABLE IF NOT EXISTS user_price_alerts (
 );
 
 -- =============================================
--- 5. SUBSCRIPTION SYSTEM
+-- 7. SUBSCRIPTION SYSTEM
 -- =============================================
 
 -- Subscription plans
@@ -171,7 +248,8 @@ CREATE TABLE IF NOT EXISTS subscription_plans (
     featured_listing BOOLEAN DEFAULT FALSE,
     analytics_access BOOLEAN DEFAULT FALSE,
     is_active BOOLEAN DEFAULT TRUE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- User subscriptions
@@ -206,8 +284,16 @@ CREATE TABLE IF NOT EXISTS subscription_payments (
     receipt_url TEXT
 );
 
+-- Subscription expiry notifications tracking
+CREATE TABLE IF NOT EXISTS subscription_expiry_notifications (
+    id SERIAL PRIMARY KEY,
+    subscription_id INTEGER REFERENCES user_subscriptions(id) ON DELETE CASCADE,
+    notified_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(subscription_id)
+);
+
 -- =============================================
--- 6. ADVERTISEMENT SYSTEM
+-- 8. ADVERTISEMENT SYSTEM
 -- =============================================
 
 -- Vendor advertisements
@@ -245,7 +331,7 @@ CREATE TABLE IF NOT EXISTS ad_statistics (
 );
 
 -- =============================================
--- 7. NOTIFICATION SYSTEM
+-- 9. NOTIFICATION SYSTEM
 -- =============================================
 
 -- Notifications table (Enhanced)
@@ -268,16 +354,10 @@ CREATE TABLE IF NOT EXISTS notifications (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE IF NOT EXISTS subscription_expiry_notifications (
-    id SERIAL PRIMARY KEY,
-    subscription_id INTEGER REFERENCES user_subscriptions(id) ON DELETE CASCADE,
-    notified_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(subscription_id)
-);
 -- Pending approvals tracking
 CREATE TABLE IF NOT EXISTS pending_approvals (
     id SERIAL PRIMARY KEY,
-    entity_type VARCHAR(50) CHECK (entity_type IN ('price', 'advertisement', 'vendor_registration')),
+    entity_type VARCHAR(50) CHECK (entity_type IN ('price', 'advertisement', 'vendor_registration', 'business_registration')),
     entity_id INTEGER NOT NULL,
     vendor_id INTEGER REFERENCES users(id),
     submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -289,7 +369,7 @@ CREATE TABLE IF NOT EXISTS pending_approvals (
 );
 
 -- =============================================
--- 8. REPORTING & ANALYTICS
+-- 10. REPORTING & ANALYTICS
 -- =============================================
 
 -- Reports table
@@ -327,13 +407,31 @@ CREATE TABLE IF NOT EXISTS vendor_metrics (
 );
 
 -- =============================================
--- 9. PERFORMANCE INDEXES
+-- 11. PERFORMANCE INDEXES
 -- =============================================
 
 -- User indexes
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
 CREATE INDEX IF NOT EXISTS idx_users_market ON users(market_id);
+CREATE INDEX IF NOT EXISTS idx_users_category ON users(category_id);
+
+-- Category indexes
+CREATE INDEX IF NOT EXISTS idx_categories_name ON categories(name);
+CREATE INDEX IF NOT EXISTS idx_categories_parent ON categories(parent_id);
+
+-- Business users indexes
+CREATE INDEX IF NOT EXISTS idx_business_users_user ON business_users(user_id);
+CREATE INDEX IF NOT EXISTS idx_business_users_status ON business_users(status);
+CREATE INDEX IF NOT EXISTS idx_business_users_tier ON business_users(tier);
+CREATE INDEX IF NOT EXISTS idx_business_users_registration ON business_users(registration_number);
+
+-- Business markets indexes
+CREATE INDEX IF NOT EXISTS idx_business_markets_business ON business_markets(business_id);
+CREATE INDEX IF NOT EXISTS idx_business_markets_market ON business_markets(market_id);
+
+-- Product indexes
+CREATE INDEX IF NOT EXISTS idx_products_category ON products(category_id);
 
 -- Price indexes
 CREATE INDEX IF NOT EXISTS idx_prices_product ON prices(product_id);
@@ -374,68 +472,116 @@ CREATE INDEX IF NOT EXISTS idx_vendor_advertisements_dates ON vendor_advertiseme
 CREATE INDEX IF NOT EXISTS idx_vendor_metrics_vendor ON vendor_metrics(vendor_id, month_year);
 
 -- =============================================
--- 10. INITIAL DATA SEEDING
+-- 12. INITIAL DATA SEEDING (SIMPLIFIED - NO type column reference)
 -- =============================================
 
--- Insert subscription plans (using DO block to handle conflicts)
-DO $$
-BEGIN
-    IF NOT EXISTS (SELECT 1 FROM subscription_plans WHERE name = 'Basic') THEN
-        INSERT INTO subscription_plans (name, description, price, duration_days, max_products, max_price_submissions, priority_support, featured_listing, analytics_access) VALUES
-        ('Basic', 'For small vendors starting out', 29.99, 30, 50, 100, false, false, false),
-        ('Premium', 'For established vendors', 99.99, 30, 200, 500, true, true, false),
-        ('Enterprise', 'For large businesses', 299.99, 30, NULL, NULL, true, true, true);
-    END IF;
-END $$;
+-- Insert categories (without type column since it doesn't exist in your categories table)
+INSERT INTO categories (name, description) VALUES
+('Grains', 'Cereal grains and grain products'),
+('Legumes', 'Beans, lentils, and pulses'),
+('Vegetables', 'Fresh and processed vegetables'),
+('Fruits', 'Fresh and dried fruits'),
+('Proteins', 'Meat, fish, eggs, and dairy'),
+('Cooking Essentials', 'Oil, salt, sugar, and spices'),
+('Agriculture', 'Farming and agricultural products'),
+('Retail', 'Retail stores and supermarkets'),
+('Wholesale', 'Wholesale distributors'),
+('Hospitality', 'Hotels, restaurants, and catering'),
+('Manufacturing', 'Food processing and manufacturing'),
+('Services', 'Business and professional services')
+ON CONFLICT (name) DO NOTHING;
 
--- Insert default products (using DO block to handle conflicts)
-DO $$
-BEGIN
-    IF NOT EXISTS (SELECT 1 FROM products WHERE name = 'Maize/Corn') THEN
-        INSERT INTO products (name, category, unit) VALUES
-        ('Maize/Corn', 'Grains', 'kg'),
-        ('Maize Flour', 'Grains', 'kg'),
-        ('Rice (White)', 'Grains', 'kg'),
-        ('Rice (Brown)', 'Grains', 'kg'),
-        ('Wheat Flour', 'Grains', 'kg'),
-        ('Beans', 'Legumes', 'kg'),
-        ('Lentils', 'Legumes', 'kg'),
-        ('Tomatoes', 'Vegetables', 'kg'),
-        ('Onions', 'Vegetables', 'kg'),
-        ('Potatoes', 'Vegetables', 'kg'),
-        ('Cabbage', 'Vegetables', 'piece'),
-        ('Carrots', 'Vegetables', 'kg'),
-        ('Spinach', 'Vegetables', 'bunch'),
-        ('Eggs', 'Proteins', 'tray'),
-        ('Chicken', 'Proteins', 'kg'),
-        ('Fish', 'Proteins', 'kg'),
-        ('Milk', 'Proteins', 'liter'),
-        ('Bananas', 'Fruits', 'bunch'),
-        ('Oranges', 'Fruits', 'kg'),
-        ('Mangoes', 'Fruits', 'kg'),
-        ('Avocado', 'Fruits', 'piece'),
-        ('Cooking Oil', 'Cooking Essentials', 'liter'),
-        ('Salt', 'Cooking Essentials', 'kg'),
-        ('Sugar', 'Cooking Essentials', 'kg'),
-        ('Garlic', 'Cooking Essentials', 'kg'),
-        ('Ginger', 'Cooking Essentials', 'kg');
-    END IF;
-END $$;
+-- Insert subscription plans
+INSERT INTO subscription_plans (name, description, price, duration_days, max_products, max_price_submissions, priority_support, featured_listing, analytics_access) VALUES
+('Basic', 'For small vendors starting out', 0, 30, 50, 100, false, false, false),
+('Premium', 'For established vendors', 25000, 30, 200, 500, true, true, false),
+('Enterprise', 'For large businesses', 75000, 30, NULL, NULL, true, true, true)
+ON CONFLICT (name) DO NOTHING;
 
--- Insert default markets (using DO block to handle conflicts)
-DO $$
+-- Insert default products
+INSERT INTO products (name, unit) VALUES
+('Maize/Corn', 'kg'),
+('Maize Flour', 'kg'),
+('Rice (White)', 'kg'),
+('Rice (Brown)', 'kg'),
+('Wheat Flour', 'kg'),
+('Beans', 'kg'),
+('Lentils', 'kg'),
+('Tomatoes', 'kg'),
+('Onions', 'kg'),
+('Potatoes', 'kg'),
+('Cabbage', 'piece'),
+('Carrots', 'kg'),
+('Spinach', 'bunch'),
+('Eggs', 'tray'),
+('Chicken', 'kg'),
+('Fish', 'kg'),
+('Milk', 'liter'),
+('Bananas', 'bunch'),
+('Oranges', 'kg'),
+('Mangoes', 'kg'),
+('Avocado', 'piece'),
+('Cooking Oil', 'liter'),
+('Salt', 'kg'),
+('Sugar', 'kg'),
+('Garlic', 'kg'),
+('Ginger', 'kg')
+ON CONFLICT (name) DO NOTHING;
+
+-- Insert default markets
+INSERT INTO markets (id, name, province, district, latitude, longitude) VALUES
+('nyarugenge', 'Nyarugenge Market', 'Kigali City', 'Nyarugenge', -1.9536, 30.0606),
+('kimironko', 'Kimironko Market', 'Kigali City', 'Gasabo', -1.9394, 30.1027),
+('kicukiro', 'Kicukiro Market', 'Kigali City', 'Kicukiro', -1.9867, 30.0644),
+('musanze', 'Musanze Modern Market', 'Northern', 'Musanze', -1.4994, 29.6350),
+('rubavu', 'Gisenyi Market', 'Western', 'Rubavu', -1.6778, 29.2561),
+('huye', 'Huye Central Market', 'Southern', 'Huye', -2.5964, 29.7394),
+('rwamagana', 'Rwamagana Market', 'Eastern', 'Rwamagana', -1.9494, 30.4344)
+ON CONFLICT (id) DO NOTHING;
+
+-- =============================================
+-- 13. TRIGGERS FOR UPDATED_AT
+-- =============================================
+
+-- Function to update updated_at column
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM markets WHERE id = 'nyarugenge') THEN
-        INSERT INTO markets (id, name, province, district, latitude, longitude) VALUES
-        ('nyarugenge', 'Nyarugenge Market', 'Kigali City', 'Nyarugenge', -1.9536, 30.0606),
-        ('kimironko', 'Kimironko Market', 'Kigali City', 'Gasabo', -1.9394, 30.1027),
-        ('kicukiro', 'Kicukiro Market', 'Kigali City', 'Kicukiro', -1.9867, 30.0644),
-        ('musanze', 'Musanze Modern Market', 'Northern', 'Musanze', -1.4994, 29.6350),
-        ('rubavu', 'Gisenyi Market', 'Western', 'Rubavu', -1.6778, 29.2561),
-        ('huye', 'Huye Central Market', 'Southern', 'Huye', -2.5964, 29.7394),
-        ('rwamagana', 'Rwamagana Market', 'Eastern', 'Rwamagana', -1.9494, 30.4344);
-    END IF;
-END $$;
+    NEW.updated_at = CURRENT_TIMESTAMP;
+    RETURN NEW;
+END;
+$$ language 'plpgsql';
+
+-- Create triggers for tables with updated_at
+DROP TRIGGER IF EXISTS update_users_updated_at ON users;
+CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_categories_updated_at ON categories;
+CREATE TRIGGER update_categories_updated_at BEFORE UPDATE ON categories FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_products_updated_at ON products;
+CREATE TRIGGER update_products_updated_at BEFORE UPDATE ON products FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_markets_updated_at ON markets;
+CREATE TRIGGER update_markets_updated_at BEFORE UPDATE ON markets FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_prices_updated_at ON prices;
+CREATE TRIGGER update_prices_updated_at BEFORE UPDATE ON prices FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_user_price_alerts_updated_at ON user_price_alerts;
+CREATE TRIGGER update_user_price_alerts_updated_at BEFORE UPDATE ON user_price_alerts FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_subscription_plans_updated_at ON subscription_plans;
+CREATE TRIGGER update_subscription_plans_updated_at BEFORE UPDATE ON subscription_plans FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_user_subscriptions_updated_at ON user_subscriptions;
+CREATE TRIGGER update_user_subscriptions_updated_at BEFORE UPDATE ON user_subscriptions FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_business_users_updated_at ON business_users;
+CREATE TRIGGER update_business_users_updated_at BEFORE UPDATE ON business_users FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_vendor_advertisements_updated_at ON vendor_advertisements;
+CREATE TRIGGER update_vendor_advertisements_updated_at BEFORE UPDATE ON vendor_advertisements FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- =============================================
 -- SUCCESS MESSAGE
