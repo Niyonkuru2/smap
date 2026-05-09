@@ -1,5 +1,5 @@
 // src/repositories/priceRepository.js
-import pool from '../config/database.js';  // Using default import like UserRepository
+import pool from '../config/database.js';  
 import { 
     recordPrice, 
     getHistory, 
