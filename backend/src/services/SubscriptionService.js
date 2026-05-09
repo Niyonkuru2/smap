@@ -48,62 +48,177 @@ class SubscriptionService {
         return result.rows[0];
     }
 
-    /**
-     * Create new subscription plan (Admin only)
-     */
-    async createPlan(planData) {
-        const { name, description, price, duration_days, max_products, 
-                max_price_submissions, priority_support, featured_listing, 
-                analytics_access } = planData;
+  /**
+ * Create new subscription plan (Admin only)
+ */
+async createPlan(planData) {
+    const { 
+        name, description, price, duration_days, 
+        max_products, max_price_submissions, 
+        priority_support, featured_listing, analytics_access 
+    } = planData;
 
-        const result = await pool.query(
-            `INSERT INTO subscription_plans 
-             (name, description, price, duration_days, max_products, 
-              max_price_submissions, priority_support, featured_listing, analytics_access)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-             RETURNING *`,
-            [name, description, price, duration_days, max_products || null, 
-             max_price_submissions || null, priority_support || false, 
-             featured_listing || false, analytics_access || false]
-        );
-        
-        return result.rows[0];
+    // Validate required fields
+    if (!name || name.trim() === '') {
+        throw new Error('Plan name is required');
+    }
+    
+    if (price === undefined || price === null) {
+        throw new Error('Price is required');
+    }
+    
+    if (!duration_days || duration_days <= 0) {
+        throw new Error('Valid duration is required');
     }
 
-    /**
-     * Update subscription plan (Admin only)
-     */
-    async updatePlan(planId, planData) {
-        const updates = [];
-        const values = [];
-        let index = 1;
+    // Convert and validate price
+    const validPrice = parseFloat(price);
+    if (isNaN(validPrice) || validPrice < 0) {
+        throw new Error('Invalid price value');
+    }
 
-        const allowedFields = ['name', 'description', 'price', 'duration_days', 
-                               'max_products', 'max_price_submissions', 'priority_support',
-                               'featured_listing', 'analytics_access', 'is_active'];
+    // Convert and validate duration
+    const validDuration = parseInt(duration_days);
+    if (isNaN(validDuration) || validDuration <= 0) {
+        throw new Error('Invalid duration value');
+    }
 
-        for (const field of allowedFields) {
-            if (planData[field] !== undefined) {
-                updates.push(`${field} = $${index}`);
-                values.push(planData[field]);
-                index++;
+    // Handle max_products (null for unlimited)
+    let validMaxProducts = null;
+    if (max_products !== null && max_products !== undefined && max_products !== 0 && max_products !== '') {
+        validMaxProducts = parseInt(max_products);
+        if (isNaN(validMaxProducts)) validMaxProducts = null;
+    }
+
+    // Handle max_price_submissions (null for unlimited)
+    let validMaxSubmissions = null;
+    if (max_price_submissions !== null && max_price_submissions !== undefined && max_price_submissions !== 0 && max_price_submissions !== '') {
+        validMaxSubmissions = parseInt(max_price_submissions);
+        if (isNaN(validMaxSubmissions)) validMaxSubmissions = null;
+    }
+
+    const result = await pool.query(
+        `INSERT INTO subscription_plans 
+         (name, description, price, duration_days, max_products, 
+          max_price_submissions, priority_support, featured_listing, analytics_access, 
+          is_active, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, true, NOW(), NOW())
+         RETURNING *`,
+        [
+            name.trim(), 
+            description || '', 
+            validPrice, 
+            validDuration,
+            validMaxProducts,
+            validMaxSubmissions,
+            priority_support === true,
+            featured_listing === true,
+            analytics_access === true
+        ]
+    );
+    
+    return result.rows[0];
+}
+
+/**
+ * Update subscription plan (Admin only)
+ */
+async updatePlan(planId, planData) {
+    const updates = [];
+    const values = [];
+    let index = 1;
+
+    const allowedFields = [
+        'name', 'description', 'price', 'duration_days', 
+        'max_products', 'max_price_submissions', 'priority_support',
+        'featured_listing', 'analytics_access', 'is_active'
+    ];
+
+    for (const field of allowedFields) {
+        if (planData[field] !== undefined && planData[field] !== null) {
+            let value = planData[field];
+            
+            // Handle different field types
+            switch (field) {
+                case 'name':
+                    if (value && typeof value === 'string') {
+                        value = value.trim();
+                        if (value === '') {
+                            throw new Error('Plan name cannot be empty');
+                        }
+                    }
+                    break;
+                    
+                case 'price':
+                    value = parseFloat(value);
+                    if (isNaN(value) || value < 0) {
+                        throw new Error('Invalid price value');
+                    }
+                    break;
+                    
+                case 'duration_days':
+                    value = parseInt(value);
+                    if (isNaN(value) || value <= 0) {
+                        throw new Error('Invalid duration value');
+                    }
+                    break;
+                    
+                case 'max_products':
+                case 'max_price_submissions':
+                    // Convert empty/null/0 to null for unlimited
+                    if (value === null || value === undefined || value === 0 || value === '' || value === '0') {
+                        value = null;
+                    } else {
+                        value = parseInt(value);
+                        if (isNaN(value)) value = null;
+                    }
+                    break;
+                    
+                case 'priority_support':
+                case 'featured_listing':
+                case 'analytics_access':
+                case 'is_active':
+                    value = value === true || value === 'true' || value === 1;
+                    break;
+                    
+                default:
+                    // description field - keep as is
+                    if (field === 'description') {
+                        value = value || '';
+                    }
+                    break;
             }
+            
+            updates.push(`${field} = $${index}`);
+            values.push(value);
+            index++;
         }
-
-        if (updates.length === 0) return null;
-
-        values.push(planId);
-        
-        const result = await pool.query(
-            `UPDATE subscription_plans 
-             SET ${updates.join(', ')}, updated_at = NOW()
-             WHERE id = $${index}
-             RETURNING *`,
-            values
-        );
-        
-        return result.rows[0];
     }
+
+    if (updates.length === 0) {
+        throw new Error('No valid fields to update');
+    }
+
+    // Add updated_at timestamp
+    updates.push(`updated_at = NOW()`);
+    
+    values.push(planId);
+    
+    const query = `
+        UPDATE subscription_plans 
+        SET ${updates.join(', ')}
+        WHERE id = $${index}
+        RETURNING *
+    `;
+    
+    const result = await pool.query(query, values);
+    
+    if (result.rows.length === 0) {
+        throw new Error('Plan not found');
+    }
+    
+    return result.rows[0];
+}
 
     /**
      * Delete (deactivate) subscription plan (Admin only)

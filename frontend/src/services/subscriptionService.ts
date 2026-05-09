@@ -170,9 +170,27 @@ export const getPlanById = async (planId: number): Promise<SubscriptionPlan | nu
  * Create new plan (Admin only)
  */
 export const createPlan = async (planData: Omit<SubscriptionPlan, 'id' | 'created_at' | 'is_active'>): Promise<SubscriptionPlan> => {
+  const cleanedData: any = {
+    name: planData.name,
+    description: planData.description || '',
+    price: Number(planData.price),
+    duration_days: Number(planData.duration_days),
+    priority_support: Boolean(planData.priority_support),
+    featured_listing: Boolean(planData.featured_listing),
+    analytics_access: Boolean(planData.analytics_access)
+  };
+  
+  if (planData.max_products !== null && planData.max_products !== undefined && planData.max_products > 0) {
+    cleanedData.max_products = Number(planData.max_products);
+  }
+
+  if (planData.max_price_submissions !== null && planData.max_price_submissions !== undefined && planData.max_price_submissions > 0) {
+    cleanedData.max_price_submissions = Number(planData.max_price_submissions);
+  }
+  
   const response = await axios.post(
     `${SUBSCRIPTION_URL}/admin/plans`,
-    planData,
+    cleanedData,
     { headers: getAuthHeaders() }
   );
   
@@ -187,9 +205,41 @@ export const createPlan = async (planData: Omit<SubscriptionPlan, 'id' | 'create
  * Update plan (Admin only)
  */
 export const updatePlan = async (planId: number, planData: Partial<SubscriptionPlan>): Promise<SubscriptionPlan> => {
+  // Prepare data for API
+  const cleanedData: any = {};
+  
+  if (planData.name !== undefined) cleanedData.name = planData.name;
+  if (planData.description !== undefined) cleanedData.description = planData.description;
+  if (planData.price !== undefined) cleanedData.price = Number(planData.price);
+  if (planData.duration_days !== undefined) cleanedData.duration_days = Number(planData.duration_days);
+  if (planData.priority_support !== undefined) cleanedData.priority_support = Boolean(planData.priority_support);
+  if (planData.featured_listing !== undefined) cleanedData.featured_listing = Boolean(planData.featured_listing);
+  if (planData.analytics_access !== undefined) cleanedData.analytics_access = Boolean(planData.analytics_access);
+  if (planData.is_active !== undefined) cleanedData.is_active = planData.is_active;
+  
+  // Handle max_products
+  if (planData.max_products !== undefined) {
+    if (planData.max_products !== null && planData.max_products > 0) {
+      cleanedData.max_products = Number(planData.max_products);
+    } else {
+      // If null or 0, don't send the field (backend will treat as unlimited)
+      // Or send null if backend expects it
+      cleanedData.max_products = null;
+    }
+  }
+  
+  // Handle max_price_submissions
+  if (planData.max_price_submissions !== undefined) {
+    if (planData.max_price_submissions !== null && planData.max_price_submissions > 0) {
+      cleanedData.max_price_submissions = Number(planData.max_price_submissions);
+    } else {
+      cleanedData.max_price_submissions = null;
+    }
+  }
+  
   const response = await axios.put(
     `${SUBSCRIPTION_URL}/admin/plans/${planId}`,
-    planData,
+    cleanedData,
     { headers: getAuthHeaders() }
   );
   
