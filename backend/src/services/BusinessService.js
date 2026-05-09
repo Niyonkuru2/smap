@@ -15,15 +15,17 @@ class BusinessService {
   static async getOrCreateCategory(categoryName, categoryType = 'business') {
     if (!categoryName) return null;
 
+    // First check if category exists with exact name (regardless of type)
     const existingCategory = await pool.query(
-      'SELECT id FROM categories WHERE LOWER(name) = LOWER($1) AND type = $2',
-      [categoryName, categoryType]
+      'SELECT id FROM categories WHERE LOWER(name) = LOWER($1)',
+      [categoryName]
     );
 
     if (existingCategory.rows.length > 0) {
       return existingCategory.rows[0].id;
     }
 
+    // If not exists, create new category
     const newCategory = await pool.query(
       `INSERT INTO categories (name, type, is_active) 
        VALUES ($1, $2, true) 
@@ -73,8 +75,9 @@ class BusinessService {
       }
     }
 
-    // Get or create category
-    const categoryId = await this.getOrCreateCategory(category || businessType, 'business');
+    // Get or create category (use businessType if category not provided)
+    const categoryToUse = category || businessType;
+    const categoryId = await this.getOrCreateCategory(categoryToUse, 'business');
 
     const plainPassword = this.generatePassword();
     const hashedPassword = await bcrypt.hash(plainPassword, 10);

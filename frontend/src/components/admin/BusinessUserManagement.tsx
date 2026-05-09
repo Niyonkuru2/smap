@@ -1,4 +1,4 @@
-// BusinessUserManagement.tsx
+// BusinessUserManagement.tsx - Updated to use API
 import { useState, useEffect } from 'react';
 import { Button } from '../ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
@@ -12,31 +12,30 @@ import { useLanguage } from '../../contexts/LanguageContext';
 import { 
   Plus, Pencil, Trash2, Briefcase, Mail, Phone, MapPin, 
   CheckCircle, XCircle, Building2, User, Calendar, 
-  TrendingUp, DollarSign, AlertCircle 
+  TrendingUp, DollarSign, AlertCircle, Loader2, RefreshCw
 } from 'lucide-react';
 import { toast } from 'sonner';
-
-interface BusinessUser {
-  id: string;
-  businessName: string;
-  ownerName: string;
-  email: string;
-  phone: string;
-  address: string;
-  businessType: string;
-  registrationNumber: string;
-  taxId: string;
-  status: 'active' | 'inactive' | 'pending' | 'suspended';
-  tier: 'basic' | 'premium' | 'enterprise';
-  joinDate: string;
-  totalPurchases: number;
-  totalSpent: number;
-  rating: number;
-  markets: string[];
-}
+import {
+  getAllBusinesses,
+  createBusiness,
+  updateBusiness,
+  deleteBusiness,
+  getBusinessStats,
+  formatCurrency,
+  getBusinessStatusColor,
+  getTierColor,
+  type BusinessUser,
+  type BusinessStats
+} from '../../services/businessService';
+import { getAllCategories, type Category } from '../../services/categoryService';
 
 export default function BusinessUserManagement() {
+  const { t } = useLanguage();
   const [businessUsers, setBusinessUsers] = useState<BusinessUser[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [stats, setStats] = useState<BusinessStats | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
   const [editingBusiness, setEditingBusiness] = useState<BusinessUser | null>(null);
@@ -44,68 +43,54 @@ export default function BusinessUserManagement() {
   const [formData, setFormData] = useState<Partial<BusinessUser>>({});
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
-  const { t } = useLanguage();
 
-  // Mock data - replace with actual API calls
+  // Fetch data
   useEffect(() => {
-    const mockBusinessUsers: BusinessUser[] = [
-      {
-        id: '1',
-        businessName: 'Rwanda Fresh Produce Ltd',
-        ownerName: 'Jean Paul Ndagijimana',
-        email: 'contact@rwandafresh.rw',
-        phone: '+250 788 123 456',
-        address: 'KG 123 St, Kigali, Rwanda',
-        businessType: 'Agriculture',
-        registrationNumber: 'REG-2024-001',
-        taxId: 'TAX-123456',
-        status: 'active',
-        tier: 'premium',
-        joinDate: '2024-01-15',
-        totalPurchases: 1250,
-        totalSpent: 24500000,
-        rating: 4.8,
-        markets: ['Kimironko', 'Nyabugogo', 'Kicukiro']
-      },
-      {
-        id: '2',
-        businessName: 'Kigali Supermarket Chain',
-        ownerName: 'Marie Claire Uwase',
-        email: 'info@kigalisupermarket.rw',
-        phone: '+250 788 789 012',
-        address: 'KN 5 Rd, Kigali, Rwanda',
-        businessType: 'Retail',
-        registrationNumber: 'REG-2024-002',
-        taxId: 'TAX-789012',
-        status: 'active',
-        tier: 'enterprise',
-        joinDate: '2024-02-20',
-        totalPurchases: 3450,
-        totalSpent: 78200000,
-        rating: 4.9,
-        markets: ['Kimironko', 'Nyabugogo', 'Muhima', 'Remera', 'Gikondo']
-      },
-      {
-        id: '3',
-        businessName: 'Volcanoes Hospitality Group',
-        ownerName: 'Emmanuel Rukundo',
-        email: 'emmanuel@volcanoes.rw',
-        phone: '+250 788 345 678',
-        address: 'Musanze, Northern Province',
-        businessType: 'Hospitality',
-        registrationNumber: 'REG-2024-003',
-        taxId: 'TAX-345678',
-        status: 'pending',
-        tier: 'basic',
-        joinDate: '2024-03-10',
-        totalPurchases: 0,
-        totalSpent: 0,
-        rating: 0,
-        markets: ['Musanze', 'Ruhengeri']
-      }
-    ];
-    setBusinessUsers(mockBusinessUsers);
+    fetchAllData();
   }, []);
+
+  const fetchAllData = async () => {
+    setIsLoading(true);
+    try {
+      await Promise.all([
+        fetchBusinesses(),
+        fetchCategories(),
+        fetchStats()
+      ]);
+    } catch (error) {
+      console.error('Error fetching data:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const fetchBusinesses = async () => {
+    try {
+      const data = await getAllBusinesses();
+      setBusinessUsers(data);
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Failed to load businesses');
+    }
+  };
+
+  const fetchCategories = async () => {
+    try {
+      const allCategories = await getAllCategories();
+      const businessCategories = allCategories.filter(c => c.type === 'business');
+      setCategories(businessCategories);
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+    }
+  };
+
+  const fetchStats = async () => {
+    try {
+      const data = await getBusinessStats();
+      setStats(data);
+    } catch (error) {
+      console.error('Error fetching stats:', error);
+    }
+  };
 
   const handleAddBusiness = () => {
     setEditingBusiness(null);
@@ -119,8 +104,7 @@ export default function BusinessUserManagement() {
       registrationNumber: '',
       taxId: '',
       status: 'pending',
-      tier: 'basic',
-      markets: []
+      tier: 'basic'
     });
     setIsDialogOpen(true);
   };
@@ -138,8 +122,14 @@ export default function BusinessUserManagement() {
 
   const handleDeleteBusiness = async (businessId: string) => {
     if (window.confirm('Are you sure you want to delete this business user?')) {
-      setBusinessUsers(businessUsers.filter(b => b.id !== businessId));
-      toast.success('Business user deleted successfully');
+      try {
+        await deleteBusiness(businessId);
+        toast.success('Business user deleted successfully');
+        await fetchBusinesses();
+        await fetchStats();
+      } catch (error: any) {
+        toast.error(error.response?.data?.message || 'Failed to delete business');
+      }
     }
   };
 
@@ -149,65 +139,69 @@ export default function BusinessUserManagement() {
       return;
     }
 
-    if (editingBusiness) {
-      // Update existing business
-      setBusinessUsers(businessUsers.map(b => 
-        b.id === editingBusiness.id ? { ...b, ...formData as BusinessUser } : b
-      ));
-      toast.success('Business user updated successfully');
-    } else {
-      // Add new business
-      const newBusiness: BusinessUser = {
-        id: Date.now().toString(),
-        ...formData as BusinessUser,
-        joinDate: new Date().toISOString().split('T')[0],
-        totalPurchases: 0,
-        totalSpent: 0,
-        rating: 0,
-        markets: formData.markets || []
-      };
-      setBusinessUsers([...businessUsers, newBusiness]);
-      toast.success('Business user added successfully');
+    setIsSaving(true);
+    try {
+      if (editingBusiness) {
+        await updateBusiness(editingBusiness.id, {
+          businessName: formData.businessName,
+          ownerName: formData.ownerName,
+          phone: formData.phone,
+          address: formData.address,
+          businessType: formData.businessType,
+          registrationNumber: formData.registrationNumber,
+          taxId: formData.taxId,
+          tier: formData.tier,
+          status: formData.status
+        });
+        toast.success('Business user updated successfully');
+      } else {
+        await createBusiness({
+          businessName: formData.businessName!,
+          ownerName: formData.ownerName!,
+          email: formData.email!,
+          phone: formData.phone,
+          address: formData.address,
+          businessType: formData.businessType,
+          registrationNumber: formData.registrationNumber,
+          taxId: formData.taxId,
+          tier: formData.tier || 'basic',
+          status: formData.status || 'pending'
+        });
+        toast.success('Business user added successfully');
+      }
+      
+      setIsDialogOpen(false);
+      setEditingBusiness(null);
+      setFormData({});
+      await fetchBusinesses();
+      await fetchStats();
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || (editingBusiness ? 'Failed to update business' : 'Failed to add business'));
+    } finally {
+      setIsSaving(false);
     }
-    setIsDialogOpen(false);
-    setEditingBusiness(null);
-    setFormData({});
   };
 
   const getStatusBadge = (status: BusinessUser['status']) => {
-    switch (status) {
-      case 'active':
-        return <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30">
-          <CheckCircle className="h-3 w-3 mr-1" /> Active
-        </Badge>;
-      case 'inactive':
-        return <Badge className="bg-slate-500/20 text-slate-400 border-slate-500/30">
-          <XCircle className="h-3 w-3 mr-1" /> Inactive
-        </Badge>;
-      case 'pending':
-        return <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500/30">
-          Pending
-        </Badge>;
-      case 'suspended':
-        return <Badge className="bg-red-500/20 text-red-400 border-red-500/30">
-          <AlertCircle className="h-3 w-3 mr-1" /> Suspended
-        </Badge>;
-      default:
-        return <Badge>{status}</Badge>;
-    }
+    const color = getBusinessStatusColor(status);
+    const icons = {
+      active: <CheckCircle className="h-3 w-3 mr-1" />,
+      pending: <RefreshCw className="h-3 w-3 mr-1" />,
+      inactive: <XCircle className="h-3 w-3 mr-1" />,
+      suspended: <AlertCircle className="h-3 w-3 mr-1" />
+    };
+    
+    return (
+      <Badge className={color}>
+        {icons[status]}
+        {status.charAt(0).toUpperCase() + status.slice(1)}
+      </Badge>
+    );
   };
 
   const getTierBadge = (tier: BusinessUser['tier']) => {
-    switch (tier) {
-      case 'basic':
-        return <Badge className="bg-slate-500/20 text-slate-400 border-slate-500/30">Basic</Badge>;
-      case 'premium':
-        return <Badge className="bg-primary/20 text-primary border-primary/30">Premium</Badge>;
-      case 'enterprise':
-        return <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/30">Enterprise</Badge>;
-      default:
-        return <Badge>{tier}</Badge>;
-    }
+    const color = getTierColor(tier);
+    return <Badge className={color}>{tier.charAt(0).toUpperCase() + tier.slice(1)}</Badge>;
   };
 
   const filteredBusinesses = businessUsers
@@ -223,13 +217,14 @@ export default function BusinessUserManagement() {
       );
     });
 
-  const stats = {
-    total: businessUsers.length,
-    active: businessUsers.filter(b => b.status === 'active').length,
-    pending: businessUsers.filter(b => b.status === 'pending').length,
-    premium: businessUsers.filter(b => b.tier === 'premium' || b.tier === 'enterprise').length,
-    totalSpent: businessUsers.reduce((sum, b) => sum + b.totalSpent, 0),
-  };
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <span className="ml-2 text-muted-foreground">Loading businesses...</span>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -254,7 +249,7 @@ export default function BusinessUserManagement() {
             <CardTitle className="text-sm font-medium text-muted-foreground">Total Businesses</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-white">{stats.total}</div>
+            <div className="text-2xl font-bold text-white">{stats?.total_businesses || 0}</div>
           </CardContent>
         </Card>
         <Card className="dark-glass border-white/10">
@@ -262,7 +257,7 @@ export default function BusinessUserManagement() {
             <CardTitle className="text-sm font-medium text-muted-foreground">Active Accounts</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-emerald-400">{stats.active}</div>
+            <div className="text-2xl font-bold text-emerald-400">{stats?.active_count || 0}</div>
           </CardContent>
         </Card>
         <Card className="dark-glass border-white/10">
@@ -270,7 +265,7 @@ export default function BusinessUserManagement() {
             <CardTitle className="text-sm font-medium text-muted-foreground">Pending Approval</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-yellow-400">{stats.pending}</div>
+            <div className="text-2xl font-bold text-yellow-400">{stats?.pending_count || 0}</div>
           </CardContent>
         </Card>
         <Card className="dark-glass border-white/10">
@@ -278,15 +273,15 @@ export default function BusinessUserManagement() {
             <CardTitle className="text-sm font-medium text-muted-foreground">Premium Members</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-primary">{stats.premium}</div>
+            <div className="text-2xl font-bold text-primary">{(stats?.premium_count || 0) + (stats?.enterprise_count || 0)}</div>
           </CardContent>
         </Card>
         <Card className="dark-glass border-white/10">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Spend</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Total Revenue</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-white">{stats.totalSpent.toLocaleString()} RWF</div>
+            <div className="text-2xl font-bold text-white">{formatCurrency(stats?.total_revenue || 0)}</div>
           </CardContent>
         </Card>
       </div>
@@ -350,7 +345,7 @@ export default function BusinessUserManagement() {
                         </div>
                         <div>
                           <div className="font-medium text-white">{business.businessName}</div>
-                          <div className="text-xs text-muted-foreground">ID: {business.registrationNumber}</div>
+                          <div className="text-xs text-muted-foreground">ID: {business.registrationNumber || 'N/A'}</div>
                         </div>
                       </div>
                     </TableCell>
@@ -368,20 +363,20 @@ export default function BusinessUserManagement() {
                         </div>
                         <div className="flex items-center gap-1 text-sm">
                           <Phone className="h-3 w-3 text-muted-foreground" />
-                          <span className="text-muted-foreground">{business.phone}</span>
+                          <span className="text-muted-foreground">{business.phone || 'Not provided'}</span>
                         </div>
                       </div>
                     </TableCell>
                     <TableCell>
                       <Badge variant="outline" className="border-primary/30 text-primary">
-                        {business.businessType}
+                        {business.businessType || 'N/A'}
                       </Badge>
                     </TableCell>
                     <TableCell>{getTierBadge(business.tier)}</TableCell>
                     <TableCell>{getStatusBadge(business.status)}</TableCell>
                     <TableCell>
                       <div className="font-semibold text-emerald-400">
-                        {business.totalSpent.toLocaleString()} RWF
+                        {formatCurrency(business.totalSpent)}
                       </div>
                     </TableCell>
                     <TableCell onClick={(e) => e.stopPropagation()}>
@@ -409,6 +404,14 @@ export default function BusinessUserManagement() {
               </TableBody>
             </Table>
           </div>
+
+          {filteredBusinesses.length === 0 && (
+            <div className="text-center py-12">
+              <Building2 className="h-12 w-12 mx-auto text-muted-foreground opacity-30 mb-4" />
+              <p className="text-white">No businesses found</p>
+              <p className="text-sm text-muted-foreground mt-1">Click "Add Business User" to create one</p>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -557,11 +560,27 @@ export default function BusinessUserManagement() {
           </div>
 
           <DialogFooter className="sticky bottom-0 bg-inherit pt-4 border-t border-white/10 gap-3">
-            <Button variant="outline" onClick={() => setIsDialogOpen(false)} className="btn-outline-premium flex-1 sm:flex-none">
+            <Button 
+              variant="outline" 
+              onClick={() => setIsDialogOpen(false)}
+              disabled={isSaving}
+              className="btn-outline-premium flex-1 sm:flex-none"
+            >
               Cancel
             </Button>
-            <Button onClick={handleSaveBusiness} className="btn-premium flex-1 sm:flex-none">
-              {editingBusiness ? 'Update' : 'Add Business'}
+            <Button 
+              onClick={handleSaveBusiness} 
+              disabled={isSaving}
+              className="btn-premium flex-1 sm:flex-none"
+            >
+              {isSaving ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  {editingBusiness ? 'Updating...' : 'Adding...'}
+                </>
+              ) : (
+                editingBusiness ? 'Update Business' : 'Add Business'
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -579,19 +598,17 @@ export default function BusinessUserManagement() {
           
           {viewingBusiness && (
             <div className="space-y-6 py-4">
-              {/* Business Header */}
               <div className="flex items-center gap-4 p-4 rounded-xl bg-white/5 border border-white/10">
                 <div className="p-3 rounded-xl bg-primary/20">
                   <Building2 className="h-8 w-8 text-primary" />
                 </div>
                 <div className="flex-1">
                   <h3 className="text-xl font-bold text-white">{viewingBusiness.businessName}</h3>
-                  <p className="text-muted-foreground">Registered: {viewingBusiness.joinDate}</p>
+                  <p className="text-muted-foreground">Registered: {viewingBusiness.joinDate || 'N/A'}</p>
                 </div>
                 {getStatusBadge(viewingBusiness.status)}
               </div>
 
-              {/* Owner Information */}
               <div className="space-y-3">
                 <h4 className="text-lg font-semibold gradient-text">Owner Information</h4>
                 <div className="grid grid-cols-2 gap-4">
@@ -605,22 +622,21 @@ export default function BusinessUserManagement() {
                   </div>
                   <div className="p-3 rounded-lg bg-white/5 border border-white/10">
                     <p className="text-xs text-muted-foreground">Phone</p>
-                    <p className="text-white font-medium mt-1">{viewingBusiness.phone}</p>
+                    <p className="text-white font-medium mt-1">{viewingBusiness.phone || 'N/A'}</p>
                   </div>
                   <div className="p-3 rounded-lg bg-white/5 border border-white/10">
                     <p className="text-xs text-muted-foreground">Address</p>
-                    <p className="text-white font-medium mt-1">{viewingBusiness.address}</p>
+                    <p className="text-white font-medium mt-1">{viewingBusiness.address || 'N/A'}</p>
                   </div>
                 </div>
               </div>
 
-              {/* Business Information */}
               <div className="space-y-3">
                 <h4 className="text-lg font-semibold gradient-text">Business Information</h4>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="p-3 rounded-lg bg-white/5 border border-white/10">
                     <p className="text-xs text-muted-foreground">Business Type</p>
-                    <p className="text-white font-medium mt-1">{viewingBusiness.businessType}</p>
+                    <p className="text-white font-medium mt-1">{viewingBusiness.businessType || 'N/A'}</p>
                   </div>
                   <div className="p-3 rounded-lg bg-white/5 border border-white/10">
                     <p className="text-xs text-muted-foreground">Tier</p>
@@ -628,16 +644,15 @@ export default function BusinessUserManagement() {
                   </div>
                   <div className="p-3 rounded-lg bg-white/5 border border-white/10">
                     <p className="text-xs text-muted-foreground">Registration Number</p>
-                    <p className="text-white font-medium mt-1">{viewingBusiness.registrationNumber}</p>
+                    <p className="text-white font-medium mt-1">{viewingBusiness.registrationNumber || 'N/A'}</p>
                   </div>
                   <div className="p-3 rounded-lg bg-white/5 border border-white/10">
                     <p className="text-xs text-muted-foreground">Tax ID</p>
-                    <p className="text-white font-medium mt-1">{viewingBusiness.taxId}</p>
+                    <p className="text-white font-medium mt-1">{viewingBusiness.taxId || 'N/A'}</p>
                   </div>
                 </div>
               </div>
 
-              {/* Performance Metrics */}
               <div className="space-y-3">
                 <h4 className="text-lg font-semibold gradient-text">Performance Metrics</h4>
                 <div className="grid grid-cols-3 gap-4">
@@ -649,7 +664,7 @@ export default function BusinessUserManagement() {
                   <div className="p-3 rounded-lg bg-primary/10 border border-primary/30 text-center">
                     <DollarSign className="h-5 w-5 text-primary mx-auto mb-2" />
                     <p className="text-xs text-muted-foreground">Total Spent</p>
-                    <p className="text-xl font-bold text-white">{viewingBusiness.totalSpent.toLocaleString()} RWF</p>
+                    <p className="text-xl font-bold text-white">{formatCurrency(viewingBusiness.totalSpent)}</p>
                   </div>
                   <div className="p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/30 text-center">
                     <div className="flex items-center justify-center gap-1 mb-2">
@@ -662,19 +677,6 @@ export default function BusinessUserManagement() {
                     <p className="text-xs text-muted-foreground">Rating</p>
                     <p className="text-xl font-bold text-white">{viewingBusiness.rating || 'N/A'}</p>
                   </div>
-                </div>
-              </div>
-
-              {/* Markets */}
-              <div className="space-y-3">
-                <h4 className="text-lg font-semibold gradient-text">Active Markets</h4>
-                <div className="flex flex-wrap gap-2">
-                  {viewingBusiness.markets.map((market, index) => (
-                    <Badge key={index} className="bg-primary/20 text-primary border-primary/30">
-                      <MapPin className="h-3 w-3 mr-1" />
-                      {market}
-                    </Badge>
-                  ))}
                 </div>
               </div>
             </div>
