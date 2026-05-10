@@ -15,7 +15,7 @@ import { useMarkets, useProducts, type Product, type Market } from '../../hooks/
 import { useLanguage } from '../../contexts/LanguageContext';
 import { toast } from 'sonner';
 import { submitVendorPrice } from '../../services/priceSubmissionService';
-import referencePriceService, { type ProductWithReferencePrice } from '../../services/referencePriceService';
+import referencePriceService from '../../services/vendorrefernceService';
 
 interface ReferencePriceInfo {
   market_id: string;

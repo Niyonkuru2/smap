@@ -19,10 +19,32 @@ export const getMySubmissions = catchAsync(async (req, res) => {
 });
 
 export const submitPrice = catchAsync(async (req, res) => {
-    const { productId, marketId, price, unit, notes } = req.body;
+    const { productId, marketId, price, unit, notes, quantity } = req.body;
     
-    // Check for anomaly before submission
-    const anomalyCheck = await mlPrediction.detectPriceAnomaly(productId, marketId, price);
+    // Get reference price for comparison
+    let referencePrice = null;
+    let anomalyCheck = { isAnomaly: false, reason: null };
+    
+    try {
+        // Fetch current reference price for this product and market
+        const reference = await PriceRepository.getCurrentReferencePrice(productId, marketId);
+        if (reference) {
+            referencePrice = reference.price;
+            const percentageDiff = ((price - referencePrice) / referencePrice) * 100;
+            
+            // Detect anomaly if price differs by more than 30%
+            if (Math.abs(percentageDiff) > 30) {
+                anomalyCheck = {
+                    isAnomaly: true,
+                    reason: `Price is ${percentageDiff > 0 ? 'higher' : 'lower'} by ${Math.abs(percentageDiff).toFixed(1)}% than reference price of ${referencePrice} RWF`,
+                    referencePrice: referencePrice,
+                    percentageDiff: percentageDiff
+                };
+            }
+        }
+    } catch (error) {
+        console.error('Error fetching reference price:', error);
+    }
     
     const submission = await PriceRepository.create({
         product_id: productId,
@@ -30,6 +52,7 @@ export const submitPrice = catchAsync(async (req, res) => {
         vendor_id: req.user.id,
         price,
         unit: unit || 'kg',
+        quantity: quantity || 1,
         notes,
         status: anomalyCheck.isAnomaly ? 'flagged' : 'pending',
         flagged: anomalyCheck.isAnomaly,
@@ -37,15 +60,15 @@ export const submitPrice = catchAsync(async (req, res) => {
     });
     
     // Record in price history
-    priceHistory.recordPrice(productId, marketId, price, req.user.id);
+    priceHistory.recordPrice(productId, marketId, price, req.user.id, quantity);
     
     res.status(201).json({
         success: true,
         submission,
         anomalyCheck: anomalyCheck.isAnomaly ? anomalyCheck : null,
         message: anomalyCheck.isAnomaly 
-            ? 'Price flagged for review due to unusual value'
-            : 'Price submitted successfully'
+            ? 'Price flagged for review due to unusual value compared to reference price'
+            : '✓ Price submitted successfully and pending approval'
     });
 });
 
