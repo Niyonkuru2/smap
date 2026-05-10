@@ -32,19 +32,122 @@ export const getPendingSubmissions = catchAsync(async (req, res) => {
     res.json({ success: true, submissions });
 });
 
+// FIXED: Use DatabaseService.query directly since PriceRepository doesn't have updateStatus
 export const approveSubmission = catchAsync(async (req, res) => {
     const { id } = req.params;
-    const updated = await PriceRepository.updateStatus(id, 'approved', req.user.id);
+    
+    // Update the price status to approved
+    const result = await DatabaseService.query(
+        `UPDATE prices 
+         SET status = 'approved', 
+             approved_by = $1, 
+             approved_at = NOW(),
+             updated_at = NOW()
+         WHERE id = $2 
+         RETURNING *`,
+        [req.user.id, id]
+    );
+    
+    if (result.rows.length === 0) {
+        return res.status(404).json({ success: false, message: 'Submission not found' });
+    }
+    
     auditLog.logPriceAction('price.approve', req.user.id, id);
-    res.json({ success: true });
+    res.json({ success: true, submission: result.rows[0] });
 });
 
+// FIXED: Use DatabaseService.query directly
 export const rejectSubmission = catchAsync(async (req, res) => {
     const { id } = req.params;
     const { reason } = req.body;
-    const updated = await PriceRepository.updateStatus(id, 'rejected', req.user.id);
+    
+    // Update the price status to rejected
+    const result = await DatabaseService.query(
+        `UPDATE prices 
+         SET status = 'rejected', 
+             rejected_by = $1, 
+             rejected_at = NOW(),
+             rejection_reason = $2,
+             updated_at = NOW()
+         WHERE id = $3 
+         RETURNING *`,
+        [req.user.id, reason, id]
+    );
+    
+    if (result.rows.length === 0) {
+        return res.status(404).json({ success: false, message: 'Submission not found' });
+    }
+    
     auditLog.logPriceAction('price.reject', req.user.id, id, { reason });
-    res.json({ success: true });
+    res.json({ success: true, submission: result.rows[0] });
+});
+
+// FIXED: Get all submissions with proper joins
+export const getAllSubmissions = catchAsync(async (req, res) => {
+    const result = await DatabaseService.query(`
+        SELECT 
+            p.id,
+            p.product_id,
+            p.market_id,
+            p.vendor_id,
+            p.price,
+            p.previous_price,
+            p.unit,
+            p.status,
+            p.admin_notes,
+            p.vendor_notes,
+            p.flagged,
+            p.flag_reason,
+            p.approved_by,
+            p.approved_at,
+            p.rejected_by,
+            p.rejected_at,
+            p.rejection_reason,
+            p.created_at,
+            p.updated_at,
+            pr.name as product_name,
+            m.name as market_name,
+            u.name as vendor_name,
+            EXTRACT(EPOCH FROM (NOW() - p.created_at))/3600 as age_in_hours
+        FROM prices p
+        LEFT JOIN products pr ON p.product_id = pr.id
+        LEFT JOIN markets m ON p.market_id = m.id
+        LEFT JOIN users u ON p.vendor_id = u.id
+        ORDER BY p.created_at DESC
+    `);
+    
+    res.json({ 
+        success: true, 
+        submissions: result.rows.map(row => ({
+            id: row.id,
+            productId: row.product_id?.toString(),
+            product_id: row.product_id,
+            product_name: row.product_name,
+            marketId: row.market_id,
+            market_id: row.market_id,
+            market_name: row.market_name,
+            vendorId: row.vendor_id?.toString(),
+            vendor_id: row.vendor_id,
+            vendorName: row.vendor_name || 'Unknown Vendor',
+            vendor_name: row.vendor_name,
+            price: parseFloat(row.price),
+            previous_price: row.previous_price ? parseFloat(row.previous_price) : null,
+            unit: row.unit,
+            status: row.status,
+            admin_notes: row.admin_notes,
+            vendor_notes: row.vendor_notes,
+            flagged: row.flagged,
+            flag_reason: row.flag_reason,
+            approved_by: row.approved_by,
+            approved_at: row.approved_at,
+            rejected_by: row.rejected_by,
+            rejected_at: row.rejected_at,
+            rejection_reason: row.rejection_reason,
+            created_at: row.created_at,
+            updated_at: row.updated_at,
+            age_in_hours: parseFloat(row.age_in_hours) || 0
+        }))
+    });
 });
 
 export const getAdminStats = catchAsync(async (req, res) => {

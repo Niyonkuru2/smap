@@ -1,3 +1,4 @@
+// src/routes/adminRoutes.js
 import express from 'express';
 import * as adminController from '../controllers/adminController.js';
 import { authenticateToken, adminOnly } from '../middleware/auth.js';
@@ -7,13 +8,14 @@ router.use(authenticateToken, adminOnly);
 
 // User management
 router.get('/users', adminController.getUsers);
-router.post('/users/:id/role', adminController.updateUserRole);
+router.put('/users/:id/role', adminController.updateUserRole);  // PUT instead of POST
 router.delete('/users/:id', adminController.deleteUser);
 
 // Submission management
-router.get('/submissions', adminController.getPendingSubmissions);
-router.post('/submissions/:id/approve', adminController.approveSubmission);
-router.post('/submissions/:id/reject', adminController.rejectSubmission);
+router.get('/submissions', adminController.getAllSubmissions);
+router.get('/submissions/pending', adminController.getPendingSubmissions);
+router.put('/submissions/:id/approve', adminController.approveSubmission);  // PUT instead of POST
+router.put('/submissions/:id/reject', adminController.rejectSubmission);    // PUT instead of POST
 
 // Stats & monitoring
 router.get('/stats', adminController.getAdminStats);

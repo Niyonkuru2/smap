@@ -15,7 +15,6 @@ import SMSUSSDManagement from './SMSUSSDManagement';
 import { MLModelDashboard } from './MLModelDashboard';
 import { AdAnalyticsDashboard } from './AdAnalyticsDashboard';
 import { AnomalyAlertsDashboard } from './AnomalyAlertsDashboard';
-import UserProfile from '../shared/UserProfile';
 import LanguageSwitcher from '../LanguageSwitcherVibrant';
 import RoleViewSwitcher from '../RoleViewSwitcher';
 import { useLanguage } from '../../contexts/LanguageContext';

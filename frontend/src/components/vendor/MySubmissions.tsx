@@ -1,12 +1,29 @@
-﻿import { useState, useEffect } from 'react';
+﻿// components/vendor/MySubmissions.tsx
+import { useState, useEffect } from 'react';
 import { Card } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
-import { Edit, Clock, Check, X, AlertCircle, RefreshCw, MapPin } from 'lucide-react';
+import { Clock, Check, X, AlertCircle, RefreshCw, MapPin, Loader2 } from 'lucide-react';
 import { useProducts, useMarkets } from '../../hooks/useAppData';
-import { getPriceSubmissionsByVendor, getNotifications, markNotificationAsRead } from '../../lib/localStorage';
 import { useLanguage } from '../../contexts/LanguageContext';
-import type { PriceSubmission } from '../../types';
+import { getMySubmissions } from '../../services/priceSubmissionService';
+import { toast } from 'sonner';
+
+interface Submission {
+  id: string;
+  product_id: string;
+  market_id: string;
+  vendor_id: string;
+  price: number;
+  unit: string;
+  vendor_notes?: string;
+  status: 'pending' | 'approved' | 'rejected' | 'flagged';
+  flagged: boolean;
+  flag_reason?: string;
+  created_at: string;
+  product_name?: string;
+  market_name?: string;
+}
 
 interface MySubmissionsProps {
   vendorName: string;
@@ -14,253 +31,290 @@ interface MySubmissionsProps {
 }
 
 export default function MySubmissions({ vendorName, vendorId }: MySubmissionsProps) {
-  const [submissions, setSubmissions] = useState<PriceSubmission[]>([]);
-  const [notifications, setNotifications] = useState<any[]>([]);
+  const [submissions, setSubmissions] = useState<Submission[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const { t } = useLanguage();
   const { products } = useProducts();
   const { markets } = useMarkets();
 
   useEffect(() => {
     loadSubmissions();
-    loadNotifications();
-
-    // Poll for updates every 2 seconds
+    
+    // Poll for updates every 10 seconds
     const interval = setInterval(() => {
-      loadSubmissions();
-      loadNotifications();
-    }, 2000);
+      loadSubmissions(true);
+    }, 10000);
 
     return () => clearInterval(interval);
   }, [vendorId]);
 
-  const loadSubmissions = () => {
-    // Get from localStorage
-    const stored = getPriceSubmissionsByVendor(vendorId);
+  const loadSubmissions = async (silent = false) => {
+    if (!silent) {
+      setLoading(true);
+    } else {
+      setRefreshing(true);
+    }
     
-    const combined = [
-      ...stored.map(s => ({
-        id: s.id,
-        productId: s.productId,
-        marketId: s.marketId,
-        vendorId: s.vendorId,
-        vendorName: s.vendorName,
-        price: s.price,
-        quantity: s.quantity,
-        unit: s.unit,
-        submittedAt: new Date(s.submittedAt),
-        status: s.status,
-        ageInHours: s.ageInHours,
-        imageUrl: s.imageUrl,
-        rejectionReason: s.rejectionReason
-      }))
-    ];
-
-    // Sort by newest first
-    combined.sort((a, b) => a.ageInHours - b.ageInHours);
-
-    setSubmissions(combined);
-  };
-
-  const loadNotifications = () => {
-    const notifs = getNotifications(vendorId);
-    setNotifications(notifs.slice(0, 3)); // Show latest 3
-  };
-
-  const handleMarkAsRead = (notifId: string) => {
-    markNotificationAsRead(vendorId, notifId);
-    loadNotifications();
-  };
-
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'approved':
-        return <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30"><Check className="h-3 w-3 mr-1" />Approved</Badge>;
-      case 'rejected':
-        return <Badge className="bg-red-500/20 text-red-400 border-red-500/30"><X className="h-3 w-3 mr-1" />Rejected</Badge>;
-      default:
-        return <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500/30"><Clock className="h-3 w-3 mr-1" />Pending Review</Badge>;
+    try {
+      const response = await getMySubmissions();
+      if (response.success && response.submissions) {
+        setSubmissions(response.submissions);
+      }
+    } catch (error: any) {
+      if (!silent) {
+        toast.error(error.message || 'Failed to load submissions');
+      }
+      console.error('Error loading submissions:', error);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
     }
   };
 
-  const getAgeColor = (hours: number) => {
-    if (hours < 24) return 'text-emerald-400';
-    if (hours < 48) return 'text-emerald-500';
-    return 'text-emerald-600';
+  const getStatusBadge = (status: string, flagged: boolean) => {
+    if (flagged) {
+      return (
+        <Badge className="bg-orange-500/20 text-orange-400 border-orange-500/30">
+          <AlertCircle className="h-3 w-3 mr-1" />
+          Flagged for Review
+        </Badge>
+      );
+    }
+    
+    switch (status) {
+      case 'approved':
+        return (
+          <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30">
+            <Check className="h-3 w-3 mr-1" />
+            Approved
+          </Badge>
+        );
+      case 'rejected':
+        return (
+          <Badge className="bg-red-500/20 text-red-400 border-red-500/30">
+            <X className="h-3 w-3 mr-1" />
+            Rejected
+          </Badge>
+        );
+      default:
+        return (
+          <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500/30">
+            <Clock className="h-3 w-3 mr-1" />
+            Pending Review
+          </Badge>
+        );
+    }
   };
 
-  const pendingCount = submissions.filter(s => s.status === 'pending').length;
+  const getTimeAgo = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const hours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
+    
+    if (hours < 1) return 'Just now';
+    if (hours === 1) return '1 hour ago';
+    if (hours < 24) return `${hours} hours ago`;
+    const days = Math.floor(hours / 24);
+    if (days === 1) return '1 day ago';
+    return `${days} days ago`;
+  };
+
+  const getTimeColor = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const hours = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
+    
+    if (hours < 24) return 'text-emerald-400';
+    if (hours < 48) return 'text-yellow-400';
+    return 'text-muted-foreground';
+  };
+
+  const pendingCount = submissions.filter(s => s.status === 'pending' && !s.flagged).length;
+  const flaggedCount = submissions.filter(s => s.flagged).length;
   const approvedCount = submissions.filter(s => s.status === 'approved').length;
   const rejectedCount = submissions.filter(s => s.status === 'rejected').length;
 
+  if (loading) {
+    return (
+      <Card className="p-12 rounded-xl dark-glass border-white/10 shadow-lg">
+        <div className="flex flex-col items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary mb-3" />
+          <p className="text-muted-foreground">Loading your submissions...</p>
+        </div>
+      </Card>
+    );
+  }
+
   return (
     <div className="space-y-6">
-      {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      {/* Header with Refresh Button */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold gradient-text">My Price Submissions</h2>
+          <p className="text-muted-foreground mt-1">Track the status of your submitted prices</p>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => loadSubmissions()}
+          disabled={refreshing}
+          className="btn-outline-premium"
+        >
+          <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+          Refresh
+        </Button>
+      </div>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <Card className="p-4 rounded-xl dark-glass border-white/10 shadow-lg">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-muted-foreground">{t('totalSubmissions')}</p>
+              <p className="text-sm text-muted-foreground">Total</p>
               <p className="text-2xl font-semibold text-white">{submissions.length}</p>
             </div>
-            <RefreshCw className="h-8 w-8 text-primary/60" />
+            <RefreshCw className="h-8 w-8 text-primary/40" />
           </div>
         </Card>
+        
         <Card className="p-4 rounded-xl dark-glass border-white/10 shadow-lg">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-muted-foreground">{t('approved')}</p>
-              <p className="text-2xl font-semibold text-emerald-400">{approvedCount}</p>
-            </div>
-            <Check className="h-8 w-8 text-emerald-500" />
-          </div>
-        </Card>
-        <Card className="p-4 rounded-xl dark-glass border-white/10 shadow-lg">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-muted-foreground">{t('pending')}</p>
+              <p className="text-sm text-muted-foreground">Pending</p>
               <p className="text-2xl font-semibold text-yellow-400">{pendingCount}</p>
             </div>
-            <Clock className="h-8 w-8 text-yellow-500" />
+            <Clock className="h-8 w-8 text-yellow-500/60" />
           </div>
         </Card>
+        
         <Card className="p-4 rounded-xl dark-glass border-white/10 shadow-lg">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-muted-foreground">{t('rejected')}</p>
+              <p className="text-sm text-muted-foreground">Flagged</p>
+              <p className="text-2xl font-semibold text-orange-400">{flaggedCount}</p>
+            </div>
+            <AlertCircle className="h-8 w-8 text-orange-500/60" />
+          </div>
+        </Card>
+        
+        <Card className="p-4 rounded-xl dark-glass border-white/10 shadow-lg">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-muted-foreground">Approved</p>
+              <p className="text-2xl font-semibold text-emerald-400">{approvedCount}</p>
+            </div>
+            <Check className="h-8 w-8 text-emerald-500/60" />
+          </div>
+        </Card>
+        
+        <Card className="p-4 rounded-xl dark-glass border-white/10 shadow-lg">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-muted-foreground">Rejected</p>
               <p className="text-2xl font-semibold text-red-400">{rejectedCount}</p>
             </div>
-            <X className="h-8 w-8 text-red-500" />
+            <X className="h-8 w-8 text-red-500/60" />
           </div>
         </Card>
       </div>
 
-      {/* Recent Notifications */}
-      {notifications.length > 0 && (
-        <div className="space-y-3">
-          <h3 className="text-lg font-medium gradient-text">{t('recentNotifications')}</h3>
-          {notifications.map(notif => (
-            <Card key={notif.id} className={`p-4 rounded-xl dark-glass border-white/10 transition-all ${
-              notif.read ? 'opacity-60' : ''
-            } ${
-              notif.type === 'success' ? 'border-emerald-500/30 bg-emerald-500/5' :
-              notif.type === 'error' ? 'border-red-500/30 bg-red-500/5' :
-              'border-primary/30 bg-primary/5'
-            }`}>
-              <div className="flex items-start justify-between gap-3 flex-wrap">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-1 flex-wrap">
-                    <h4 className={`font-medium ${
-                      notif.type === 'success' ? 'text-emerald-400' :
-                      notif.type === 'error' ? 'text-red-400' :
-                      'text-primary'
-                    }`}>
-                      {notif.title}
-                    </h4>
-                    {!notif.read && (
-                      <Badge className="bg-primary/20 text-primary border-primary/30">New</Badge>
-                    )}
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    {notif.message}
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {new Date(notif.timestamp).toLocaleString()}
-                  </p>
-                </div>
-                {!notif.read && (
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => handleMarkAsRead(notif.id)}
-                    className="btn-outline-premium"
-                  >
-                    Mark Read
-                  </Button>
-                )}
-              </div>
-            </Card>
-          ))}
-        </div>
-      )}
-
       {/* Submissions List */}
       <Card className="p-6 rounded-xl dark-glass border-white/10 shadow-lg">
-        <h3 className="text-lg mb-4 gradient-text">{t('allSubmissions')}</h3>
-        <div className="space-y-3">
-          {submissions.map(submission => {
-            const product = products.find(p => p.id === submission.productId);
-            const market = markets.find(m => m.id === submission.marketId);
+        <h3 className="text-lg mb-4 gradient-text">All Submissions</h3>
+        
+        {submissions.length === 0 ? (
+          <div className="text-center py-12">
+            <Clock className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-30" />
+            <p className="font-medium text-white">No submissions yet</p>
+            <p className="text-sm text-muted-foreground mt-2">
+              Submit your first price to get started!
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {submissions.map((submission) => {
+              // Find product and market from hooks or use data from API
+              const product = products.find(p => p.id.toString() === submission.product_id);
+              const market = markets.find(m => m.id === submission.market_id);
+              
+              return (
+                <div
+                  key={submission.id}
+                  className={`p-4 rounded-xl border transition-all ${
+                    submission.flagged
+                      ? 'bg-orange-500/5 border-orange-500/30'
+                      : submission.status === 'approved'
+                      ? 'bg-emerald-500/5 border-emerald-500/30'
+                      : submission.status === 'rejected'
+                      ? 'bg-red-500/5 border-red-500/30'
+                      : 'bg-primary/5 border-primary/20'
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-4 flex-wrap">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2 flex-wrap">
+                        <h4 className="font-medium text-white text-lg">
+                          {product?.name || submission.product_name || 'Unknown Product'}
+                        </h4>
+                        {getStatusBadge(submission.status, submission.flagged)}
+                      </div>
+                      
+                      <p className="text-sm text-muted-foreground mb-2 flex items-center gap-1">
+                        <MapPin className="h-3 w-3" />
+                        {market?.name || submission.market_name || 'Unknown Market'}
+                        {market?.location && ` (${market.location})`}
+                      </p>
+                      
+                      <div className="flex items-center gap-4 text-sm flex-wrap">
+                        <span className="font-semibold text-white text-lg">
+                          {submission.price.toLocaleString()} RWF
+                        </span>
+                        <span className="text-muted-foreground">
+                          per {submission.unit}
+                        </span>
+                        <span className={`flex items-center gap-1 ${getTimeColor(submission.created_at)}`}>
+                          <Clock className="h-3 w-3" />
+                          {getTimeAgo(submission.created_at)}
+                        </span>
+                      </div>
 
-            return (
-              <Card key={submission.id} className={`p-4 rounded-xl transition-all ${
-                submission.status === 'approved' ? 'bg-white/5 border-white/10' :
-                submission.status === 'rejected' ? 'bg-white/5 border-white/10' :
-                'bg-primary/5 border-primary/20'
-              }`}>
-                <div className="flex items-start justify-between gap-4 flex-wrap">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-2 flex-wrap">
-                      <h4 className="font-medium text-white">{product?.name}</h4>
-                      {getStatusBadge(submission.status)}
-                    </div>
-                    <p className="text-sm text-muted-foreground mb-2 flex items-center gap-1">
-                      <MapPin className="h-3 w-3" /> {market?.name}
-                    </p>
-                    <div className="flex items-center gap-4 text-sm flex-wrap">
-                      <span className="font-semibold text-white">
-                        {submission.price.toLocaleString()} RWF
-                      </span>
-                      <span className="text-muted-foreground">
-                        {submission.quantity} {submission.unit}
-                      </span>
-                      <span className={`flex items-center gap-1 ${getAgeColor(submission.ageInHours)}`}>
-                        <Clock className="h-3 w-3" />
-                        {submission.ageInHours}h ago
-                      </span>
-                    </div>
+                      {/* Vendor Notes */}
+                      {submission.vendor_notes && (
+                        <div className="mt-3 p-2 rounded-lg bg-white/5 border border-white/10">
+                          <p className="text-xs text-muted-foreground mb-1">Your notes:</p>
+                          <p className="text-sm text-white">{submission.vendor_notes}</p>
+                        </div>
+                      )}
 
-                    {/* Rejection Reason */}
-                    {submission.status === 'rejected' && submission.rejectionReason && (
-                      <div className="mt-3 p-3 rounded-lg bg-red-500/10 border border-red-500/30">
-                        <div className="flex items-start gap-2">
-                          <AlertCircle className="h-4 w-4 text-red-400 flex-shrink-0 mt-0.5" />
-                          <div>
-                            <p className="text-sm font-medium text-red-400">Rejection Reason:</p>
-                            <p className="text-sm text-red-300 mt-1">{submission.rejectionReason}</p>
+                      {/* Flag Reason */}
+                      {submission.flagged && submission.flag_reason && (
+                        <div className="mt-3 p-3 rounded-lg bg-orange-500/10 border border-orange-500/30">
+                          <div className="flex items-start gap-2">
+                            <AlertCircle className="h-4 w-4 text-orange-400 flex-shrink-0 mt-0.5" />
+                            <div>
+                              <p className="text-sm font-medium text-orange-400">Flagged Reason:</p>
+                              <p className="text-sm text-orange-300 mt-1">{submission.flag_reason}</p>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    )}
+                      )}
 
-                    {/* Approval Message */}
-                    {submission.status === 'approved' && (
-                      <div className="mt-3 p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30">
-                        <p className="text-sm text-emerald-400">
-                          ✓ This price is now live and visible to all users!
-                        </p>
-                      </div>
-                    )}
+                      {/* Approval Message */}
+                      {submission.status === 'approved' && !submission.flagged && (
+                        <div className="mt-3 p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30">
+                          <p className="text-sm text-emerald-400">
+                            ✓ This price is now live and visible to all users!
+                          </p>
+                        </div>
+                      )}
+                    </div>
                   </div>
-
-                  {submission.status === 'approved' && (
-                    <Button variant="outline" size="sm" className="btn-outline-premium">
-                      <Edit className="h-4 w-4 mr-1" />
-                      Update
-                    </Button>
-                  )}
                 </div>
-              </Card>
-            );
-          })}
-
-          {submissions.length === 0 && (
-            <div className="text-center py-12">
-              <Clock className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-30" />
-              <p className="font-medium text-white">No submissions yet</p>
-              <p className="text-sm text-muted-foreground mt-2">Submit your first price to get started!</p>
-            </div>
-          )}
-        </div>
+              );
+            })}
+          </div>
+        )}
       </Card>
 
       <style>{`
@@ -275,6 +329,13 @@ export default function MySubmissions({ vendorName, vendorId }: MySubmissionsPro
           background: rgba(255, 255, 255, 0.1);
           border-color: rgba(255, 255, 255, 0.2);
           transform: translateY(-1px);
+        }
+
+        .gradient-text {
+          background: linear-gradient(135deg, #fff 0%, #a78bfa 100%);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
         }
       `}</style>
     </div>

@@ -7,6 +7,7 @@ const router = express.Router();
 
 // Public routes
 router.get('/', priceController.getPrices);
+router.get('/live', priceController.getLivePrices);
 router.get('/history/:productId/:marketId', priceController.getPriceHistory);
 router.get('/forecast/:productId/:marketId', priceController.getPriceForecast);
 router.get('/compare/:productId', priceController.compareMarkets);

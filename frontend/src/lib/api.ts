@@ -1,4 +1,6 @@
+// src/lib/api.ts
 import axios from 'axios';
+
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
 const AUTH_URL = `${API_BASE_URL}/auth`;
@@ -7,6 +9,7 @@ const PRICES_URL = `${API_BASE_URL}/prices`;
 const PRODUCTS_URL = `${API_BASE_URL}/products`;
 const MARKETS_URL = `${API_BASE_URL}/markets`;
 const CATEGORIES_URL = `${API_BASE_URL}/categories`;
+
 export interface User {
   id: number;
   email: string;
@@ -351,7 +354,7 @@ export const adminGetUsers = async () => {
 };
 
 /**
- * Update user role (admin only)
+ * Update user role (admin only) - Uses PUT to match REST convention
  */
 export const adminUpdateRole = async (userId: string, role: string) => {
   const response = await axios.put(
@@ -383,10 +386,20 @@ export const getAllSubmissions = async () => {
 };
 
 /**
- * Approve a price submission (admin only)
+ * Get pending price submissions only (admin only)
+ */
+export const getPendingSubmissions = async () => {
+  const response = await axios.get(`${ADMIN_URL}/submissions/pending`, {
+    headers: getAuthHeaders()
+  });
+  return response.data;
+};
+
+/**
+ * Approve a price submission (admin only) - Uses PUT to match REST convention
  */
 export const approveSubmission = async (id: string) => {
-  const response = await axios.post(
+  const response = await axios.put(
     `${ADMIN_URL}/submissions/${id}/approve`,
     {},
     { headers: getAuthHeaders() }
@@ -395,10 +408,10 @@ export const approveSubmission = async (id: string) => {
 };
 
 /**
- * Reject a price submission (admin only)
+ * Reject a price submission (admin only) - Uses PUT to match REST convention
  */
 export const rejectSubmission = async (id: string, reason: string) => {
-  const response = await axios.post(
+  const response = await axios.put(
     `${ADMIN_URL}/submissions/${id}/reject`,
     { reason },
     { headers: getAuthHeaders() }
@@ -411,6 +424,48 @@ export const rejectSubmission = async (id: string, reason: string) => {
  */
 export const getAdminStats = async () => {
   const response = await axios.get(`${ADMIN_URL}/stats`, {
+    headers: getAuthHeaders()
+  });
+  return response.data;
+};
+
+/**
+ * Get audit logs (admin only)
+ */
+export const getAuditLogs = async (params?: { action?: string; userId?: string; limit?: number; offset?: number }) => {
+  const response = await axios.get(`${ADMIN_URL}/audit-logs`, {
+    params,
+    headers: getAuthHeaders()
+  });
+  return response.data;
+};
+
+/**
+ * Get error logs (admin only)
+ */
+export const getErrorLogs = async (params?: { severity?: string; limit?: number; offset?: number }) => {
+  const response = await axios.get(`${ADMIN_URL}/errors`, {
+    params,
+    headers: getAuthHeaders()
+  });
+  return response.data;
+};
+
+/**
+ * Get performance metrics (admin only)
+ */
+export const getPerformanceMetrics = async () => {
+  const response = await axios.get(`${ADMIN_URL}/performance`, {
+    headers: getAuthHeaders()
+  });
+  return response.data;
+};
+
+/**
+ * Clear cache (admin only)
+ */
+export const clearCache = async () => {
+  const response = await axios.post(`${ADMIN_URL}/cache/clear`, {}, {
     headers: getAuthHeaders()
   });
   return response.data;
@@ -575,9 +630,14 @@ export default {
   adminUpdateRole,
   adminDeleteUser,
   getAllSubmissions,
+  getPendingSubmissions,
   approveSubmission,
   rejectSubmission,
   getAdminStats,
+  getAuditLogs,
+  getErrorLogs,
+  getPerformanceMetrics,
+  clearCache,
   // Prices
   getAllPrices,
   getLivePrices,

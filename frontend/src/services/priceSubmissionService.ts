@@ -105,14 +105,14 @@ const getAuthHeaders = () => {
  */
 const mapPriceSubmission = (submission: any): PriceSubmission => {
   return {
-    id: submission.id?.toString(),
+     id: submission.id?.toString(),
     product_id: submission.product_id?.toString(),
     market_id: submission.market_id?.toString(),
     vendor_id: submission.vendor_id?.toString(),
     price: submission.price,
     unit: submission.unit || 'kg',
     quantity: submission.quantity,
-    notes: submission.notes,
+    notes: submission.vendor_notes || submission.notes,
     status: submission.status || 'pending',
     flagged: submission.flagged || false,
     flag_reason: submission.flag_reason,
@@ -186,11 +186,17 @@ export const getMySubmissions = async (): Promise<{
     });
 
     if (response.data && response.data.success) {
-      const submissions = Array.isArray(response.data.submissions)
-        ? response.data.submissions.map(mapPriceSubmission)
-        : Array.isArray(response.data.data)
-        ? response.data.data.map(mapPriceSubmission)
-        : [];
+      // Handle different response structures
+      let submissionsData = [];
+      if (response.data.submissions) {
+        submissionsData = response.data.submissions;
+      } else if (response.data.data) {
+        submissionsData = response.data.data;
+      } else if (Array.isArray(response.data)) {
+        submissionsData = response.data;
+      }
+      
+      const submissions = submissionsData.map(mapPriceSubmission);
       
       return {
         success: true,
@@ -204,7 +210,11 @@ export const getMySubmissions = async (): Promise<{
     };
   } catch (error: any) {
     console.error('Error fetching submissions:', error);
-    throw new Error(error.response?.data?.message || 'Failed to fetch submissions');
+    // Don't throw, return empty array instead
+    return {
+      success: false,
+      submissions: [],
+    };
   }
 };
 

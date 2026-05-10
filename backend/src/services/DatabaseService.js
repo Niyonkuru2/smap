@@ -42,7 +42,7 @@ class DatabaseService {
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             `);
-            console.log('✅ Categories table created');
+            console.log('Categories table created');
 
             // ============================================
             // 2. USERS TABLE (Using category_id, not category)
@@ -98,7 +98,7 @@ class DatabaseService {
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             `);
-            console.log('✅ Sessions table created');
+            console.log('Sessions table created');
 
             // ============================================
             // 5. PRODUCTS TABLE (Using category_id)
@@ -132,7 +132,7 @@ class DatabaseService {
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             `);
-            console.log('✅ Markets table created');
+            console.log('Markets table created');
 
             // ============================================
             // 7. BUSINESS USERS TABLE
@@ -156,7 +156,7 @@ class DatabaseService {
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             `);
-            console.log('✅ Business users table created');
+            console.log('Business users table created');
 
             // ============================================
             // 8. BUSINESS MARKETS TABLE
@@ -170,7 +170,7 @@ class DatabaseService {
                     UNIQUE(business_id, market_id)
                 )
             `);
-            console.log('✅ Business markets table created');
+            console.log('Business markets table created');
 
             // ============================================
             // 9. PRICES TABLE
@@ -198,7 +198,7 @@ class DatabaseService {
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             `);
-            console.log('✅ Prices table created');
+            console.log('Prices table created');
 
             // ============================================
             // 10. PRICE HISTORY TABLE
@@ -213,7 +213,7 @@ class DatabaseService {
                     changed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             `);
-            console.log('✅ Price history table created');
+            console.log('Price history table created');
 
             // ============================================
             // 11. PRICE CHANGE HISTORY TABLE
@@ -231,7 +231,7 @@ class DatabaseService {
                     recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             `);
-            console.log('✅ Price change history table created');
+            console.log('Price change history table created');
 
             // ============================================
             // 12. FAVORITES TABLE
@@ -246,7 +246,7 @@ class DatabaseService {
                     UNIQUE(user_id, product_id, market_id)
                 )
             `);
-            console.log('✅ Favorites table created');
+            console.log('Favorites table created');
 
             // ============================================
             // 13. USER PRICE ALERTS TABLE
@@ -270,7 +270,7 @@ class DatabaseService {
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             `);
-            console.log('✅ User price alerts table created');
+            console.log('User price alerts table created');
 
             // ============================================
             // 14. SUBSCRIPTION PLANS TABLE
