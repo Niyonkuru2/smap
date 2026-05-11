@@ -1,7 +1,7 @@
 ﻿import { useState } from 'react';
 import { Button } from '../ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
-import { LogOut, Upload, List, TrendingUp, Bell, User as UserIcon, ArrowLeft, Store, UserCog, Megaphone } from 'lucide-react';
+import { LogOut, Upload, List, TrendingUp, Bell, User as UserIcon, ArrowLeft, Store, UserCog, Megaphone, Crown } from 'lucide-react';
 import type { User } from '../../App';
 import SubmitPrice from './SubmitPrice';
 import MySubmissions from './MySubmissions';
@@ -13,6 +13,7 @@ import LanguageSwitcher from '../LanguageSwitcherVibrant';
 import { useLanguage } from '../../contexts/LanguageContext';
 import ThemeToggle from '../ThemeToggle';
 import TabCarousel from '../mobile/TabCarousel';
+import VendorSubscription from './VendorSubscription';
 
 interface VendorDashboardProps {
   user: User;
@@ -29,6 +30,7 @@ export default function VendorDashboard({ user, onLogout, isAdminViewing, onRetu
     { id: 'submit', label: t('submitPrice'), icon: <Upload className="h-5 w-5" /> },
     { id: 'submissions', label: t('mySubmissions'), icon: <List className="h-5 w-5" /> },
     { id: 'sales', label: t('mySales'), icon: <TrendingUp className="h-5 w-5" /> },
+    { id: 'subscription', label: 'Subscription', icon: <Crown className="h-5 w-5" /> },
     { id: 'notifications', label: t('notifications'), icon: <Bell className="h-5 w-5" /> },
     { id: 'advertise', label: t('advertise'), icon: <Megaphone className="h-5 w-5" /> },
     { id: 'profile', label: t('profile'), icon: <UserIcon className="h-5 w-5" /> },
@@ -141,6 +143,10 @@ export default function VendorDashboard({ user, onLogout, isAdminViewing, onRetu
               <TrendingUp className="h-4 w-4 mr-2" />
               {t('mySales')}
             </TabsTrigger>
+            <TabsTrigger value="subscription" className="tab-trigger-premium data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg">
+              <Crown className="h-4 w-4 mr-2" />
+              Subscription
+            </TabsTrigger>
             <TabsTrigger value="notifications" className="tab-trigger-premium data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg">
               <Bell className="h-4 w-4 mr-2" />
               {t('notifications')}
@@ -166,6 +172,10 @@ export default function VendorDashboard({ user, onLogout, isAdminViewing, onRetu
 
           <TabsContent value="sales" className="flex-1 animate-fadeIn">
             <MySales vendorName={user.name} vendorId={user.id} />
+          </TabsContent>
+
+          <TabsContent value="subscription" className="flex-1 animate-fadeIn">
+            <VendorSubscription vendorId={user.id} vendorName={user.name} />
           </TabsContent>
 
           <TabsContent value="notifications" className="flex-1 animate-fadeIn">
@@ -253,6 +263,17 @@ export default function VendorDashboard({ user, onLogout, isAdminViewing, onRetu
           background: rgba(255, 255, 255, 0.05);
           border-radius: 0.75rem;
           border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .btn-premium {
+          background: linear-gradient(135deg, hsl(var(--primary)) 0%, #a78bfa 100%);
+          color: white;
+          transition: all 0.2s ease;
+        }
+
+        .btn-premium:hover {
+          opacity: 0.9;
+          transform: translateY(-1px);
         }
       `}</style>
     </div>

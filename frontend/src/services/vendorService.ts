@@ -1,7 +1,6 @@
 import axios from 'axios';
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 const VENDOR_URL = `${API_BASE_URL}/vendor`;
-
 export interface Vendor {
   id?: string;
   name: string;
@@ -9,14 +8,13 @@ export interface Vendor {
   phone?: string;
   address?: string;
   category?: string;
-
-  // Backend fields
   role?: 'vendor' | 'admin';
   verified?: boolean;
   is_active?: boolean;
   created_at?: string;
-
-  // Frontend-only fields
+  market_id?: string; 
+  province?: string;  
+  district?: string; 
   status?: 'active' | 'inactive' | 'pending';
   rating?: number;
   joinDate?: string;

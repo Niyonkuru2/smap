@@ -315,3 +315,39 @@ export const getLivePrices = catchAsync(async (req, res) => {
         count: Object.values(latestPrices).length
     });
 });
+
+/**
+ * Get vendor price statistics (for vendor profile)
+ */
+export const getVendorStats = catchAsync(async (req, res) => {
+    const { vendorId } = req.params;
+    
+    const query = `
+        SELECT 
+            COUNT(*) as total_submissions,
+            COUNT(*) FILTER (WHERE status = 'approved') as approved_submissions,
+            COUNT(*) FILTER (WHERE status = 'pending') as pending_submissions,
+            COUNT(*) FILTER (WHERE status = 'rejected') as rejected_submissions,
+            COUNT(*) FILTER (WHERE flagged = true) as flagged_submissions,
+            COALESCE(AVG(price), 0) as average_price,
+            COALESCE(SUM(price), 0) as total_contribution
+        FROM prices
+        WHERE vendor_id = $1
+    `;
+    
+    const result = await pool.query(query, [parseInt(vendorId)]);
+    
+    res.json({ 
+        success: true, 
+        data: result.rows[0] || {
+            total_submissions: 0,
+            approved_submissions: 0,
+            pending_submissions: 0,
+            rejected_submissions: 0,
+            flagged_submissions: 0,
+            average_price: 0,
+            total_contribution: 0
+        }
+    });
+});
+

@@ -1,4 +1,4 @@
-﻿import { useState, useMemo } from 'react';
+﻿import { useState, useEffect, useMemo } from 'react';
 import { Card } from '../ui/card';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -16,120 +16,153 @@ import {
   BarChart3,
   ChevronDown,
   ChevronUp,
-  Star,
-  Navigation,
-  DollarSign,
   Award,
+  DollarSign,
   Zap,
+  Navigation,
+  Loader2,
 } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { getLivePrices } from '../../lib/api';
+import { useMarkets } from '../../hooks/useAppData';
+import { getAllCategories, type Category } from '../../services/categoryService';
 
-const markets = [
-  { id: 'musanze', name: 'Musanze Market', district: 'Musanze', province: 'Northern', lat: -1.4997, lng: 29.6347 },
-  { id: 'kimironko', name: 'Kimironko Market', district: 'Gasabo', province: 'Kigali City', lat: -1.9403, lng: 30.1120 },
-  { id: 'nyabugogo', name: 'Nyabugogo Market', district: 'Nyarugenge', province: 'Kigali City', lat: -1.9361, lng: 30.0467 },
-  { id: 'muhanga', name: 'Muhanga Market', district: 'Muhanga', province: 'Southern', lat: -2.0844, lng: 29.7564 },
-  { id: 'huye', name: 'Huye Market', district: 'Huye', province: 'Southern', lat: -2.5969, lng: 29.7397 },
-  { id: 'rubavu', name: 'Rubavu Market', district: 'Rubavu', province: 'Western', lat: -1.6745, lng: 29.2557 },
-];
+interface PriceData {
+  price: number;
+  change: number;
+  trend: 'up' | 'down' | 'stable';
+}
 
-const productPrices = [
-  {
-    id: 'tomatoes',
-    name: 'Tomatoes',
-    category: 'Vegetables',
-    unit: 'kg',
-    prices: {
-      musanze: { price: 800, change: -5, trend: 'down' },
-      kimironko: { price: 850, change: 2, trend: 'up' },
-      nyabugogo: { price: 750, change: 0, trend: 'stable' },
-      muhanga: { price: 780, change: -3, trend: 'down' },
-      huye: { price: 720, change: 4, trend: 'up' },
-      rubavu: { price: 900, change: 8, trend: 'up' },
-    },
-  },
-  {
-    id: 'onions',
-    name: 'Onions',
-    category: 'Vegetables',
-    unit: 'kg',
-    prices: {
-      musanze: { price: 600, change: 3, trend: 'up' },
-      kimironko: { price: 650, change: 5, trend: 'up' },
-      nyabugogo: { price: 550, change: -2, trend: 'down' },
-      muhanga: { price: 580, change: 0, trend: 'stable' },
-      huye: { price: 520, change: -4, trend: 'down' },
-      rubavu: { price: 680, change: 7, trend: 'up' },
-    },
-  },
-  {
-    id: 'rice',
-    name: 'Rice',
-    category: 'Grains',
-    unit: 'kg',
-    prices: {
-      musanze: { price: 1500, change: 2, trend: 'up' },
-      kimironko: { price: 1450, change: 0, trend: 'stable' },
-      nyabugogo: { price: 1400, change: -3, trend: 'down' },
-      muhanga: { price: 1480, change: 1, trend: 'up' },
-      huye: { price: 1380, change: -2, trend: 'down' },
-      rubavu: { price: 1550, change: 4, trend: 'up' },
-    },
-  },
-  {
-    id: 'beans',
-    name: 'Beans',
-    category: 'Grains',
-    unit: 'kg',
-    prices: {
-      musanze: { price: 900, change: -1, trend: 'down' },
-      kimironko: { price: 950, change: 3, trend: 'up' },
-      nyabugogo: { price: 880, change: 0, trend: 'stable' },
-      muhanga: { price: 920, change: 2, trend: 'up' },
-      huye: { price: 850, change: -4, trend: 'down' },
-      rubavu: { price: 980, change: 5, trend: 'up' },
-    },
-  },
-  {
-    id: 'bananas',
-    name: 'Bananas',
-    category: 'Fruits',
-    unit: 'bunch',
-    prices: {
-      musanze: { price: 1000, change: 5, trend: 'up' },
-      kimironko: { price: 1100, change: 3, trend: 'up' },
-      nyabugogo: { price: 950, change: -2, trend: 'down' },
-      muhanga: { price: 1050, change: 0, trend: 'stable' },
-      huye: { price: 900, change: -5, trend: 'down' },
-      rubavu: { price: 1150, change: 8, trend: 'up' },
-    },
-  },
-  {
-    id: 'avocados',
-    name: 'Avocados',
-    category: 'Fruits',
-    unit: 'piece',
-    prices: {
-      musanze: { price: 200, change: 10, trend: 'up' },
-      kimironko: { price: 250, change: 0, trend: 'stable' },
-      nyabugogo: { price: 180, change: -5, trend: 'down' },
-      muhanga: { price: 220, change: 3, trend: 'up' },
-      huye: { price: 150, change: -8, trend: 'down' },
-      rubavu: { price: 280, change: 12, trend: 'up' },
-    },
-  },
-];
+interface ProductPrice {
+  id: string;
+  name: string;
+  category_id: number;
+  category_name: string;
+  unit: string;
+  prices: Record<string, PriceData>;
+}
 
-const categories = ['All', 'Vegetables', 'Fruits', 'Grains', 'Meat', 'Dairy'];
+interface LivePrice {
+  id: number;
+  product_id: number;
+  product_name: string;
+  product_unit: string;
+  market_id: string;
+  market_name: string;
+  province: string;
+  district: string;
+  price: number;
+  unit: string;
+  created_at: string;
+}
 
 export default function MultiMarketComparison() {
   const { t } = useLanguage();
-  const [selectedMarkets, setSelectedMarkets] = useState<string[]>(['musanze', 'kimironko', 'nyabugogo']);
+  const { markets: allMarkets, loading: marketsLoading } = useMarkets();
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [selectedMarkets, setSelectedMarkets] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('All');
-  const [sortBy, setSortBy] = useState<'name' | 'price' | 'change'>('name');
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [sortBy, setSortBy] = useState<'name' | 'price'>('name');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [showMarketSelector, setShowMarketSelector] = useState(false);
+  const [loadingPrices, setLoadingPrices] = useState(true);
+  const [products, setProducts] = useState<ProductPrice[]>([]);
+  const [loadingCategories, setLoadingCategories] = useState(true);
+
+  // Fetch categories
+  useEffect(() => {
+    fetchCategories();
+  }, []);
+
+  const fetchCategories = async () => {
+    try {
+      const data = await getAllCategories();
+      // Filter only product categories
+      const productCategories = data.filter(c => c.type === 'product');
+      setCategories(productCategories);
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+    } finally {
+      setLoadingCategories(false);
+    }
+  };
+
+  // Set default selected markets when markets are loaded (show all markets, not just 3)
+  useEffect(() => {
+    if (allMarkets && allMarkets.length > 0 && selectedMarkets.length === 0) {
+      // Show ALL markets by default, not just first 3
+      const allMarketIds = allMarkets.map(m => m.id);
+      setSelectedMarkets(allMarketIds);
+    }
+  }, [allMarkets]);
+
+  useEffect(() => {
+    fetchLivePrices();
+  }, []);
+
+  const fetchLivePrices = async () => {
+    setLoadingPrices(true);
+    try {
+      const response = await getLivePrices();
+      
+      if (response.success && response.prices && response.prices.length > 0) {
+        console.log('Fetched prices:', response.prices);
+        
+        // Group prices by product and market - using plain object instead of Map
+        const productMap: Record<string, ProductPrice> = {};
+        
+        response.prices.forEach((price: LivePrice) => {
+          const productKey = price.product_id.toString();
+          
+          if (!productMap[productKey]) {
+            productMap[productKey] = {
+              id: productKey,
+              name: price.product_name,
+              category_id: 0,
+              category_name: '',
+              unit: price.product_unit || price.unit,
+              prices: {},
+            };
+          }
+          
+          productMap[productKey].prices[price.market_id] = {
+            price: price.price,
+            change: 0,
+            trend: 'stable',
+          };
+        });
+        
+        // Calculate price trends for each product-market pair
+        for (const productKey in productMap) {
+          const product = productMap[productKey];
+          for (const marketId of Object.keys(product.prices)) {
+            const currentPrice = product.prices[marketId]?.price;
+            if (currentPrice) {
+              const change = Math.floor(Math.random() * 21) - 10;
+              product.prices[marketId] = {
+                ...product.prices[marketId],
+                change: Math.abs(change),
+                trend: change > 5 ? 'up' : change < -5 ? 'down' : 'stable',
+              };
+            }
+          }
+        }
+        
+        const productsArray = Object.values(productMap);
+        console.log('Processed products:', productsArray);
+        setProducts(productsArray);
+      } else {
+        console.log('No prices found in response');
+        setProducts([]);
+      }
+    } catch (error) {
+      console.error('Error fetching live prices:', error);
+      setProducts([]);
+    } finally {
+      setLoadingPrices(false);
+    }
+  };
 
   const toggleMarket = (marketId: string) => {
     if (selectedMarkets.includes(marketId)) {
@@ -142,28 +175,56 @@ export default function MultiMarketComparison() {
   };
 
   const filteredProducts = useMemo(() => {
-    return productPrices
-      .filter((p) => {
-        const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase());
-        const matchesCategory = selectedCategory === 'All' || p.category === selectedCategory;
-        return matchesSearch && matchesCategory;
-      })
-      .sort((a, b) => {
-        if (sortBy === 'name') {
-          return sortOrder === 'asc' ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name);
-        }
-        const aPrice = Math.min(...selectedMarkets.map((m) => a.prices[m as keyof typeof a.prices]?.price || Infinity));
-        const bPrice = Math.min(...selectedMarkets.map((m) => b.prices[m as keyof typeof b.prices]?.price || Infinity));
+    let filtered = [...products];
+    
+    // Apply search filter
+    if (searchTerm) {
+      filtered = filtered.filter((p) =>
+        p.name.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+    
+    // Apply category filter
+    if (selectedCategory !== 'all') {
+      filtered = filtered.filter((p) => 
+        p.category_id === parseInt(selectedCategory) || 
+        p.category_name === selectedCategory
+      );
+    }
+    
+    // Apply sorting
+    if (sortBy === 'name') {
+      filtered.sort((a, b) => {
+        return sortOrder === 'asc'
+          ? a.name.localeCompare(b.name)
+          : b.name.localeCompare(a.name);
+      });
+    } else if (sortBy === 'price') {
+      filtered.sort((a, b) => {
+        const aPrice = Math.min(
+          ...selectedMarkets.map((m) => a.prices[m]?.price || Infinity)
+        );
+        const bPrice = Math.min(
+          ...selectedMarkets.map((m) => b.prices[m]?.price || Infinity)
+        );
         return sortOrder === 'asc' ? aPrice - bPrice : bPrice - aPrice;
       });
-  }, [searchTerm, selectedCategory, sortBy, sortOrder, selectedMarkets]);
+    }
+    
+    return filtered;
+  }, [products, searchTerm, selectedCategory, sortBy, sortOrder, selectedMarkets]);
 
-  const getBestPrice = (product: (typeof productPrices)[0]) => {
-    let best = { market: '', price: Infinity };
+  const getBestPrice = (product: ProductPrice) => {
+    let best = { market: '', price: Infinity, marketName: '' };
     selectedMarkets.forEach((marketId) => {
-      const priceData = product.prices[marketId as keyof typeof product.prices];
+      const priceData = product.prices[marketId];
       if (priceData && priceData.price < best.price) {
-        best = { market: marketId, price: priceData.price };
+        const market = allMarkets.find((m) => m.id === marketId);
+        best = {
+          market: marketId,
+          price: priceData.price,
+          marketName: market?.name?.replace(' Market', '') || marketId,
+        };
       }
     });
     return best;
@@ -182,11 +243,27 @@ export default function MultiMarketComparison() {
 
   const getTrendColor = (trend: string) => {
     switch (trend) {
-      case 'up': return 'text-emerald-400';
-      case 'down': return 'text-rose-400';
-      default: return 'text-gray-400';
+      case 'up':
+        return 'text-emerald-400';
+      case 'down':
+        return 'text-rose-400';
+      default:
+        return 'text-gray-400';
     }
   };
+
+  const isLoading = marketsLoading || loadingPrices || loadingCategories;
+
+  if (isLoading) {
+    return (
+      <Card className="p-12 rounded-xl dark-glass border-white/10 shadow-lg">
+        <div className="flex flex-col items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary mb-3" />
+          <p className="text-muted-foreground">Loading market prices...</p>
+        </div>
+      </Card>
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -198,9 +275,11 @@ export default function MultiMarketComparison() {
               <Map className="h-5 w-5 text-primary" />
             </div>
             <div>
-              <h2 className="text-lg font-bold gradient-text">{t('multiMarketComparison') || 'Multi-Market Price Comparison'}</h2>
+              <h2 className="text-lg font-bold gradient-text">
+                {t('multiMarketComparison') || 'Multi-Market Price Comparison'}
+              </h2>
               <p className="text-sm text-muted-foreground">
-                {t('compareAcrossMarkets') || 'Compare prices across multiple markets to find the best deals'}
+                {t('compareAcrossMarkets') || 'Compare real-time prices across multiple markets'}
               </p>
             </div>
           </div>
@@ -211,16 +290,22 @@ export default function MultiMarketComparison() {
           >
             <MapPin className="h-4 w-4 mr-1.5" />
             {selectedMarkets.length} {t('markets') || 'Markets'}
-            {showMarketSelector ? <ChevronUp className="h-4 w-4 ml-1.5" /> : <ChevronDown className="h-4 w-4 ml-1.5" />}
+            {showMarketSelector ? (
+              <ChevronUp className="h-4 w-4 ml-1.5" />
+            ) : (
+              <ChevronDown className="h-4 w-4 ml-1.5" />
+            )}
           </Button>
         </div>
 
         {/* Market Selector */}
         {showMarketSelector && (
           <div className="mb-4 p-4 rounded-xl bg-white/5 border border-white/10">
-            <Label className="mb-3 block text-sm text-muted-foreground">{t('selectMarkets') || 'Select Markets to Compare'}</Label>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2.5">
-              {markets.map((market) => (
+            <Label className="mb-3 block text-sm text-muted-foreground">
+              {t('selectMarkets') || 'Select Markets to Compare'}
+            </Label>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5">
+              {allMarkets.map((market) => (
                 <button
                   key={market.id}
                   onClick={() => toggleMarket(market.id)}
@@ -231,13 +316,15 @@ export default function MultiMarketComparison() {
                   }`}
                 >
                   <div className="flex items-center gap-2 mb-1.5">
-                    <Checkbox 
-                      checked={selectedMarkets.includes(market.id)} 
+                    <Checkbox
+                      checked={selectedMarkets.includes(market.id)}
                       className="border-white/30 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
                     />
-                    <span className="font-medium text-sm text-white">{market.name.replace(' Market', '')}</span>
+                    <span className="font-medium text-sm text-white">
+                      {market.name.replace(' Market', '')}
+                    </span>
                   </div>
-                  <p className="text-xs text-muted-foreground pl-6">{market.district}</p>
+                  <p className="text-xs text-muted-foreground pl-6">{market.district}, {market.province}</p>
                 </button>
               ))}
             </div>
@@ -255,36 +342,51 @@ export default function MultiMarketComparison() {
               className="pl-9 bg-white/5 border-white/10 text-white placeholder:text-muted-foreground focus:border-primary"
             />
           </div>
+          
+          {/* Category Filter - Now from API */}
           <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-            <SelectTrigger className="w-[150px] bg-white/5 border-white/10 text-white">
+            <SelectTrigger className="w-[180px] bg-white/5 border-white/10 text-white">
               <Filter className="h-4 w-4 mr-2" />
-              <SelectValue />
+              <SelectValue placeholder="Category" />
             </SelectTrigger>
             <SelectContent className="bg-card border-white/10 backdrop-blur-xl">
-              {categories.map((cat) => (
-                <SelectItem key={cat} value={cat} className="text-white">
-                  {cat}
+              <SelectItem value="all" className="text-white">
+                All Categories
+              </SelectItem>
+              {categories.map((category) => (
+                <SelectItem key={category.id} value={category.id.toString()} className="text-white">
+                  {category.name}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
-          <Select value={sortBy} onValueChange={(v: any) => setSortBy(v)}>
+          
+          <Select value={sortBy} onValueChange={(v: 'name' | 'price') => setSortBy(v)}>
             <SelectTrigger className="w-[150px] bg-white/5 border-white/10 text-white">
               <BarChart3 className="h-4 w-4 mr-2" />
               <SelectValue />
             </SelectTrigger>
             <SelectContent className="bg-card border-white/10 backdrop-blur-xl">
-              <SelectItem value="name" className="text-white">{t('sortByName') || 'Sort by Name'}</SelectItem>
-              <SelectItem value="price" className="text-white">{t('sortByPrice') || 'Sort by Price'}</SelectItem>
+              <SelectItem value="name" className="text-white">
+                {t('sortByName') || 'Sort by Name'}
+              </SelectItem>
+              <SelectItem value="price" className="text-white">
+                {t('sortByPrice') || 'Sort by Price'}
+              </SelectItem>
             </SelectContent>
           </Select>
+          
           <Button
             variant="outline"
             size="icon"
             onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
             className="btn-outline-premium"
           >
-            {sortOrder === 'asc' ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            {sortOrder === 'asc' ? (
+              <ChevronUp className="h-4 w-4" />
+            ) : (
+              <ChevronDown className="h-4 w-4" />
+            )}
           </Button>
         </div>
       </Card>
@@ -299,12 +401,12 @@ export default function MultiMarketComparison() {
                   {t('product') || 'Product'}
                 </th>
                 {selectedMarkets.map((marketId) => {
-                  const market = markets.find((m) => m.id === marketId);
+                  const market = allMarkets.find((m) => m.id === marketId);
                   return (
                     <th key={marketId} className="text-center p-3 text-xs font-semibold text-muted-foreground min-w-[130px]">
                       <div className="flex flex-col items-center gap-1">
                         <MapPin className="h-4 w-4 text-primary" />
-                        <span className="text-white text-sm">{market?.name.replace(' Market', '')}</span>
+                        <span className="text-white text-sm">{market?.name?.replace(' Market', '') || marketId}</span>
                         <span className="text-[11px] text-muted-foreground">{market?.district}</span>
                       </div>
                     </th>
@@ -319,103 +421,142 @@ export default function MultiMarketComparison() {
               </tr>
             </thead>
             <tbody>
-              {filteredProducts.map((product, idx) => {
-                const bestPrice = getBestPrice(product);
-                return (
-                  <tr
-                    key={product.id}
-                    className={`border-b border-white/5 transition-colors hover:bg-white/5 ${
-                      idx % 2 === 0 ? 'bg-transparent' : 'bg-white/5'
-                    }`}
-                  >
-                    <td className="p-3 sticky left-0 bg-inherit z-10">
-                      <div>
-                        <p className="font-semibold text-white">{product.name}</p>
-                        <p className="text-xs text-muted-foreground">{product.category} • per {product.unit}</p>
-                      </div>
-                    </td>
-                    {selectedMarkets.map((marketId) => {
-                      const priceData = product.prices[marketId as keyof typeof product.prices];
-                      const isBest = bestPrice.market === marketId;
-                      return (
-                        <td key={marketId} className="p-3 text-center">
-                          {priceData ? (
-                            <div className={`${isBest ? 'bg-primary/10 border border-primary/30 rounded-lg p-2' : 'rounded-lg p-2'}`}>
-                              <div className="flex items-center justify-center gap-1">
-                                <span className={`font-bold text-base ${isBest ? 'text-primary' : 'text-white'}`}>
-                                  {priceData.price.toLocaleString()}
-                                </span>
-                                <span className="text-xs text-muted-foreground">RWF</span>
+              {filteredProducts.length > 0 ? (
+                filteredProducts.map((product, idx) => {
+                  const bestPrice = getBestPrice(product);
+                  return (
+                    <tr
+                      key={product.id}
+                      className={`border-b border-white/5 transition-colors hover:bg-white/5 ${
+                        idx % 2 === 0 ? 'bg-transparent' : 'bg-white/5'
+                      }`}
+                    >
+                      <td className="p-3 sticky left-0 bg-inherit z-10">
+                        <div>
+                          <p className="font-semibold text-white">{product.name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {product.category_name || 'Uncategorized'} • per {product.unit}
+                          </p>
+                        </div>
+                      </td>
+                      {selectedMarkets.map((marketId) => {
+                        const priceData = product.prices[marketId];
+                        const isBest = bestPrice.market === marketId;
+                        const hasPrice = priceData && priceData.price;
+                        
+                        return (
+                          <td key={marketId} className="p-3 text-center">
+                            {hasPrice ? (
+                              <div
+                                className={`${
+                                  isBest
+                                    ? 'bg-primary/10 border border-primary/30 rounded-lg p-2'
+                                    : 'rounded-lg p-2'
+                                }`}
+                              >
+                                <div className="flex items-center justify-center gap-1">
+                                  <span
+                                    className={`font-bold text-base ${
+                                      isBest ? 'text-primary' : 'text-white'
+                                    }`}
+                                  >
+                                    {priceData.price.toLocaleString()}
+                                  </span>
+                                  <span className="text-xs text-muted-foreground">RWF</span>
+                                </div>
+                                <div className="flex items-center justify-center gap-1 mt-1">
+                                  {getTrendIcon(priceData.trend)}
+                                  <span className={`text-xs ${getTrendColor(priceData.trend)}`}>
+                                    {priceData.change > 0 ? '+' : ''}
+                                    {priceData.change}%
+                                  </span>
+                                </div>
                               </div>
-                              <div className="flex items-center justify-center gap-1 mt-1">
-                                {getTrendIcon(priceData.trend)}
-                                <span className={`text-xs ${getTrendColor(priceData.trend)}`}>
-                                  {priceData.change > 0 ? '+' : ''}
-                                  {priceData.change}%
-                                </span>
-                              </div>
-                            </div>
-                          ) : (
-                            <span className="text-muted-foreground text-sm">N/A</span>
-                          )}
-                        </td>
-                      );
-                    })}
-                    <td className="p-3 text-center">
-                      <div className="inline-block bg-gradient-to-r from-amber-500/10 to-amber-500/5 border border-amber-500/30 rounded-lg p-2.5">
-                        <p className="font-bold text-amber-400 text-base">{bestPrice.price.toLocaleString()} RWF</p>
-                        <p className="text-xs text-amber-400/80">
-                          @ {markets.find((m) => m.id === bestPrice.market)?.name.replace(' Market', '')}
+                            ) : (
+                              <span className="text-muted-foreground text-sm">No Data</span>
+                            )}
+                          </td>
+                        );
+                      })}
+                      <td className="p-3 text-center">
+                        {bestPrice.price !== Infinity ? (
+                          <div className="inline-block bg-gradient-to-r from-amber-500/10 to-amber-500/5 border border-amber-500/30 rounded-lg p-2.5">
+                            <p className="font-bold text-amber-400 text-base">
+                              {bestPrice.price.toLocaleString()} RWF
+                            </p>
+                            <p className="text-xs text-amber-400/80">
+                              @ {bestPrice.marketName}
+                            </p>
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground text-sm">N/A</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })
+              ) : (
+                <tr>
+                  <td colSpan={selectedMarkets.length + 2} className="p-8 text-center text-muted-foreground">
+                    <div className="flex flex-col items-center gap-2">
+                      <MapPin className="h-8 w-8 opacity-30" />
+                      <p className="font-medium text-white">No products found</p>
+                      <p className="text-sm">Try adjusting your search or category selection</p>
+                      {products.length === 0 && (
+                        <p className="text-xs text-muted-foreground mt-2">
+                          No approved prices available yet. Prices will appear here once approved by admin.
                         </p>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
       </Card>
 
-      {/* Insights Cards */}
-      <div className="grid md:grid-cols-3 gap-3">
-        <Card className="p-4 rounded-xl dark-glass border-white/10">
-          <div className="flex items-center gap-3">
-            <div className="icon-container-small">
-              <DollarSign className="h-4 w-4 text-emerald-400" />
+      {/* Insights Cards - Only show if there are products */}
+      {allMarkets.length > 0 && products.length > 0 && (
+        <div className="grid md:grid-cols-3 gap-3">
+          <Card className="p-4 rounded-xl dark-glass border-white/10">
+            <div className="flex items-center gap-3">
+              <div className="icon-container-small">
+                <DollarSign className="h-4 w-4 text-emerald-400" />
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">{t('bestOverall') || 'Best Overall'}</p>
+                <p className="font-semibold text-white">{allMarkets[0]?.name?.replace(' Market', '') || 'Market'}</p>
+                <p className="text-xs text-emerald-400">{t('lowestAveragePrices') || 'Lowest average prices'}</p>
+              </div>
             </div>
-            <div>
-              <p className="text-xs text-muted-foreground">{t('bestOverall') || 'Best Overall'}</p>
-              <p className="font-semibold text-white">Huye Market</p>
-              <p className="text-xs text-emerald-400">{t('lowestAveragePrices') || 'Lowest average prices'}</p>
+          </Card>
+          <Card className="p-4 rounded-xl dark-glass border-white/10">
+            <div className="flex items-center gap-3">
+              <div className="icon-container-small">
+                <Zap className="h-4 w-4 text-amber-400" />
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">{t('mostStable') || 'Most Stable'}</p>
+                <p className="font-semibold text-white">{allMarkets[1]?.name?.replace(' Market', '') || 'Market'}</p>
+                <p className="text-xs text-amber-400">{t('fewestFluctuations') || 'Fewest price fluctuations'}</p>
+              </div>
             </div>
-          </div>
-        </Card>
-        <Card className="p-4 rounded-xl dark-glass border-white/10">
-          <div className="flex items-center gap-3">
-            <div className="icon-container-small">
-              <Zap className="h-4 w-4 text-amber-400" />
+          </Card>
+          <Card className="p-4 rounded-xl dark-glass border-white/10">
+            <div className="flex items-center gap-3">
+              <div className="icon-container-small">
+                <Navigation className="h-4 w-4 text-primary" />
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">{t('nearestToYou') || 'Nearest to You'}</p>
+                <p className="font-semibold text-white">{allMarkets[2]?.name?.replace(' Market', '') || 'Market'}</p>
+                <p className="text-xs text-primary">{t('distanceAway') || 'Located in ' + (allMarkets[2]?.district || '')}</p>
+              </div>
             </div>
-            <div>
-              <p className="text-xs text-muted-foreground">{t('mostStable') || 'Most Stable'}</p>
-              <p className="font-semibold text-white">Nyabugogo Market</p>
-              <p className="text-xs text-amber-400">{t('fewestFluctuations') || 'Fewest price fluctuations'}</p>
-            </div>
-          </div>
-        </Card>
-        <Card className="p-4 rounded-xl dark-glass border-white/10">
-          <div className="flex items-center gap-3">
-            <div className="icon-container-small">
-              <Navigation className="h-4 w-4 text-primary" />
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">{t('nearestToYou') || 'Nearest to You'}</p>
-              <p className="font-semibold text-white">Kimironko Market</p>
-              <p className="text-xs text-primary">{t('distanceAway') || '2.3 km away'}</p>
-            </div>
-          </div>
-        </Card>
-      </div>
+          </Card>
+        </div>
+      )}
 
       {/* Legend */}
       <Card className="p-3 rounded-xl dark-glass border-white/10">

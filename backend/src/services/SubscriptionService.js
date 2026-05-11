@@ -589,46 +589,81 @@ async updatePlan(planId, planData) {
     /**
      * Send subscription notifications
      */
-    async sendSubscriptionNotifications(subscriptionId, action, reason = null) {
-        const subscriptionResult = await pool.query(
-            `SELECT us.*, sp.name as plan_name, sp.price, u.email, u.name as user_name
-             FROM user_subscriptions us
-             JOIN subscription_plans sp ON us.plan_id = sp.id
-             JOIN users u ON us.user_id = u.id
-             WHERE us.id = $1`,
-            [subscriptionId]
+    // src/services/SubscriptionService.js - Fix the notification methods
+
+/**
+ * Send subscription notifications
+ */
+async sendSubscriptionNotifications(subscriptionId, action, reason = null) {
+    const subscriptionResult = await pool.query(
+        `SELECT us.*, sp.name as plan_name, sp.price, u.email, u.name as user_name
+         FROM user_subscriptions us
+         JOIN subscription_plans sp ON us.plan_id = sp.id
+         JOIN users u ON us.user_id = u.id
+         WHERE us.id = $1`,
+        [subscriptionId]
+    );
+    
+    const subscription = subscriptionResult.rows[0];
+    
+    if (!subscription) return;
+    
+    // In-app notification (store in notifications table)
+    // FIXED: Changed 'read' to 'is_read' to match schema
+    await pool.query(
+        `INSERT INTO notifications (user_id, title, message, type, is_read, created_at)
+         VALUES ($1, $2, $3, $4, false, NOW())`,
+        [
+            subscription.user_id,
+            this.getNotificationTitle(action),
+            this.getNotificationMessage(subscription, action, reason),
+            action === 'approved' ? 'success' : action === 'rejected' ? 'error' : 'info'
+        ]
+    );
+    
+    // Email notification
+    try {
+        await sendSubscriptionNotification(
+            subscription.user_email,
+            subscription.user_name,
+            subscription.plan_name,
+            action,
+            subscription.end_date,
+            reason
         );
-        
-        const subscription = subscriptionResult.rows[0];
-        
-        if (!subscription) return;
-        
-        // In-app notification (store in notifications table)
-        await pool.query(
-            `INSERT INTO notifications (user_id, title, message, type, read, created_at)
-             VALUES ($1, $2, $3, $4, false, NOW())`,
-            [
-                subscription.user_id,
-                this.getNotificationTitle(action),
-                this.getNotificationMessage(subscription, action, reason),
-                action === 'approved' ? 'success' : action === 'rejected' ? 'error' : 'info'
-            ]
-        );
-        
-        // Email notification
-        try {
-            await sendSubscriptionNotification(
-                subscription.user_email,
-                subscription.user_name,
-                subscription.plan_name,
-                action,
-                subscription.end_date,
-                reason
-            );
-        } catch (error) {
-            console.error('Failed to send subscription email:', error);
-        }
+    } catch (error) {
+        console.error('Failed to send subscription email:', error);
     }
+}
+
+/**
+ * Send expiry notification
+ */
+async sendExpiryNotification(subscription, isExpired = false) {
+    const daysLeft = Math.ceil((new Date(subscription.end_date) - new Date()) / (1000 * 60 * 60 * 24));
+    
+    // FIXED: Changed 'read' to 'is_read' to match schema
+    await pool.query(
+        `INSERT INTO notifications (user_id, title, message, type, is_read, created_at)
+         VALUES ($1, $2, $3, $4, false, NOW())`,
+        [
+            subscription.user_id,
+            isExpired ? 'Subscription Expired' : 'Subscription Expiring Soon',
+            isExpired 
+                ? `Your ${subscription.plan_name} subscription has expired. Please renew to continue enjoying benefits.`
+                : `Your ${subscription.plan_name} subscription will expire in ${daysLeft} days. Renew now to avoid interruption.`,
+            'warning'
+        ]
+    );
+    
+    // Record notification to avoid duplicate
+    await pool.query(
+        `INSERT INTO subscription_expiry_notifications (subscription_id, notified_at)
+         VALUES ($1, NOW())
+         ON CONFLICT (subscription_id) DO UPDATE SET notified_at = NOW()`,
+        [subscription.id]
+    );
+}
 
     /**
      * Send expiry notification

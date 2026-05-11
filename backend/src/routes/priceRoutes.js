@@ -12,6 +12,7 @@ router.get('/history/:productId/:marketId', priceController.getPriceHistory);
 router.get('/forecast/:productId/:marketId', priceController.getPriceForecast);
 router.get('/compare/:productId', priceController.compareMarkets);
 router.get('/best-time/:productId', priceController.getBestTimeToBuy);
+router.get('/vendor-stats/:vendorId', priceController.getVendorStats);
 
 // Protected routes
 router.use(authenticateToken);

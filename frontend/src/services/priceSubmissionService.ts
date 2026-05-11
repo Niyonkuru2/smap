@@ -448,32 +448,52 @@ export const getPrices = async (filters?: {
 /**
  * GET VENDOR PRICE STATS (Admin only)
  */
+// src/services/priceSubmissionService.ts - Update getVendorPriceStats
+
+/**
+ * GET VENDOR PRICE STATS (Admin or vendor themselves)
+ */
 export const getVendorPriceStats = async (vendorId?: string): Promise<{
   total_submissions: number;
-  pending_submissions: number;
   approved_submissions: number;
+  pending_submissions: number;
   rejected_submissions: number;
   flagged_submissions: number;
   average_price: number;
   total_contribution: number;
 }> => {
   try {
-    const url = vendorId 
-      ? `${PRICES_URL}/vendor-stats/${vendorId}`
-      : `${PRICES_URL}/vendor-stats`;
+    // If vendorId is provided, use the vendor-stats endpoint
+    // Otherwise, use my-stats for the current user
+    let url;
+    if (vendorId) {
+      url = `${PRICES_URL}/vendor-stats/${vendorId}`;
+    } else {
+      url = `${PRICES_URL}/my-stats`;
+    }
     
     const response = await axios.get(url, {
       headers: getAuthHeaders(),
     });
 
-    if (response.data && response.data.success && response.data.data) {
-      return response.data.data;
+    if (response.data && response.data.success) {
+      // Handle both response formats
+      const data = response.data.data || response.data.stats;
+      return {
+        total_submissions: data.total_submissions || 0,
+        approved_submissions: data.approved_submissions || 0,
+        pending_submissions: data.pending_submissions || 0,
+        rejected_submissions: data.rejected_submissions || 0,
+        flagged_submissions: data.flagged_submissions || 0,
+        average_price: data.average_price || 0,
+        total_contribution: data.total_contribution || 0,
+      };
     }
 
     return {
       total_submissions: 0,
-      pending_submissions: 0,
       approved_submissions: 0,
+      pending_submissions: 0,
       rejected_submissions: 0,
       flagged_submissions: 0,
       average_price: 0,
@@ -481,9 +501,18 @@ export const getVendorPriceStats = async (vendorId?: string): Promise<{
     };
   } catch (error: any) {
     console.error('Error fetching vendor price stats:', error);
-    throw new Error(error.response?.data?.message || 'Failed to fetch vendor stats');
+    return {
+      total_submissions: 0,
+      approved_submissions: 0,
+      pending_submissions: 0,
+      rejected_submissions: 0,
+      flagged_submissions: 0,
+      average_price: 0,
+      total_contribution: 0,
+    };
   }
 };
+
 
 // ============================================
 // DEFAULT EXPORT
@@ -499,3 +528,4 @@ export default {
   getPrices,
   getVendorPriceStats,
 };
+
