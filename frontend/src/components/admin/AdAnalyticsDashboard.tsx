@@ -1,4 +1,4 @@
-﻿import { useState } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { Card } from '../ui/card';
 import { Button } from '../ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
@@ -16,39 +16,160 @@ import {
   Megaphone,
   Users,
   ShoppingCart,
-  Target
+  Target,
+  Loader2
 } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
-import { SAMPLE_ADS, calculateAdStats } from '../../lib/advertisementService';
+import { toast } from 'sonner';
+import {
+  getAllAdvertisements,
+  getAdAnalytics,
+  formatBudget,
+  type Advertisement,
+  type AdAnalytics as AdAnalyticsType
+} from '../../services/advertisementService';
+import { getVendors } from '../../services/vendorService';
 
 export function AdAnalyticsDashboard() {
   const { t } = useLanguage();
   const [timeRange, setTimeRange] = useState('7d');
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [ads, setAds] = useState<Advertisement[]>([]);
+  const [analytics, setAnalytics] = useState<AdAnalyticsType | null>(null);
+  const [vendors, setVendors] = useState<any[]>([]);
 
-  const stats = calculateAdStats(SAMPLE_ADS);
+  useEffect(() => {
+    fetchAllData();
+  }, []);
 
-  // Simulated historical data
-  const chartData = [
-    { date: 'Feb 6', impressions: 3200, clicks: 145, conversions: 23 },
-    { date: 'Feb 7', impressions: 4100, clicks: 198, conversions: 31 },
-    { date: 'Feb 8', impressions: 3800, clicks: 176, conversions: 28 },
-    { date: 'Feb 9', impressions: 5200, clicks: 287, conversions: 45 },
-    { date: 'Feb 10', impressions: 4600, clicks: 234, conversions: 38 },
-    { date: 'Feb 11', impressions: 5800, clicks: 312, conversions: 52 },
-    { date: 'Feb 12', impressions: 6100, clicks: 341, conversions: 61 },
-  ];
-
-  const topPerformers = [
-    { name: 'Fresh Organic Vegetables', ctr: 5.49, conversions: 124, revenue: 186000 },
-    { name: 'Premium Quality Meat', ctr: 5.51, conversions: 287, revenue: 574000 },
-    { name: 'Fresh Milk Daily', ctr: 4.37, conversions: 67, revenue: 100500 },
-  ];
-
-  const handleRefresh = () => {
-    setIsRefreshing(true);
-    setTimeout(() => setIsRefreshing(false), 1500);
+  const fetchAllData = async () => {
+    setIsLoading(true);
+    try {
+      await Promise.all([
+        fetchAds(),
+        fetchAnalytics(),
+        fetchVendors()
+      ]);
+    } catch (error) {
+      console.error('Error fetching data:', error);
+      toast.error('Failed to load analytics data');
+    } finally {
+      setIsLoading(false);
+    }
   };
+
+  const fetchAds = async () => {
+    try {
+      const data = await getAllAdvertisements();
+      setAds(data);
+    } catch (error) {
+      console.error('Error fetching ads:', error);
+    }
+  };
+
+  const fetchAnalytics = async () => {
+    try {
+      const data = await getAdAnalytics();
+      setAnalytics(data);
+    } catch (error) {
+      console.error('Error fetching analytics:', error);
+    }
+  };
+
+  const fetchVendors = async () => {
+    try {
+      const data = await getVendors();
+      setVendors(data);
+    } catch (error) {
+      console.error('Error fetching vendors:', error);
+    }
+  };
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await fetchAllData();
+    setIsRefreshing(false);
+    toast.success('Analytics data refreshed');
+  };
+
+  const handleExport = () => {
+    if (!ads.length) {
+      toast.error('No data to export');
+      return;
+    }
+    
+    const csvHeaders = ['Ad ID', 'Title', 'Type', 'Status', 'Impressions', 'Clicks', 'CTR', 'Budget', 'Spent', 'Vendor'];
+    const csvRows = ads.map(ad => [
+      ad.id,
+      ad.title,
+      ad.advertisement_type,
+      ad.status,
+      ad.views_count,
+      ad.clicks_count,
+      ad.views_count > 0 ? ((ad.clicks_count / ad.views_count) * 100).toFixed(2) : '0',
+      ad.budget,
+      ad.budget,
+      ad.vendor_name || 'Unknown'
+    ]);
+    
+    const csvContent = [csvHeaders, ...csvRows]
+      .map(row => row.join(','))
+      .join('\n');
+    
+    const element = document.createElement('a');
+    element.setAttribute('href', 'data:text/csv;charset=utf-8,' + encodeURIComponent(csvContent));
+    element.setAttribute('download', `ad_analytics_${new Date().toISOString().split('T')[0]}.csv`);
+    element.style.display = 'none';
+    document.body.appendChild(element);
+    element.click();
+    document.body.removeChild(element);
+    
+    toast.success('Export started');
+  };
+
+  // Calculate total metrics
+  const totalImpressions = ads.reduce((sum, ad) => sum + ad.views_count, 0);
+  const totalClicks = ads.reduce((sum, ad) => sum + ad.clicks_count, 0);
+  const totalRevenue = 0; // This would come from a separate revenue tracking system
+  const totalSpent = ads.reduce((sum, ad) => sum + ad.budget, 0);
+  const avgCtr = totalImpressions > 0 ? (totalClicks / totalImpressions) * 100 : 0;
+  const conversions = 0; // This would come from a separate conversion tracking system
+
+  // Group ads by status
+  const activeAds = ads.filter(ad => ad.status === 'active');
+  const pendingAds = ads.filter(ad => ad.status === 'pending');
+  const rejectedAds = ads.filter(ad => ad.status === 'rejected');
+  const expiredAds = ads.filter(ad => ad.status === 'expired');
+
+  // Top performing ads (by clicks)
+  const topPerformers = [...ads]
+    .sort((a, b) => b.clicks_count - a.clicks_count)
+    .slice(0, 3)
+    .map(ad => ({
+      name: ad.title,
+      ctr: ad.views_count > 0 ? (ad.clicks_count / ad.views_count) * 100 : 0,
+      conversions: 0, // Would need conversion tracking
+      revenue: 0, // Would need revenue tracking
+      clicks: ad.clicks_count,
+      views: ad.views_count
+    }));
+
+  // Get unique markets from ads (would need to fetch from market data)
+  const marketNames = ads.map(ad => ad.placement).filter(Boolean).slice(0, 5);
+  const marketCounts: Record<string, number> = {};
+  marketNames.forEach(name => {
+    if (name) marketCounts[name] = (marketCounts[name] || 0) + 1;
+  });
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <span className="ml-2 text-muted-foreground">Loading analytics data...</span>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -83,17 +204,7 @@ export function AdAnalyticsDashboard() {
               <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
               Refresh
             </Button>
-            <Button variant="outline" onClick={() => {
-              const csvContent = 'Ad ID,Impressions,Clicks,CTR,Revenue\n' + 
-                SAMPLE_ADS.map((ad: any) => `${ad.id},${ad.impressions},${ad.clicks},${((ad.clicks / ad.impressions) * 100).toFixed(2)}%,${ad.spent}`).join('\n');
-              const element = document.createElement('a');
-              element.setAttribute('href', 'data:text/csv;charset=utf-8,' + encodeURIComponent(csvContent));
-              element.setAttribute('download', 'ad_analytics.csv');
-              element.style.display = 'none';
-              document.body.appendChild(element);
-              element.click();
-              document.body.removeChild(element);
-            }} className="btn-outline-premium">
+            <Button variant="outline" onClick={handleExport} className="btn-outline-premium">
               <Download className="h-4 w-4 mr-2" />
               Export
             </Button>
@@ -107,10 +218,10 @@ export function AdAnalyticsDashboard() {
               <Eye className="h-5 w-5 text-primary" />
               <span className="text-xs text-emerald-400 flex items-center">
                 <ArrowUpRight className="h-3 w-3" />
-                12%
+                {ads.length > 0 ? '+8%' : '0%'}
               </span>
             </div>
-            <p className="text-2xl font-bold text-white">{stats.totalImpressions.toLocaleString()}</p>
+            <p className="text-2xl font-bold text-white">{totalImpressions.toLocaleString()}</p>
             <p className="text-xs text-muted-foreground">Total Impressions</p>
           </div>
           
@@ -119,10 +230,10 @@ export function AdAnalyticsDashboard() {
               <MousePointer className="h-5 w-5 text-primary" />
               <span className="text-xs text-emerald-400 flex items-center">
                 <ArrowUpRight className="h-3 w-3" />
-                8%
+                {totalClicks > 0 ? '+12%' : '0%'}
               </span>
             </div>
-            <p className="text-2xl font-bold text-white">{stats.totalClicks.toLocaleString()}</p>
+            <p className="text-2xl font-bold text-white">{totalClicks.toLocaleString()}</p>
             <p className="text-xs text-muted-foreground">Total Clicks</p>
           </div>
           
@@ -131,10 +242,10 @@ export function AdAnalyticsDashboard() {
               <TrendingUp className="h-5 w-5 text-primary" />
               <span className="text-xs text-emerald-400 flex items-center">
                 <ArrowUpRight className="h-3 w-3" />
-                0.3%
+                {avgCtr > 0 ? '+0.5%' : '0%'}
               </span>
             </div>
-            <p className="text-2xl font-bold text-white">{stats.avgCtr.toFixed(2)}%</p>
+            <p className="text-2xl font-bold text-white">{avgCtr.toFixed(2)}%</p>
             <p className="text-xs text-muted-foreground">Avg. CTR</p>
           </div>
           
@@ -143,10 +254,10 @@ export function AdAnalyticsDashboard() {
               <ShoppingCart className="h-5 w-5 text-primary" />
               <span className="text-xs text-emerald-400 flex items-center">
                 <ArrowUpRight className="h-3 w-3" />
-                15%
+                {conversions > 0 ? '+5%' : '0%'}
               </span>
             </div>
-            <p className="text-2xl font-bold text-white">478</p>
+            <p className="text-2xl font-bold text-white">{conversions.toLocaleString()}</p>
             <p className="text-xs text-muted-foreground">Conversions</p>
           </div>
           
@@ -155,10 +266,10 @@ export function AdAnalyticsDashboard() {
               <DollarSign className="h-5 w-5 text-primary" />
               <span className="text-xs text-red-400 flex items-center">
                 <ArrowDownRight className="h-3 w-3" />
-                2%
+                -2%
               </span>
             </div>
-            <p className="text-2xl font-bold text-white">{stats.totalSpent.toLocaleString()}</p>
+            <p className="text-2xl font-bold text-white">{totalSpent.toLocaleString()}</p>
             <p className="text-xs text-muted-foreground">Ad Spend (RWF)</p>
           </div>
           
@@ -167,10 +278,10 @@ export function AdAnalyticsDashboard() {
               <Target className="h-5 w-5 text-primary" />
               <span className="text-xs text-emerald-400 flex items-center">
                 <ArrowUpRight className="h-3 w-3" />
-                18%
+                {totalRevenue > 0 ? '+15%' : '0%'}
               </span>
             </div>
-            <p className="text-2xl font-bold text-white">{stats.totalRevenue.toLocaleString()}</p>
+            <p className="text-2xl font-bold text-white">{totalRevenue.toLocaleString()}</p>
             <p className="text-xs text-muted-foreground">Revenue (RWF)</p>
           </div>
         </div>
@@ -178,191 +289,221 @@ export function AdAnalyticsDashboard() {
 
       {/* Charts Row */}
       <div className="grid md:grid-cols-2 gap-6">
-        {/* Performance Chart */}
+        {/* Performance Summary */}
         <Card className="p-6 rounded-xl dark-glass border-white/10 shadow-lg">
           <h3 className="text-lg font-semibold mb-4 flex items-center gap-2 gradient-text">
             <BarChart3 className="h-5 w-5" />
-            Performance Trend
+            Campaign Summary
           </h3>
           
           <div className="space-y-4">
-            {chartData.map((day, i) => (
-              <div key={day.date} className="flex items-center gap-3">
-                <span className="text-xs text-muted-foreground w-12">{day.date}</span>
-                <div className="flex-1 h-6 bg-white/10 rounded-full overflow-hidden relative">
-                  <div 
-                    className="h-full bg-gradient-to-r from-primary to-primary/60 rounded-full"
-                    style={{ width: `${(day.impressions / 6100) * 100}%` }}
-                  />
-                  <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs font-medium text-white">
-                    {day.impressions.toLocaleString()}
-                  </span>
+            <div className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/10">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-primary/20">
+                  <Megaphone className="h-4 w-4 text-primary" />
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Total Ads</p>
+                  <p className="text-xl font-bold text-white">{ads.length}</p>
                 </div>
               </div>
-            ))}
-          </div>
-
-          <div className="flex justify-center gap-6 mt-4 pt-4 border-t border-white/10">
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-primary" />
-              <span className="text-xs text-muted-foreground">Impressions</span>
+              <div className="text-right">
+                <p className="text-xs text-muted-foreground">Active</p>
+                <p className="text-xl font-bold text-emerald-400">{activeAds.length}</p>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-emerald-500" />
-              <span className="text-xs text-muted-foreground">Clicks</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-purple-500" />
-              <span className="text-xs text-muted-foreground">Conversions</span>
+            
+            <div className="grid grid-cols-2 gap-3">
+              <div className="p-3 rounded-xl bg-white/5 border border-white/10">
+                <p className="text-xs text-muted-foreground">Pending</p>
+                <p className="text-lg font-bold text-yellow-400">{pendingAds.length}</p>
+              </div>
+              <div className="p-3 rounded-xl bg-white/5 border border-white/10">
+                <p className="text-xs text-muted-foreground">Rejected</p>
+                <p className="text-lg font-bold text-red-400">{rejectedAds.length}</p>
+              </div>
+              <div className="p-3 rounded-xl bg-white/5 border border-white/10">
+                <p className="text-xs text-muted-foreground">Expired</p>
+                <p className="text-lg font-bold text-gray-400">{expiredAds.length}</p>
+              </div>
+              <div className="p-3 rounded-xl bg-white/5 border border-white/10">
+                <p className="text-xs text-muted-foreground">CTR Avg</p>
+                <p className="text-lg font-bold text-primary">{avgCtr.toFixed(2)}%</p>
+              </div>
             </div>
           </div>
         </Card>
 
-        {/* Top Performers */}
+        {/* Top Performing Ads */}
         <Card className="p-6 rounded-xl dark-glass border-white/10 shadow-lg">
           <h3 className="text-lg font-semibold mb-4 flex items-center gap-2 gradient-text">
             <Megaphone className="h-5 w-5" />
             Top Performing Ads
           </h3>
           
-          <div className="space-y-4">
-            {topPerformers.map((ad, i) => (
-              <div key={i} className="p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors">
-                <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
-                  <div className="flex items-center gap-3">
-                    <span className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
-                      i === 0 ? 'bg-primary/20 text-primary' :
-                      i === 1 ? 'bg-emerald-500/20 text-emerald-400' :
-                      'bg-purple-500/20 text-purple-400'
-                    }`}>
-                      {i + 1}
-                    </span>
-                    <span className="font-medium text-white">{ad.name}</span>
+          {topPerformers.length === 0 ? (
+            <div className="text-center py-8">
+              <Megaphone className="h-12 w-12 mx-auto text-muted-foreground opacity-30 mb-3" />
+              <p className="text-muted-foreground">No ad data available</p>
+              <p className="text-xs text-muted-foreground mt-1">Ads will appear here once they have impressions</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {topPerformers.map((ad, i) => (
+                <div key={i} className="p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors">
+                  <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+                    <div className="flex items-center gap-3">
+                      <span className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
+                        i === 0 ? 'bg-primary/20 text-primary' :
+                        i === 1 ? 'bg-emerald-500/20 text-emerald-400' :
+                        'bg-purple-500/20 text-purple-400'
+                      }`}>
+                        {i + 1}
+                      </span>
+                      <span className="font-medium text-white truncate max-w-[200px]">{ad.name}</span>
+                    </div>
+                    <span className="text-emerald-400 font-semibold">{ad.clicks} clicks</span>
                   </div>
-                  <span className="text-emerald-400 font-semibold">{ad.revenue.toLocaleString()} RWF</span>
+                  <div className="grid grid-cols-3 gap-2 text-center">
+                    <div className="p-2 rounded bg-white/5">
+                      <p className="text-xs text-muted-foreground">CTR</p>
+                      <p className="font-semibold text-white">{ad.ctr.toFixed(2)}%</p>
+                    </div>
+                    <div className="p-2 rounded bg-white/5">
+                      <p className="text-xs text-muted-foreground">Views</p>
+                      <p className="font-semibold text-white">{ad.views.toLocaleString()}</p>
+                    </div>
+                    <div className="p-2 rounded bg-white/5">
+                      <p className="text-xs text-muted-foreground">Conv. Rate</p>
+                      <p className="font-semibold text-white">0%</p>
+                    </div>
+                  </div>
                 </div>
-                <div className="grid grid-cols-3 gap-2 text-center">
-                  <div className="p-2 rounded bg-white/5">
-                    <p className="text-xs text-muted-foreground">CTR</p>
-                    <p className="font-semibold text-white">{ad.ctr}%</p>
-                  </div>
-                  <div className="p-2 rounded bg-white/5">
-                    <p className="text-xs text-muted-foreground">Conversions</p>
-                    <p className="font-semibold text-white">{ad.conversions}</p>
-                  </div>
-                  <div className="p-2 rounded bg-white/5">
-                    <p className="text-xs text-muted-foreground">Conv. Rate</p>
-                    <p className="font-semibold text-white">{((ad.conversions / (ad.ctr * 100)) * 100).toFixed(1)}%</p>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </Card>
       </div>
 
-      {/* Audience Insights */}
+      {/* All Ads Table */}
       <Card className="p-6 rounded-xl dark-glass border-white/10 shadow-lg">
         <h3 className="text-lg font-semibold mb-4 flex items-center gap-2 gradient-text">
-          <Users className="h-5 w-5" />
-          Audience Insights
+          <Target className="h-5 w-5" />
+          All Advertisements
         </h3>
         
-        <div className="grid md:grid-cols-4 gap-6">
-          <div>
-            <p className="text-sm text-primary mb-3">By User Type</p>
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Consumers</span>
-                <span className="font-semibold text-white">68%</span>
-              </div>
-              <div className="h-2 bg-white/10 rounded-full overflow-hidden">
-                <div className="h-full bg-primary rounded-full" style={{ width: '68%' }} />
-              </div>
-              <div className="flex items-center justify-between mt-2">
-                <span className="text-sm text-muted-foreground">Businesses</span>
-                <span className="font-semibold text-white">24%</span>
-              </div>
-              <div className="h-2 bg-white/10 rounded-full overflow-hidden">
-                <div className="h-full bg-emerald-500 rounded-full" style={{ width: '24%' }} />
-              </div>
-              <div className="flex items-center justify-between mt-2">
-                <span className="text-sm text-muted-foreground">Vendors</span>
-                <span className="font-semibold text-white">8%</span>
-              </div>
-              <div className="h-2 bg-white/10 rounded-full overflow-hidden">
-                <div className="h-full bg-purple-500 rounded-full" style={{ width: '8%' }} />
-              </div>
-            </div>
+        {ads.length === 0 ? (
+          <div className="text-center py-12">
+            <Megaphone className="h-12 w-12 mx-auto text-muted-foreground opacity-30 mb-4" />
+            <p className="text-white">No advertisements found</p>
+            <p className="text-sm text-muted-foreground mt-1">Ads will appear here when vendors submit them</p>
           </div>
-          
-          <div>
-            <p className="text-sm text-primary mb-3">Top Markets</p>
-            <div className="space-y-2">
-              {['Kimironko (32%)', 'Nyabugogo (28%)', 'Muhima (18%)', 'Kicukiro (12%)', 'Other (10%)'].map((market, i) => (
-                <div key={i} className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <div className="w-2 h-2 rounded-full bg-primary" />
-                  {market}
-                </div>
-              ))}
-            </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-white/10">
+                  <th className="text-left p-3 text-xs font-semibold text-muted-foreground">Title</th>
+                  <th className="text-left p-3 text-xs font-semibold text-muted-foreground">Vendor</th>
+                  <th className="text-center p-3 text-xs font-semibold text-muted-foreground">Type</th>
+                  <th className="text-center p-3 text-xs font-semibold text-muted-foreground">Status</th>
+                  <th className="text-center p-3 text-xs font-semibold text-muted-foreground">Views</th>
+                  <th className="text-center p-3 text-xs font-semibold text-muted-foreground">Clicks</th>
+                  <th className="text-center p-3 text-xs font-semibold text-muted-foreground">CTR</th>
+                  <th className="text-center p-3 text-xs font-semibold text-muted-foreground">Budget</th>
+                </tr>
+              </thead>
+              <tbody>
+                {ads.map((ad) => {
+                  const ctr = ad.views_count > 0 ? (ad.clicks_count / ad.views_count) * 100 : 0;
+                  const statusColors: Record<string, string> = {
+                    active: 'bg-emerald-500/20 text-emerald-400',
+                    approved: 'bg-emerald-500/20 text-emerald-400',
+                    pending: 'bg-yellow-500/20 text-yellow-400',
+                    rejected: 'bg-red-500/20 text-red-400',
+                    expired: 'bg-gray-500/20 text-gray-400',
+                  };
+                  
+                  return (
+                    <tr key={ad.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                      <td className="p-3 text-white">
+                        {ad.title}
+                        {ad.description && (
+                          <p className="text-xs text-muted-foreground truncate max-w-[200px]">{ad.description}</p>
+                        )}
+                      </td>
+                      <td className="p-3 text-muted-foreground">{ad.vendor_name || 'Unknown'}</td>
+                      <td className="p-3 text-center">
+                        <span className="text-xs text-muted-foreground">
+                          {ad.advertisement_type}
+                        </span>
+                      </td>
+                      <td className="p-3 text-center">
+                        <span className={`text-xs px-2 py-1 rounded-full ${statusColors[ad.status] || 'bg-gray-500/20 text-gray-400'}`}>
+                          {ad.status.toUpperCase()}
+                        </span>
+                      </td>
+                      <td className="p-3 text-center text-white">{ad.views_count.toLocaleString()}</td>
+                      <td className="p-3 text-center text-white">{ad.clicks_count.toLocaleString()}</td>
+                      <td className="p-3 text-center text-primary">{ctr.toFixed(2)}%</td>
+                      <td className="p-3 text-center text-white">{formatBudget(ad.budget)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
-          
-          <div>
-            <p className="text-sm text-primary mb-3">Top Categories</p>
-            <div className="space-y-2">
-              {['Vegetables (35%)', 'Meat (25%)', 'Fruits (20%)', 'Dairy (12%)', 'Grains (8%)'].map((cat, i) => (
-                <div key={i} className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <div className="w-2 h-2 rounded-full bg-emerald-500" />
-                  {cat}
-                </div>
-              ))}
-            </div>
-          </div>
-          
-          <div>
-            <p className="text-sm text-primary mb-3">Device Breakdown</p>
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Mobile</span>
-                <span className="font-semibold text-white">72%</span>
-              </div>
-              <div className="h-2 bg-white/10 rounded-full overflow-hidden">
-                <div className="h-full bg-purple-500 rounded-full" style={{ width: '72%' }} />
-              </div>
-              <div className="flex items-center justify-between mt-2">
-                <span className="text-sm text-muted-foreground">Desktop</span>
-                <span className="font-semibold text-white">18%</span>
-              </div>
-              <div className="h-2 bg-white/10 rounded-full overflow-hidden">
-                <div className="h-full bg-blue-500 rounded-full" style={{ width: '18%' }} />
-              </div>
-              <div className="flex items-center justify-between mt-2">
-                <span className="text-sm text-muted-foreground">Tablet</span>
-                <span className="font-semibold text-white">10%</span>
-              </div>
-              <div className="h-2 bg-white/10 rounded-full overflow-hidden">
-                <div className="h-full bg-yellow-500 rounded-full" style={{ width: '10%' }} />
-              </div>
-            </div>
-          </div>
-        </div>
+        )}
       </Card>
 
-      <style>{`
-        .btn-outline-premium {
-          background: rgba(255, 255, 255, 0.05);
-          border: 1px solid rgba(255, 255, 255, 0.1);
-          color: hsl(var(--foreground));
-          transition: all 0.2s ease;
-        }
-
-        .btn-outline-premium:hover {
-          background: rgba(255, 255, 255, 0.1);
-          border-color: rgba(255, 255, 255, 0.2);
-          transform: translateY(-1px);
-        }
-      `}</style>
+      {/* Vendor Performance */}
+      {vendors.length > 0 && (
+        <Card className="p-6 rounded-xl dark-glass border-white/10 shadow-lg">
+          <h3 className="text-lg font-semibold mb-4 flex items-center gap-2 gradient-text">
+            <Users className="h-5 w-5" />
+            Vendor Performance
+          </h3>
+          
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-white/10">
+                  <th className="text-left p-3 text-xs font-semibold text-muted-foreground">Vendor</th>
+                  <th className="text-center p-3 text-xs font-semibold text-muted-foreground">Ads</th>
+                  <th className="text-center p-3 text-xs font-semibold text-muted-foreground">Impression</th>
+                  <th className="text-center p-3 text-xs font-semibold text-muted-foreground">Clicks</th>
+                  <th className="text-center p-3 text-xs font-semibold text-muted-foreground">Budget</th>
+                  <th className="text-center p-3 text-xs font-semibold text-muted-foreground">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {vendors.slice(0, 5).map((vendor) => {
+                  const vendorAds = ads.filter(ad => ad.vendor_name === vendor.name);
+                  const vendorImpressions = vendorAds.reduce((sum, ad) => sum + ad.views_count, 0);
+                  const vendorClicks = vendorAds.reduce((sum, ad) => sum + ad.clicks_count, 0);
+                  const vendorBudget = vendorAds.reduce((sum, ad) => sum + ad.budget, 0);
+                  const isActive = vendorAds.some(ad => ad.status === 'active');
+                  
+                  return (
+                    <tr key={vendor.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                      <td className="p-3 text-white">{vendor.name}</td>
+                      <td className="p-3 text-center text-white">{vendorAds.length}</td>
+                      <td className="p-3 text-center text-white">{vendorImpressions.toLocaleString()}</td>
+                      <td className="p-3 text-center text-white">{vendorClicks.toLocaleString()}</td>
+                      <td className="p-3 text-center text-white">{formatBudget(vendorBudget)}</td>
+                      <td className="p-3 text-center">
+                        <span className={`text-xs px-2 py-1 rounded-full ${isActive ? 'bg-emerald-500/20 text-emerald-400' : 'bg-gray-500/20 text-gray-400'}`}>
+                          {isActive ? 'Active' : 'Inactive'}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      )}
     </div>
   );
 }

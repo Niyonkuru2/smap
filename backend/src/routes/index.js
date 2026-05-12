@@ -21,6 +21,7 @@ import predictionRoutes from './predictionRoutes.js';
 import referencePriceRoutes from './referencePriceRoutes.js';
 import vendorReferenceRoutes from './vendorRefernceRoute.js';
 import smsRoutes from './smsRoutes.js';
+import advertisementRoutes from './advertisementRoutes.js';
 
 const router = express.Router();
 
@@ -33,6 +34,7 @@ router.use('/subscriptions', subscriptionRoutes);
 router.use('/prices', priceRoutes);
 router.use('/markets', marketRoutes);
 router.use('/products', productRoutes);
+router.use('/advertisements', advertisementRoutes);
 router.use('/favorites', favoriteRoutes);
 router.use('/alerts', alertRoutes);
 router.use('/notifications', notificationRoutes);
