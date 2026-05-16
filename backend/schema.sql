@@ -1,51 +1,36 @@
 -- =============================================
--- COMPLETE DATABASE RESET SCRIPT
--- Drops all existing tables with CASCADE and recreates them
--- NO SEEDING - Only table structures
+-- RECREATE ALL TABLES (with IF NOT EXISTS)
 -- =============================================
 
--- Disable triggers temporarily to avoid conflicts
-SET session_replication_role = 'replica';
-
 -- =============================================
--- DROP ALL TABLES IN CORRECT ORDER (with CASCADE)
+-- DROP FUNCTIONS AND TRIGGERS FIRST (IF THEY EXIST)
 -- =============================================
 
--- Drop tables with foreign key dependencies first
-DROP TABLE IF EXISTS anomaly_resolution_history CASCADE;
-DROP TABLE IF EXISTS price_anomalies CASCADE;
-DROP TABLE IF EXISTS vendor_anomaly_scores CASCADE;
-DROP TABLE IF EXISTS reference_prices CASCADE;
-DROP TABLE IF EXISTS price_change_history CASCADE;
-DROP TABLE IF EXISTS price_history CASCADE;
-DROP TABLE IF EXISTS prices CASCADE;
-DROP TABLE IF EXISTS pending_approvals CASCADE;
-DROP TABLE IF EXISTS notifications CASCADE;
-DROP TABLE IF EXISTS ad_statistics CASCADE;
-DROP TABLE IF EXISTS vendor_advertisements CASCADE;
-DROP TABLE IF EXISTS subscription_expiry_notifications CASCADE;
-DROP TABLE IF EXISTS subscription_payments CASCADE;
-DROP TABLE IF EXISTS user_subscriptions CASCADE;
-DROP TABLE IF EXISTS subscription_plans CASCADE;
-DROP TABLE IF EXISTS user_price_alerts CASCADE;
-DROP TABLE IF EXISTS favorites CASCADE;
-DROP TABLE IF EXISTS business_markets CASCADE;
-DROP TABLE IF EXISTS business_users CASCADE;
-DROP TABLE IF EXISTS sessions CASCADE;
-DROP TABLE IF EXISTS verification_codes CASCADE;
-DROP TABLE IF EXISTS users CASCADE;
-DROP TABLE IF EXISTS products CASCADE;
-DROP TABLE IF EXISTS markets CASCADE;
-DROP TABLE IF EXISTS categories CASCADE;
-DROP TABLE IF EXISTS reports CASCADE;
-DROP TABLE IF EXISTS vendor_metrics CASCADE;
+-- Drop triggers if they exist
+DROP TRIGGER IF EXISTS detect_price_anomaly_trigger ON prices;
+DROP TRIGGER IF EXISTS update_users_updated_at ON users;
+DROP TRIGGER IF EXISTS update_categories_updated_at ON categories;
+DROP TRIGGER IF EXISTS update_products_updated_at ON products;
+DROP TRIGGER IF EXISTS update_markets_updated_at ON markets;
+DROP TRIGGER IF EXISTS update_prices_updated_at ON prices;
+DROP TRIGGER IF EXISTS update_reference_prices_updated_at ON reference_prices;
+DROP TRIGGER IF EXISTS update_price_anomalies_updated_at ON price_anomalies;
+DROP TRIGGER IF EXISTS update_vendor_anomaly_scores_updated_at ON vendor_anomaly_scores;
+DROP TRIGGER IF EXISTS update_user_notification_preferences_updated_at ON user_notification_preferences;
+DROP TRIGGER IF EXISTS update_user_price_alerts_updated_at ON user_price_alerts;
+
+-- Drop functions if they exist
+DROP FUNCTION IF EXISTS update_updated_at_column() CASCADE;
+DROP FUNCTION IF EXISTS get_current_reference_price(INTEGER, VARCHAR) CASCADE;
+DROP FUNCTION IF EXISTS calculate_anomaly_severity(DECIMAL) CASCADE;
+DROP FUNCTION IF EXISTS detect_price_anomaly() CASCADE;
 
 -- =============================================
--- RECREATE ALL TABLES
+-- RECREATE ALL TABLES (with IF NOT EXISTS)
 -- =============================================
 
 -- 1. CATEGORIES SYSTEM
-CREATE TABLE categories (
+CREATE TABLE IF NOT EXISTS categories (
     id SERIAL PRIMARY KEY,
     name VARCHAR(100) UNIQUE NOT NULL,
     description TEXT,
@@ -57,7 +42,7 @@ CREATE TABLE categories (
 );
 
 -- 2. USERS & AUTHENTICATION
-CREATE TABLE users (
+CREATE TABLE IF NOT EXISTS users (
     id SERIAL PRIMARY KEY,
     email VARCHAR(255) UNIQUE NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
@@ -78,7 +63,7 @@ CREATE TABLE users (
     registration_completed BOOLEAN DEFAULT FALSE
 );
 
-CREATE TABLE verification_codes (
+CREATE TABLE IF NOT EXISTS verification_codes (
     id SERIAL PRIMARY KEY,
     email VARCHAR(255) NOT NULL,
     code VARCHAR(10) NOT NULL,
@@ -87,7 +72,7 @@ CREATE TABLE verification_codes (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE sessions (
+CREATE TABLE IF NOT EXISTS sessions (
     id SERIAL PRIMARY KEY,
     user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
     token_hash VARCHAR(255) NOT NULL,
@@ -96,7 +81,7 @@ CREATE TABLE sessions (
 );
 
 -- 3. PRODUCTS & MARKETS
-CREATE TABLE products (
+CREATE TABLE IF NOT EXISTS products (
     id SERIAL PRIMARY KEY,
     name VARCHAR(255) UNIQUE NOT NULL,
     category_id INTEGER REFERENCES categories(id) ON DELETE SET NULL,
@@ -107,7 +92,7 @@ CREATE TABLE products (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE markets (
+CREATE TABLE IF NOT EXISTS markets (
     id VARCHAR(100) PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     province VARCHAR(100) NOT NULL,
@@ -119,7 +104,7 @@ CREATE TABLE markets (
 );
 
 -- 4. BUSINESS USERS
-CREATE TABLE business_users (
+CREATE TABLE IF NOT EXISTS business_users (
     id SERIAL PRIMARY KEY,
     user_id INTEGER REFERENCES users(id) ON DELETE CASCADE UNIQUE,
     business_name VARCHAR(255) NOT NULL,
@@ -137,7 +122,7 @@ CREATE TABLE business_users (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE business_markets (
+CREATE TABLE IF NOT EXISTS business_markets (
     id SERIAL PRIMARY KEY,
     business_id INTEGER REFERENCES business_users(id) ON DELETE CASCADE,
     market_id VARCHAR(100) REFERENCES markets(id) ON DELETE CASCADE,
@@ -146,7 +131,7 @@ CREATE TABLE business_markets (
 );
 
 -- 5. PRICE MANAGEMENT
-CREATE TABLE prices (
+CREATE TABLE IF NOT EXISTS prices (
     id SERIAL PRIMARY KEY,
     product_id INTEGER REFERENCES products(id) ON DELETE CASCADE,
     market_id VARCHAR(100) REFERENCES markets(id) ON DELETE CASCADE,
@@ -168,7 +153,7 @@ CREATE TABLE prices (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE price_history (
+CREATE TABLE IF NOT EXISTS price_history (
     id SERIAL PRIMARY KEY,
     price_id INTEGER REFERENCES prices(id) ON DELETE CASCADE,
     old_price DECIMAL(10, 2),
@@ -177,7 +162,7 @@ CREATE TABLE price_history (
     changed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE price_change_history (
+CREATE TABLE IF NOT EXISTS price_change_history (
     id SERIAL PRIMARY KEY,
     price_id INTEGER REFERENCES prices(id) ON DELETE CASCADE,
     product_id INTEGER REFERENCES products(id) ON DELETE CASCADE,
@@ -190,7 +175,7 @@ CREATE TABLE price_change_history (
 );
 
 -- 5.1 ANOMALY DETECTION TABLES
-CREATE TABLE reference_prices (
+CREATE TABLE IF NOT EXISTS reference_prices (
     id SERIAL PRIMARY KEY,
     product_id INTEGER REFERENCES products(id) ON DELETE CASCADE,
     market_id VARCHAR(100) REFERENCES markets(id) ON DELETE CASCADE,
@@ -206,7 +191,7 @@ CREATE TABLE reference_prices (
     UNIQUE(product_id, market_id, effective_date)
 );
 
-CREATE TABLE price_anomalies (
+CREATE TABLE IF NOT EXISTS price_anomalies (
     id SERIAL PRIMARY KEY,
     price_id INTEGER REFERENCES prices(id) ON DELETE CASCADE,
     product_id INTEGER REFERENCES products(id) ON DELETE CASCADE,
@@ -236,7 +221,7 @@ CREATE TABLE price_anomalies (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE anomaly_resolution_history (
+CREATE TABLE IF NOT EXISTS anomaly_resolution_history (
     id SERIAL PRIMARY KEY,
     anomaly_id INTEGER REFERENCES price_anomalies(id) ON DELETE CASCADE,
     action VARCHAR(50) CHECK (action IN ('created', 'assigned', 'investigated', 'resolved', 'dismissed', 'escalated')),
@@ -247,7 +232,7 @@ CREATE TABLE anomaly_resolution_history (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE vendor_anomaly_scores (
+CREATE TABLE IF NOT EXISTS vendor_anomaly_scores (
     id SERIAL PRIMARY KEY,
     vendor_id INTEGER REFERENCES users(id) ON DELETE CASCADE UNIQUE,
     total_anomalies INTEGER DEFAULT 0,
@@ -263,7 +248,7 @@ CREATE TABLE vendor_anomaly_scores (
 );
 
 -- 6. USER FAVORITES & ALERTS
-CREATE TABLE favorites (
+CREATE TABLE IF NOT EXISTS favorites (
     id SERIAL PRIMARY KEY,
     user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
     product_id INTEGER REFERENCES products(id) ON DELETE CASCADE,
@@ -272,7 +257,7 @@ CREATE TABLE favorites (
     UNIQUE(user_id, product_id, market_id)
 );
 
-CREATE TABLE user_price_alerts (
+CREATE TABLE IF NOT EXISTS user_price_alerts (
     id SERIAL PRIMARY KEY,
     user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
     product_id INTEGER REFERENCES products(id) ON DELETE CASCADE,
@@ -291,7 +276,7 @@ CREATE TABLE user_price_alerts (
 );
 
 -- 7. SUBSCRIPTION SYSTEM
-CREATE TABLE subscription_plans (
+CREATE TABLE IF NOT EXISTS subscription_plans (
     id SERIAL PRIMARY KEY,
     name VARCHAR(100) UNIQUE NOT NULL,
     description TEXT,
@@ -307,7 +292,7 @@ CREATE TABLE subscription_plans (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE user_subscriptions (
+CREATE TABLE IF NOT EXISTS user_subscriptions (
     id SERIAL PRIMARY KEY,
     user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
     plan_id INTEGER REFERENCES subscription_plans(id) ON DELETE SET NULL,
@@ -325,7 +310,7 @@ CREATE TABLE user_subscriptions (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE subscription_payments (
+CREATE TABLE IF NOT EXISTS subscription_payments (
     id SERIAL PRIMARY KEY,
     subscription_id INTEGER REFERENCES user_subscriptions(id) ON DELETE SET NULL,
     user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
@@ -337,7 +322,7 @@ CREATE TABLE subscription_payments (
     receipt_url TEXT
 );
 
-CREATE TABLE subscription_expiry_notifications (
+CREATE TABLE IF NOT EXISTS subscription_expiry_notifications (
     id SERIAL PRIMARY KEY,
     subscription_id INTEGER REFERENCES user_subscriptions(id) ON DELETE CASCADE,
     notified_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -345,7 +330,7 @@ CREATE TABLE subscription_expiry_notifications (
 );
 
 -- 8. ADVERTISEMENT SYSTEM
-CREATE TABLE vendor_advertisements (
+CREATE TABLE IF NOT EXISTS vendor_advertisements (
     id SERIAL PRIMARY KEY,
     vendor_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
     title VARCHAR(255) NOT NULL,
@@ -367,7 +352,7 @@ CREATE TABLE vendor_advertisements (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE ad_statistics (
+CREATE TABLE IF NOT EXISTS ad_statistics (
     id SERIAL PRIMARY KEY,
     ad_id INTEGER REFERENCES vendor_advertisements(id) ON DELETE CASCADE,
     event_type VARCHAR(50) CHECK (event_type IN ('view', 'click', 'conversion')),
@@ -378,7 +363,7 @@ CREATE TABLE ad_statistics (
 );
 
 -- 9. NOTIFICATION SYSTEM
-CREATE TABLE notifications (
+CREATE TABLE IF NOT EXISTS notifications (
     id SERIAL PRIMARY KEY,
     user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
     title VARCHAR(255) NOT NULL,
@@ -398,7 +383,43 @@ CREATE TABLE notifications (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE pending_approvals (
+CREATE TABLE IF NOT EXISTS notification_templates (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) UNIQUE NOT NULL,
+    title_template TEXT NOT NULL,
+    message_template TEXT NOT NULL,
+    type VARCHAR(50),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS user_notification_preferences (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    alert_type VARCHAR(50) CHECK (alert_type IN ('price_below', 'price_above', 'price_change', 'price_approval', 'price_rejection', 'anomaly_alert', 'system_update')),
+    is_enabled BOOLEAN DEFAULT TRUE,
+    notification_method VARCHAR(20) DEFAULT 'email' CHECK (notification_method IN ('email', 'push', 'both')),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(user_id, alert_type)
+);
+
+-- Price alerts table (for user-created alerts)
+CREATE TABLE IF NOT EXISTS user_price_alerts_new (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    product_id INTEGER REFERENCES products(id) ON DELETE CASCADE,
+    market_id VARCHAR(100) REFERENCES markets(id) ON DELETE CASCADE,
+    alert_type VARCHAR(20) CHECK (alert_type IN ('below', 'above', 'change')),
+    threshold DECIMAL(10, 2) NOT NULL,
+    percentage_threshold DECIMAL(5, 2),
+    is_active BOOLEAN DEFAULT TRUE,
+    last_triggered_at TIMESTAMP,
+    trigger_count INTEGER DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS pending_approvals (
     id SERIAL PRIMARY KEY,
     entity_type VARCHAR(50) CHECK (entity_type IN ('price', 'advertisement', 'vendor_registration', 'business_registration')),
     entity_id INTEGER NOT NULL,
@@ -412,7 +433,7 @@ CREATE TABLE pending_approvals (
 );
 
 -- 10. REPORTING & ANALYTICS
-CREATE TABLE reports (
+CREATE TABLE IF NOT EXISTS reports (
     id SERIAL PRIMARY KEY,
     report_type VARCHAR(100) CHECK (report_type IN (
         'price_trends', 'vendor_performance', 'subscription_revenue',
@@ -429,7 +450,7 @@ CREATE TABLE reports (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE vendor_metrics (
+CREATE TABLE IF NOT EXISTS vendor_metrics (
     id SERIAL PRIMARY KEY,
     vendor_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
     total_price_submissions INTEGER DEFAULT 0,
@@ -502,11 +523,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- =============================================
--- FIXED: AFTER INSERT TRIGGER for anomaly detection
--- =============================================
-
--- Main anomaly detection function - AFTER INSERT version
+-- Main anomaly detection function
 CREATE OR REPLACE FUNCTION detect_price_anomaly()
 RETURNS TRIGGER AS $$
 DECLARE
@@ -516,26 +533,18 @@ DECLARE
     anomaly_type_val VARCHAR(50);
     anomaly_id_val INTEGER;
 BEGIN
-    -- Only check pending vendor prices (not reference prices)
     IF NEW.status = 'pending' AND NEW.vendor_id IS NOT NULL THEN
         
-        -- Get current reference price for this product and market
         SELECT * INTO ref_price_record
         FROM get_current_reference_price(NEW.product_id, NEW.market_id);
         
-        -- If reference price exists, check for anomaly
         IF ref_price_record.reference_price IS NOT NULL THEN
             
-            -- Calculate deviation percentage
             deviation_pct := ABS(((NEW.price - ref_price_record.reference_price) / ref_price_record.reference_price) * 100);
-            
-            -- Calculate severity
             anomaly_severity := calculate_anomaly_severity(deviation_pct);
             
-            -- Only create anomaly if deviation > 5%
             IF deviation_pct > 5 THEN
                 
-                -- Determine anomaly type
                 IF NEW.price > ref_price_record.reference_price THEN
                     anomaly_type_val := 'price_spike';
                 ELSIF NEW.price < ref_price_record.reference_price THEN
@@ -544,71 +553,35 @@ BEGIN
                     anomaly_type_val := 'data_inconsistency';
                 END IF;
                 
-                -- Create anomaly record (AFTER INSERT - NEW.id is valid)
                 INSERT INTO price_anomalies (
-                    price_id,
-                    product_id,
-                    market_id,
-                    vendor_id,
-                    reference_price_id,
-                    reference_price,
-                    vendor_price,
-                    price_difference,
-                    deviation_percentage,
-                    anomaly_type,
-                    severity,
-                    status,
-                    details,
-                    auto_flagged,
-                    flag_reason
+                    price_id, product_id, market_id, vendor_id, reference_price_id,
+                    reference_price, vendor_price, price_difference, deviation_percentage,
+                    anomaly_type, severity, status, details, auto_flagged, flag_reason
                 ) VALUES (
-                    NEW.id,
-                    NEW.product_id,
-                    NEW.market_id,
-                    NEW.vendor_id,
-                    ref_price_record.reference_price_id,
-                    ref_price_record.reference_price,
-                    NEW.price,
-                    NEW.price - ref_price_record.reference_price,
-                    deviation_pct,
-                    anomaly_type_val,
-                    anomaly_severity,
-                    'new',
-                    CASE
-                        WHEN NEW.price > ref_price_record.reference_price THEN
-                            'Price is ' || ROUND(deviation_pct, 1) || '% above reference price of ' || 
-                            ref_price_record.reference_price || ' RWF'
-                        ELSE
-                            'Price is ' || ROUND(deviation_pct, 1) || '% below reference price of ' || 
-                            ref_price_record.reference_price || ' RWF'
+                    NEW.id, NEW.product_id, NEW.market_id, NEW.vendor_id, ref_price_record.reference_price_id,
+                    ref_price_record.reference_price, NEW.price, NEW.price - ref_price_record.reference_price,
+                    deviation_pct, anomaly_type_val, anomaly_severity, 'new',
+                    CASE WHEN NEW.price > ref_price_record.reference_price THEN
+                        'Price is ' || ROUND(deviation_pct, 1) || '% above reference price of ' || 
+                        ref_price_record.reference_price || ' RWF'
+                    ELSE
+                        'Price is ' || ROUND(deviation_pct, 1) || '% below reference price of ' || 
+                        ref_price_record.reference_price || ' RWF'
                     END,
                     CASE WHEN anomaly_severity IN ('critical', 'high') THEN TRUE ELSE FALSE END,
                     CASE 
-                        WHEN anomaly_severity = 'critical' THEN 
-                            'Critical anomaly: Price deviation exceeds 50% from reference price'
-                        WHEN anomaly_severity = 'high' THEN 
-                            'High anomaly: Price deviation exceeds 30% from reference price'
-                        WHEN anomaly_severity = 'medium' THEN 
-                            'Medium anomaly: Price deviation exceeds 15% from reference price'
-                        ELSE
-                            'Low anomaly: Price deviation exceeds 5% from reference price'
+                        WHEN anomaly_severity = 'critical' THEN 'Critical anomaly: Price deviation exceeds 50%'
+                        WHEN anomaly_severity = 'high' THEN 'High anomaly: Price deviation exceeds 30%'
+                        WHEN anomaly_severity = 'medium' THEN 'Medium anomaly: Price deviation exceeds 15%'
+                        ELSE 'Low anomaly: Price deviation exceeds 5%'
                     END
-                )
-                RETURNING id INTO anomaly_id_val;
+                );
                 
-                -- Update the price record to flag it (using UPDATE since we can't modify NEW in AFTER trigger)
                 IF anomaly_severity IN ('critical', 'high') THEN
-                    UPDATE prices 
-                    SET 
-                        flagged = TRUE,
-                        flag_reason = 'Auto-flagged: ' || UPPER(anomaly_severity) || ' anomaly detected',
-                        status = 'flagged'
+                    UPDATE prices SET flagged = TRUE, flag_reason = 'Auto-flagged: ' || UPPER(anomaly_severity) || ' anomaly detected', status = 'flagged'
                     WHERE id = NEW.id;
                 ELSIF anomaly_severity = 'medium' THEN
-                    UPDATE prices 
-                    SET 
-                        flagged = TRUE,
-                        flag_reason = 'Flagged for review: Medium anomaly'
+                    UPDATE prices SET flagged = TRUE, flag_reason = 'Flagged for review: Medium anomaly'
                     WHERE id = NEW.id;
                 END IF;
             END IF;
@@ -619,15 +592,12 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Create trigger as AFTER INSERT (CRITICAL FIX)
+-- Create trigger as AFTER INSERT
 DROP TRIGGER IF EXISTS detect_price_anomaly_trigger ON prices;
 CREATE TRIGGER detect_price_anomaly_trigger
     AFTER INSERT ON prices
     FOR EACH ROW
     EXECUTE FUNCTION detect_price_anomaly();
-
--- Re-enable triggers
-SET session_replication_role = 'origin';
 
 -- =============================================
 -- CREATE INDEXES FOR PERFORMANCE
@@ -645,21 +615,23 @@ CREATE INDEX IF NOT EXISTS idx_price_anomalies_price ON price_anomalies(price_id
 CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id);
 CREATE INDEX IF NOT EXISTS idx_notifications_user_read ON notifications(user_id, is_read);
 CREATE INDEX IF NOT EXISTS idx_reference_prices_current ON reference_prices(product_id, market_id, is_current);
+CREATE INDEX IF NOT EXISTS idx_user_price_alerts_user ON user_price_alerts(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_price_alerts_product ON user_price_alerts(product_id);
+CREATE INDEX IF NOT EXISTS idx_user_price_alerts_active ON user_price_alerts(is_active);
 
 -- =============================================
 -- TRIGGERS FOR UPDATED_AT
 -- =============================================
 
-CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-CREATE TRIGGER update_categories_updated_at BEFORE UPDATE ON categories FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-CREATE TRIGGER update_products_updated_at BEFORE UPDATE ON products FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-CREATE TRIGGER update_markets_updated_at BEFORE UPDATE ON markets FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-CREATE TRIGGER update_prices_updated_at BEFORE UPDATE ON prices FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-CREATE TRIGGER update_reference_prices_updated_at BEFORE UPDATE ON reference_prices FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-CREATE TRIGGER update_price_anomalies_updated_at BEFORE UPDATE ON price_anomalies FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-CREATE TRIGGER update_vendor_anomaly_scores_updated_at BEFORE UPDATE ON vendor_anomaly_scores FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE OR REPLACE TRIGGER update_users_updated_at BEFORE UPDATE ON users FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE OR REPLACE TRIGGER update_categories_updated_at BEFORE UPDATE ON categories FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE OR REPLACE TRIGGER update_products_updated_at BEFORE UPDATE ON products FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE OR REPLACE TRIGGER update_markets_updated_at BEFORE UPDATE ON markets FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE OR REPLACE TRIGGER update_prices_updated_at BEFORE UPDATE ON prices FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE OR REPLACE TRIGGER update_reference_prices_updated_at BEFORE UPDATE ON reference_prices FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE OR REPLACE TRIGGER update_price_anomalies_updated_at BEFORE UPDATE ON price_anomalies FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE OR REPLACE TRIGGER update_vendor_anomaly_scores_updated_at BEFORE UPDATE ON vendor_anomaly_scores FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE OR REPLACE TRIGGER update_user_notification_preferences_updated_at BEFORE UPDATE ON user_notification_preferences FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE OR REPLACE TRIGGER update_user_price_alerts_updated_at BEFORE UPDATE ON user_price_alerts FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
--- =============================================
--- SUCCESS MESSAGE
--- =============================================
-SELECT 'Database reset complete! All tables recreated with CASCADE ON DELETE. AFTER INSERT trigger configured for anomaly detection. No seed data added.' as message;
+SELECT 'Database setup complete! All tables created or already exist. Triggers configured.' as message;

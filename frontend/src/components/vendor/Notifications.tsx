@@ -1,84 +1,171 @@
-﻿import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
+﻿import { useState, useEffect } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
-import { Bell, CheckCircle, XCircle, AlertCircle, Clock } from 'lucide-react';
+import { Bell, CheckCircle, XCircle, AlertCircle, Clock, RefreshCw } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { getUserNotifications, markAsRead, markAllAsRead } from '../../services/notificationService';
+import { toast } from 'sonner';
 
 interface NotificationsProps {
   vendorName: string;
   vendorId: string;
 }
 
+interface Notification {
+  id: number;
+  title: string;
+  message: string;
+  type: string;
+  notification_type: string;
+  priority: string;
+  is_read: boolean;
+  read_at: string | null;
+  created_at: string;
+  severity: string;
+}
+
 export default function Notifications({ vendorName, vendorId }: NotificationsProps) {
   const { t } = useLanguage();
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [unreadCount, setUnreadCount] = useState(0);
 
-  // Mock notifications
-  const notifications = [
-    {
-      id: '1',
-      title: 'Price Approved',
-      message: 'Your price for Rice (1kg) at RWF 1,200 has been approved',
-      type: 'success' as const,
-      time: '2 hours ago',
-      read: false
-    },
-    {
-      id: '2',
-      title: 'Price Rejected',
-      message: 'Your price for Beans (1kg) was rejected. Reason: Price too high',
-      type: 'error' as const,
-      time: '5 hours ago',
-      read: false
-    },
-    {
-      id: '3',
-      title: 'Pending Approval',
-      message: 'Your price for Maize Flour (1kg) is pending admin approval',
-      type: 'warning' as const,
-      time: '1 day ago',
-      read: true
-    },
-    {
-      id: '4',
-      title: 'Price Approved',
-      message: 'Your price for Cooking Oil (1L) has been approved',
-      type: 'success' as const,
-      time: '2 days ago',
-      read: true
+  useEffect(() => {
+    fetchNotifications();
+    
+    // Poll for new notifications every 30 seconds
+    const interval = setInterval(() => {
+      fetchNotifications(true);
+    }, 30000);
+    
+    return () => clearInterval(interval);
+  }, []);
+
+  const fetchNotifications = async (silent = false) => {
+    if (!silent) setLoading(true);
+    try {
+      const response = await getUserNotifications({ limit: 50 });
+      setNotifications(response.notifications || []);
+      setUnreadCount(response.unreadCount || 0);
+    } catch (error) {
+      console.error('Error fetching notifications:', error);
+      if (!silent) toast.error('Failed to load notifications');
+    } finally {
+      if (!silent) setLoading(false);
     }
-  ];
+  };
 
-  const getNotificationIcon = (type: string) => {
+  const handleMarkAsRead = async (id: number) => {
+    try {
+      await markAsRead(id);
+      await fetchNotifications(true);
+      toast.success('Marked as read');
+    } catch (error) {
+      toast.error('Failed to mark as read');
+    }
+  };
+
+  const handleMarkAllAsRead = async () => {
+    try {
+      await markAllAsRead();
+      await fetchNotifications(true);
+      toast.success('All notifications marked as read');
+    } catch (error) {
+      toast.error('Failed to mark all as read');
+    }
+  };
+
+  const getNotificationIcon = (notification: Notification) => {
+    const type = notification.notification_type || notification.type;
+    const severity = notification.severity;
+    
     switch (type) {
-      case 'success':
+      case 'price_approval':
         return <CheckCircle className="h-5 w-5 text-emerald-400" />;
-      case 'error':
+      case 'price_rejection':
         return <XCircle className="h-5 w-5 text-red-400" />;
-      case 'warning':
+      case 'price_alert':
+        if (severity === 'critical' || severity === 'high') {
+          return <AlertCircle className="h-5 w-5 text-red-400" />;
+        }
+        return <Bell className="h-5 w-5 text-yellow-400" />;
+      case 'anomaly_detected':
+        return <AlertCircle className="h-5 w-5 text-orange-400" />;
+      case 'subscription_expiry':
         return <AlertCircle className="h-5 w-5 text-yellow-400" />;
+      case 'subscription_activation':
+        return <CheckCircle className="h-5 w-5 text-emerald-400" />;
       default:
         return <Bell className="h-5 w-5 text-primary" />;
     }
   };
 
-  const getNotificationBg = (type: string, read: boolean) => {
-    if (read) return 'bg-white/5 border-white/10';
+  const getNotificationBg = (notification: Notification) => {
+    if (notification.is_read) return 'bg-white/5 border-white/10';
+    
+    const type = notification.notification_type || notification.type;
+    const severity = notification.severity;
+    
     switch (type) {
-      case 'success':
+      case 'price_approval':
+      case 'subscription_activation':
         return 'bg-emerald-500/10 border-emerald-500/30';
-      case 'error':
+      case 'price_rejection':
         return 'bg-red-500/10 border-red-500/30';
-      case 'warning':
+      case 'price_alert':
+        if (severity === 'critical' || severity === 'high') {
+          return 'bg-red-500/10 border-red-500/30';
+        }
+        return 'bg-yellow-500/10 border-yellow-500/30';
+      case 'anomaly_detected':
+        return 'bg-orange-500/10 border-orange-500/30';
+      case 'subscription_expiry':
         return 'bg-yellow-500/10 border-yellow-500/30';
       default:
         return 'bg-primary/10 border-primary/30';
     }
   };
 
-  const markAllAsRead = () => {
-    // Mark all notifications as read
-    // In a real app, this would call an API
-    console.log('Mark all as read');
+  const getTimeAgo = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / (1000 * 60));
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins} minute${diffMins === 1 ? '' : 's'} ago`;
+    if (diffHours < 24) return `${diffHours} hour${diffHours === 1 ? '' : 's'} ago`;
+    if (diffDays === 1) return 'Yesterday';
+    return `${diffDays} days ago`;
   };
+
+  const getNotificationTitle = (notification: Notification) => {
+    const type = notification.notification_type || notification.type;
+    const titleMap: Record<string, string> = {
+      'price_approval': 'Price Approved',
+      'price_rejection': 'Price Rejected',
+      'price_alert': 'Price Alert',
+      'anomaly_detected': 'Anomaly Detected',
+      'anomaly_resolved': 'Anomaly Resolved',
+      'subscription_activation': 'Subscription Activated',
+      'subscription_expiry': 'Subscription Expiring',
+      'system': 'System Update',
+      'price_submitted': 'Price Submitted',
+      'payment_received': 'Payment Received'
+    };
+    return titleMap[type] || notification.title || 'Notification';
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <RefreshCw className="h-6 w-6 animate-spin text-primary" />
+        <span className="ml-2 text-muted-foreground">Loading notifications...</span>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -94,44 +181,61 @@ export default function Notifications({ vendorName, vendorId }: NotificationsPro
             </p>
           </div>
         </div>
-        <Button variant="premium" size="sm" onClick={markAllAsRead}>
-          Mark all as read
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={() => fetchNotifications(false)}>
+            <RefreshCw className="h-3 w-3 mr-1" />
+            Refresh
+          </Button>
+          {unreadCount > 0 && (
+            <Button variant="premium" size="sm" onClick={handleMarkAllAsRead}>
+              Mark all as read ({unreadCount})
+            </Button>
+          )}
+        </div>
       </div>
 
       <Card className="rounded-xl dark-glass border-white/10 shadow-lg">
         <CardHeader className="pb-3">
           <CardTitle className="text-base text-white">All Notifications</CardTitle>
           <CardDescription className="text-xs text-muted-foreground">
-            {notifications.filter(n => !n.read).length} unread notifications
+            {unreadCount} unread notification{unreadCount !== 1 ? 's' : ''}
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-3">
+          <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2">
             {notifications.map((notification) => (
               <div
                 key={notification.id}
-                className={`p-3 rounded-xl border transition-all ${getNotificationBg(notification.type, notification.read)}`}
+                className={`p-3 rounded-xl border transition-all ${getNotificationBg(notification)} ${!notification.is_read ? 'cursor-pointer hover:bg-opacity-20' : ''}`}
+                onClick={() => !notification.is_read && handleMarkAsRead(notification.id)}
               >
                 <div className="flex gap-3">
                   <div className="flex-shrink-0 mt-1">
-                    {getNotificationIcon(notification.type)}
+                    {getNotificationIcon(notification)}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-2">
-                      <p className={`text-sm ${!notification.read ? 'font-semibold text-white' : 'font-medium text-white'}`}>
-                        {notification.title}
+                      <p className={`text-sm ${!notification.is_read ? 'font-semibold text-white' : 'font-medium text-white'}`}>
+                        {getNotificationTitle(notification)}
                       </p>
-                      {!notification.read && (
+                      {!notification.is_read && (
                         <div className="flex-shrink-0 w-2 h-2 bg-primary rounded-full mt-1.5 animate-pulse" />
                       )}
                     </div>
                     <p className="text-xs text-muted-foreground mt-1">
                       {notification.message}
                     </p>
-                    <div className="flex items-center gap-1 mt-2 text-[11px] text-muted-foreground">
+                    <div className="flex items-center gap-2 mt-2 text-[11px] text-muted-foreground">
                       <Clock className="h-3 w-3" />
-                      <span>{notification.time}</span>
+                      <span>{getTimeAgo(notification.created_at)}</span>
+                      <span>•</span>
+                      <span className="capitalize">{notification.priority || 'normal'} priority</span>
+                      {notification.notification_type && (
+                        <>
+                          <span>•</span>
+                          <span className="capitalize">{notification.notification_type.replace('_', ' ')}</span>
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -161,6 +265,18 @@ export default function Notifications({ vendorName, vendorId }: NotificationsPro
           background: rgba(255, 255, 255, 0.1);
           border-color: rgba(255, 255, 255, 0.2);
           transform: translateY(-1px);
+        }
+
+        .dark-glass {
+          background: rgba(0, 0, 0, 0.3);
+          backdrop-filter: blur(10px);
+        }
+
+        .gradient-text {
+          background: linear-gradient(135deg, #fff 0%, #10b981 100%);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
         }
       `}</style>
     </div>

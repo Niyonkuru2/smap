@@ -24,6 +24,7 @@ import smsRoutes from './smsRoutes.js';
 import advertisementRoutes from './advertisementRoutes.js';
 import anomalyRoutes from './anomalyRoutes.js';
 import analyticsRoutes from './analyticsRoutes.js';
+import priceAlertRoutes from './priceAlertRoutes.js';
 
 const router = express.Router();
 
@@ -40,6 +41,7 @@ router.use('/advertisements', advertisementRoutes);
 router.use('/favorites', favoriteRoutes);
 router.use('/alerts', alertRoutes);
 router.use('/notifications', notificationRoutes);
+router.use('/price-alerts', priceAlertRoutes);
 router.use('/admin', adminRoutes);
 router.use('/reference-prices', referencePriceRoutes);
 router.use('/vendor-prices', vendorReferenceRoutes);
