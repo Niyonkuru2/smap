@@ -416,7 +416,7 @@ export default function SubscriptionManagement() {
                         variant="outline" 
                         size="sm" 
                         onClick={() => handleEditPlan(plan)}
-                        className="flex-1 btn-outline-premium"
+                        
                       >
                         <Edit className="h-4 w-4 mr-2" />
                         Edit
@@ -660,7 +660,7 @@ export default function SubscriptionManagement() {
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDialogOpen(false)} className="btn-outline-premium">
+            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
               Cancel
             </Button>
             <Button onClick={handleSavePlan} className="btn-premium">

@@ -529,7 +529,6 @@ export default function VendorManagement() {
               variant="outline" 
               onClick={() => setIsDialogOpen(false)}
               disabled={isSaving}
-              className="btn-outline-premium flex-1 sm:flex-none"
             >
               Cancel
             </Button>

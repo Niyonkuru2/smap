@@ -1,6 +1,6 @@
 // src/controllers/priceController.js
 import { catchAsync } from '../middleware/errorHandler.js';
-import  pool  from '../config/database.js';
+import pool from '../config/database.js';
 import PriceRepository from '../repositories/PriceRepository.js';
 import * as mlPrediction from '../services/MLPredictionService.js';
 import * as priceHistory from '../services/priceHistory.js';
@@ -70,7 +70,18 @@ export const getBestTimeToBuy = catchAsync(async (req, res) => {
 export const getMySubmissions = catchAsync(async (req, res) => {
     const query = `
         SELECT 
-            p.*,
+            p.id,
+            p.product_id,
+            p.market_id,
+            p.vendor_id,
+            p.price,
+            p.unit,
+            p.vendor_notes,
+            p.status,
+            p.flagged,
+            p.flag_reason,
+            p.created_at,
+            p.updated_at,
             pr.name as product_name,
             m.name as market_name
         FROM prices p
@@ -89,101 +100,234 @@ export const getMySubmissions = catchAsync(async (req, res) => {
 });
 
 export const getMyStats = catchAsync(async (req, res) => {
-    const stats = await PriceRepository.getVendorStats(req.user.id);
-    res.json({ success: true, stats });
+    const query = `
+        SELECT 
+            COUNT(*) as total_submissions,
+            COUNT(*) FILTER (WHERE status = 'approved') as approved_submissions,
+            COUNT(*) FILTER (WHERE status = 'pending') as pending_submissions,
+            COUNT(*) FILTER (WHERE status = 'rejected') as rejected_submissions,
+            COUNT(*) FILTER (WHERE flagged = true) as flagged_submissions,
+            COALESCE(AVG(price), 0) as average_price,
+            COALESCE(SUM(price), 0) as total_contribution
+        FROM prices
+        WHERE vendor_id = $1
+    `;
+    
+    const result = await pool.query(query, [req.user.id]);
+    
+    res.json({ 
+        success: true, 
+        data: result.rows[0] || {
+            total_submissions: 0,
+            approved_submissions: 0,
+            pending_submissions: 0,
+            rejected_submissions: 0,
+            flagged_submissions: 0,
+            average_price: 0,
+            total_contribution: 0
+        }
+    });
 });
 
 export const submitPrice = catchAsync(async (req, res) => {
     const { productId, marketId, price, unit, notes } = req.body;
     
-    let referencePrice = null;
-    let anomalyCheck = { isAnomaly: false, reason: null, referencePrice: null, percentageDiff: null };
+    // Start transaction
+    await pool.query('BEGIN');
     
     try {
-        const query = `
-            SELECT * FROM get_current_reference_price($1, $2)
+        // Check reference price first
+        const refPriceQuery = `
+            SELECT 
+                rp.id as reference_price_id,
+                rp.price as reference_price,
+                rp.unit as reference_unit
+            FROM reference_prices rp
+            WHERE rp.product_id = $1
+                AND rp.market_id = $2
+                AND rp.is_current = TRUE
+                AND (rp.expiry_date IS NULL OR rp.expiry_date >= CURRENT_DATE)
+            ORDER BY rp.effective_date DESC
+            LIMIT 1
         `;
-        const result = await pool.query(query, [parseInt(productId), marketId]);
         
-        if (result.rows.length > 0) {
-            referencePrice = parseFloat(result.rows[0].reference_price);
-            const percentageDiff = ((price - referencePrice) / referencePrice) * 100;
+        const refResult = await pool.query(refPriceQuery, [parseInt(productId), marketId]);
+        const referencePrice = refResult.rows[0];
+        
+        // Calculate deviation if reference exists
+        let deviation_pct = null;
+        let isAnomaly = false;
+        let anomalySeverity = null;
+        let anomalyType = null;
+        
+        if (referencePrice) {
+            deviation_pct = Math.abs(((price - referencePrice.reference_price) / referencePrice.reference_price) * 100);
             
-            if (Math.abs(percentageDiff) > 30) {
-                anomalyCheck = {
-                    isAnomaly: true,
-                    reason: `Price is ${percentageDiff > 0 ? 'higher' : 'lower'} by ${Math.abs(percentageDiff).toFixed(1)}% than reference price of ${referencePrice.toLocaleString()} RWF`,
-                    referencePrice: referencePrice,
-                    percentageDiff: percentageDiff
-                };
+            if (deviation_pct > 30) {
+                isAnomaly = true;
+                anomalySeverity = deviation_pct > 50 ? 'critical' : 'high';
+                anomalyType = price > referencePrice.reference_price ? 'price_spike' : 'price_drop';
+            } else if (deviation_pct > 15) {
+                isAnomaly = true;
+                anomalySeverity = 'medium';
+                anomalyType = price > referencePrice.reference_price ? 'price_spike' : 'price_drop';
+            } else if (deviation_pct > 5) {
+                isAnomaly = true;
+                anomalySeverity = 'low';
+                anomalyType = price > referencePrice.reference_price ? 'price_spike' : 'price_drop';
             }
         }
+        
+        // Insert the price
+        const insertQuery = `
+            INSERT INTO prices (
+                product_id, 
+                market_id, 
+                vendor_id, 
+                price, 
+                unit, 
+                vendor_notes, 
+                status, 
+                flagged, 
+                flag_reason,
+                created_at
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
+            RETURNING *
+        `;
+        
+        const values = [
+            parseInt(productId),
+            marketId,
+            req.user.id,
+            price,
+            unit || 'kg',
+            notes || null,
+            isAnomaly && anomalySeverity !== 'low' ? 'flagged' : 'pending',
+            isAnomaly,
+            isAnomaly ? `Price deviates by ${deviation_pct.toFixed(1)}% from reference price` : null
+        ];
+        
+        const result = await pool.query(insertQuery, values);
+        const submission = result.rows[0];
+        
+        // Create anomaly record if needed
+        let anomaly = null;
+        if (isAnomaly && referencePrice) {
+            const anomalyInsert = `
+                INSERT INTO price_anomalies (
+                    price_id,
+                    product_id,
+                    market_id,
+                    vendor_id,
+                    reference_price_id,
+                    reference_price,
+                    vendor_price,
+                    price_difference,
+                    deviation_percentage,
+                    anomaly_type,
+                    severity,
+                    status,
+                    details,
+                    auto_flagged,
+                    flag_reason
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'new', $12, true, $13)
+                RETURNING *
+            `;
+            
+            const anomalyValues = [
+                submission.id,
+                parseInt(productId),
+                marketId,
+                req.user.id,
+                referencePrice.reference_price_id,
+                referencePrice.reference_price,
+                price,
+                price - referencePrice.reference_price,
+                deviation_pct,
+                anomalyType,
+                anomalySeverity,
+                `Price is ${deviation_pct.toFixed(1)}% ${price > referencePrice.reference_price ? 'above' : 'below'} reference price of ${referencePrice.reference_price} RWF`,
+                `Auto-detected anomaly: ${anomalySeverity} deviation`
+            ];
+            
+            const anomalyResult = await pool.query(anomalyInsert, anomalyValues);
+            anomaly = anomalyResult.rows[0];
+        }
+        
+        // Record in price change history
+        const historyQuery = `
+            INSERT INTO price_change_history (
+                price_id, product_id, market_id, new_price, 
+                change_type, recorded_at
+            ) VALUES ($1, $2, $3, $4, $5, NOW())
+        `;
+        
+        await pool.query(historyQuery, [
+            submission.id,
+            parseInt(productId),
+            marketId,
+            price,
+            'new'
+        ]);
+        
+        await pool.query('COMMIT');
+        
+        // Prepare response
+        let responseMessage = '✓ Price submitted successfully';
+        let anomalyInfo = null;
+        
+        if (anomaly) {
+            if (anomaly.severity === 'critical' || anomaly.severity === 'high') {
+                responseMessage = '⚠️ Price flagged for immediate review due to significant deviation';
+                anomalyInfo = {
+                    isAnomaly: true,
+                    severity: anomaly.severity,
+                    type: anomaly.anomaly_type,
+                    deviation: parseFloat(anomaly.deviation_percentage),
+                    details: anomaly.details,
+                    referencePrice: parseFloat(anomaly.reference_price),
+                    vendorPrice: parseFloat(anomaly.vendor_price),
+                    reason: anomaly.details
+                };
+            } else {
+                responseMessage = 'ℹ️ Price flagged for review (moderate deviation)';
+                anomalyInfo = {
+                    isAnomaly: true,
+                    severity: anomaly.severity,
+                    type: anomaly.anomaly_type,
+                    deviation: parseFloat(anomaly.deviation_percentage),
+                    details: anomaly.details,
+                    reason: anomaly.details
+                };
+            }
+        } else {
+            responseMessage = '✓ Price automatically approved - within normal range';
+        }
+        
+        res.status(201).json({
+            success: true,
+            submission: {
+                id: submission.id,
+                product_id: submission.product_id,
+                market_id: submission.market_id,
+                vendor_id: submission.vendor_id,
+                price: parseFloat(submission.price),
+                unit: submission.unit,
+                vendor_notes: submission.vendor_notes,
+                status: submission.status,
+                flagged: submission.flagged,
+                flag_reason: submission.flag_reason,
+                created_at: submission.created_at
+            },
+            anomalyCheck: anomalyInfo,
+            message: responseMessage
+        });
+        
     } catch (error) {
-        console.error('Error fetching reference price:', error);
+        await pool.query('ROLLBACK');
+        console.error('Error in submitPrice:', error);
+        throw error;
     }
-    
-    // Use vendor_notes instead of notes column
-    const insertQuery = `
-        INSERT INTO prices (
-            product_id, market_id, vendor_id, price, unit, vendor_notes, 
-            status, flagged, flag_reason, created_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
-        RETURNING *
-    `;
-    
-    const values = [
-        parseInt(productId),
-        marketId,
-        req.user.id,
-        price,
-        unit || 'kg',
-        notes || null,
-        anomalyCheck.isAnomaly ? 'flagged' : 'pending',
-        anomalyCheck.isAnomaly,
-        anomalyCheck.reason || null
-    ];
-    
-    const result = await pool.query(insertQuery, values);
-    const submission = result.rows[0];
-    
-    // Record in price change history
-    const historyQuery = `
-        INSERT INTO price_change_history (
-            price_id, product_id, market_id, old_price, new_price, 
-            percentage_change, change_type, recorded_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
-    `;
-    
-    await pool.query(historyQuery, [
-        submission.id,
-        parseInt(productId),
-        marketId,
-        null,
-        price,
-        null,
-        'new'
-    ]);
-    
-    res.status(201).json({
-        success: true,
-        submission: {
-            id: submission.id,
-            product_id: submission.product_id,
-            market_id: submission.market_id,
-            vendor_id: submission.vendor_id,
-            price: parseFloat(submission.price),
-            unit: submission.unit,
-            vendor_notes: submission.vendor_notes,
-            status: submission.status,
-            flagged: submission.flagged,
-            flag_reason: submission.flag_reason,
-            created_at: submission.created_at
-        },
-        anomalyCheck: anomalyCheck.isAnomaly ? anomalyCheck : null,
-        message: anomalyCheck.isAnomaly 
-            ? 'Price flagged for review due to unusual value compared to reference price'
-            : '✓ Price submitted successfully and pending approval'
-    });
 });
 
 export const updateMySubmission = catchAsync(async (req, res) => {
@@ -240,8 +384,9 @@ export const getRecommendations = catchAsync(async (req, res) => {
     res.json(recommendations);
 });
 
-
-// src/controllers/priceController.js - Fix getLivePrices
+// ============================================
+// LIVE PRICES ENDPOINT
+// ============================================
 
 export const getLivePrices = catchAsync(async (req, res) => {
     const { marketId, productId, limit = 50 } = req.query;
@@ -316,8 +461,12 @@ export const getLivePrices = catchAsync(async (req, res) => {
     });
 });
 
+// ============================================
+// VENDOR STATISTICS ENDPOINT
+// ============================================
+
 /**
- * Get vendor price statistics (for vendor profile)
+ * Get vendor price statistics (for vendor profile or admin)
  */
 export const getVendorStats = catchAsync(async (req, res) => {
     const { vendorId } = req.params;
@@ -351,3 +500,138 @@ export const getVendorStats = catchAsync(async (req, res) => {
     });
 });
 
+// ============================================
+// ADMIN PRICE MANAGEMENT ENDPOINTS
+// ============================================
+
+/**
+ * Get all pending price submissions (Admin only)
+ */
+export const getPendingSubmissions = catchAsync(async (req, res) => {
+    const query = `
+        SELECT 
+            p.id,
+            p.product_id,
+            p.market_id,
+            p.vendor_id,
+            p.price,
+            p.unit,
+            p.vendor_notes,
+            p.status,
+            p.flagged,
+            p.flag_reason,
+            p.created_at,
+            pr.name as product_name,
+            m.name as market_name,
+            u.name as vendor_name,
+            u.email as vendor_email
+        FROM prices p
+        LEFT JOIN products pr ON p.product_id = pr.id
+        LEFT JOIN markets m ON p.market_id = m.id
+        LEFT JOIN users u ON p.vendor_id = u.id
+        WHERE p.status = 'pending'
+        ORDER BY 
+            CASE WHEN p.flagged = true THEN 1 ELSE 2 END,
+            p.created_at ASC
+        LIMIT $1
+        OFFSET $2
+    `;
+    
+    const { limit = 50, offset = 0 } = req.query;
+    const result = await pool.query(query, [parseInt(limit), parseInt(offset)]);
+    
+    // Get total count
+    const countResult = await pool.query(
+        'SELECT COUNT(*) FROM prices WHERE status = $1',
+        ['pending']
+    );
+    
+    res.json({
+        success: true,
+        submissions: result.rows,
+        pagination: {
+            total: parseInt(countResult.rows[0].count),
+            limit: parseInt(limit),
+            offset: parseInt(offset)
+        }
+    });
+});
+
+/**
+ * Approve a price submission (Admin only)
+ */
+export const approvePrice = catchAsync(async (req, res) => {
+    const { id } = req.params;
+    const { adminNotes } = req.body;
+    
+    const query = `
+        UPDATE prices 
+        SET 
+            status = 'approved',
+            approved_by = $1,
+            approved_at = NOW(),
+            admin_notes = COALESCE($2, admin_notes),
+            updated_at = NOW()
+        WHERE id = $3
+        AND status = 'pending'
+        RETURNING *
+    `;
+    
+    const result = await pool.query(query, [req.user.id, adminNotes, id]);
+    
+    if (result.rows.length === 0) {
+        return res.status(404).json({ 
+            success: false, 
+            message: 'Price submission not found or already processed' 
+        });
+    }
+    
+    res.json({
+        success: true,
+        submission: result.rows[0],
+        message: 'Price approved successfully'
+    });
+});
+
+/**
+ * Reject a price submission (Admin only)
+ */
+export const rejectPrice = catchAsync(async (req, res) => {
+    const { id } = req.params;
+    const { rejectionReason } = req.body;
+    
+    if (!rejectionReason) {
+        return res.status(400).json({ 
+            success: false, 
+            message: 'Rejection reason is required' 
+        });
+    }
+    
+    const query = `
+        UPDATE prices 
+        SET 
+            status = 'rejected',
+            rejected_by = $1,
+            rejected_at = NOW(),
+            rejection_reason = $2,
+            updated_at = NOW()
+        WHERE id = $3
+        AND status = 'pending'
+        RETURNING *
+    `;
+    
+    const result = await pool.query(query, [req.user.id, rejectionReason, id]);
+    
+    if (result.rows.length === 0) {
+        return res.status(404).json({ 
+            success: false, 
+            message: 'Price submission not found or already processed' 
+        });
+    }
+    
+    res.json({
+        success: true,
+        submission: result.rows[0],
+        message: 'Price rejected successfully'
+    });
+});

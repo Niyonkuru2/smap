@@ -43,6 +43,7 @@ import TabCarousel from '../mobile/TabCarousel';
 
 import { useLanguage } from '../../contexts/LanguageContext';
 import { Badge } from '../ui/badge';
+import { getAnomalyStats } from '../../services/anomalyService';
 
 interface AdminDashboardProps {
   user: User;
@@ -58,19 +59,64 @@ export default function AdminDashboard({
   const [activeTab, setActiveTab] = useState('approvals');
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [notificationCount, setNotificationCount] = useState(0);
+  const [anomalyCount, setAnomalyCount] = useState(0);
+  const [isLoadingAnomalies, setIsLoadingAnomalies] = useState(true);
 
   const { t } = useLanguage();
 
+  // Fetch real anomaly count
+  const fetchAnomalyCount = async () => {
+    try {
+      setIsLoadingAnomalies(true);
+      const stats = await getAnomalyStats();
+      
+      // Count active anomalies (new + investigating)
+      const activeCount = stats.stats.new_count + stats.stats.investigating_count;
+      setAnomalyCount(activeCount);
+    } catch (error) {
+      console.error('Failed to fetch anomaly count:', error);
+      setAnomalyCount(0);
+    } finally {
+      setIsLoadingAnomalies(false);
+    }
+  };
+
+  // Fetch notification count from existing system
+  const fetchNotificationCount = () => {
+    const unreadCount = globalNotifications.filter(
+      (n) => n.userRole === 'admin' && !n.read
+    ).length;
+    setNotificationCount(unreadCount);
+  };
+
+  // Initial load
   useEffect(() => {
-    const interval = setInterval(() => {
-      const unreadCount = globalNotifications.filter(
-        (n) => n.userRole === 'admin' && !n.read
-      ).length;
+    fetchAnomalyCount();
+    fetchNotificationCount();
+    
+    // Set up interval for real-time updates
+    const notificationInterval = setInterval(fetchNotificationCount, 5000);
+    const anomalyInterval = setInterval(fetchAnomalyCount, 30000); // Update every 30 seconds
+    
+    return () => {
+      clearInterval(notificationInterval);
+      clearInterval(anomalyInterval);
+    };
+  }, []);
 
-      setNotificationCount(unreadCount);
-    }, 1000);
-
-    return () => clearInterval(interval);
+  // Listen for anomaly updates via custom event
+  useEffect(() => {
+    const handleAnomalyUpdate = () => {
+      fetchAnomalyCount();
+    };
+    
+    window.addEventListener('anomaly-updated', handleAnomalyUpdate);
+    window.addEventListener('price-submitted', handleAnomalyUpdate);
+    
+    return () => {
+      window.removeEventListener('anomaly-updated', handleAnomalyUpdate);
+      window.removeEventListener('price-submitted', handleAnomalyUpdate);
+    };
   }, []);
 
   const navItems = [
@@ -84,7 +130,8 @@ export default function AdminDashboard({
       id: 'anomalies',
       label: t('anomalyAlerts') || 'Anomaly Alerts',
       icon: <AlertTriangle className="h-5 w-5" />,
-      badge: 3,
+      badge: anomalyCount,
+      badgeColor: anomalyCount > 0 ? 'bg-red-500/20 text-red-400 border-red-500/30' : '',
     },
     {
       id: 'analytics',
@@ -334,49 +381,66 @@ export default function AdminDashboard({
           className="flex flex-col"
         >
           {/* Desktop Tabs */}
-<div className="hidden md:block mb-6">
-  <TabsList
-    className="
-      scrollbar-thin
-      scrollbar-thumb-emerald-500/30
-      scrollbar-track-transparent
-    "
-  >
-    {navItems.map((item) => (
-      <TabsTrigger
-        key={item.id}
-        value={item.id}
-        className="tab-trigger-premium"
-      >
-        <span className="flex items-center gap-2">
-          {item.icon}
-
-          <span className="text-sm font-medium whitespace-nowrap">
-            {item.label}
-          </span>
-
-          {item.badge && item.badge > 0 && (
-            <Badge
+          <div className="hidden md:block mb-6">
+            <TabsList
               className="
-                ml-1
-                bg-white/10
-                text-white
-                border
-                border-white/10
-                backdrop-blur-md
+                scrollbar-thin
+                scrollbar-thumb-emerald-500/30
+                scrollbar-track-transparent
               "
             >
-              {item.badge}
-            </Badge>
-          )}
-        </span>
-      </TabsTrigger>
-    ))}
-  </TabsList>
-</div>
+              {navItems.map((item) => (
+                <TabsTrigger
+                  key={item.id}
+                  value={item.id}
+                  className="tab-trigger-premium"
+                >
+                  <span className="flex items-center gap-2">
+                    {item.icon}
 
-          {/* CONTENTS */}
+                    <span className="text-sm font-medium whitespace-nowrap">
+                      {item.label}
+                    </span>
 
+                    {item.badge !== undefined && item.badge > 0 && (
+                      <Badge
+                        className={`
+                          ml-1
+                          ${item.id === 'anomalies' && anomalyCount > 0 
+                            ? 'bg-red-500/20 text-red-400 border-red-500/30 animate-pulse' 
+                            : 'bg-white/10 text-white border-white/10'
+                          }
+                          backdrop-blur-md
+                          transition-all
+                          duration-300
+                        `}
+                      >
+                        {item.badge}
+                      </Badge>
+                    )}
+
+                    {isLoadingAnomalies && item.id === 'anomalies' && (
+                      <div className="ml-1 w-4 h-4 rounded-full bg-emerald-500/30 animate-pulse" />
+                    )}
+                  </span>
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </div>
+
+          {/* Mobile Tab Carousel */}
+          <div className="md:hidden mb-4">
+            <TabCarousel
+              items={navItems.map(item => ({
+                ...item,
+                badge: item.id === 'anomalies' ? anomalyCount : item.badge
+              }))}
+              activeTab={activeTab}
+              onTabChange={setActiveTab}
+            />
+          </div>
+
+          {/* Tab Contents */}
           <TabsContent value="approvals" className="animate-fadeIn mt-4">
             <PriceApprovals />
           </TabsContent>
@@ -425,15 +489,6 @@ export default function AdminDashboard({
             <AdAnalyticsDashboard />
           </TabsContent>
         </Tabs>
-
-        {/* Mobile Bottom Tabs */}
-        <div className="md:hidden">
-          <TabCarousel
-            items={navItems}
-            activeTab={activeTab}
-            onTabChange={setActiveTab}
-          />
-        </div>
       </main>
 
       {/* Styles */}
@@ -466,12 +521,25 @@ export default function AdminDashboard({
           }
         }
 
+        @keyframes pulse {
+          0%, 100% {
+            opacity: 1;
+          }
+          50% {
+            opacity: 0.5;
+          }
+        }
+
         .animate-fadeIn {
           animation: fadeIn 0.35s ease-out;
         }
 
         .animate-scaleIn {
           animation: scaleIn 0.25s ease-out;
+        }
+
+        .animate-pulse {
+          animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
         }
 
         /* ========================================

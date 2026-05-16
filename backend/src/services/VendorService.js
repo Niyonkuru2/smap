@@ -11,20 +11,21 @@ class VendorService {
   /**
    * Helper to get or create category by name
    */
-  static async getOrCreateCategory(categoryName, categoryType = 'vendor') {
+ static async getOrCreateCategory(categoryName, categoryType = 'vendor') {
     if (!categoryName) return null;
 
-    // Check if category exists by name
+    // FIX: Don't filter by type when checking existence, or handle multiple types
+    // First try to find by name regardless of type
     const existingCategory = await pool.query(
-      'SELECT id FROM categories WHERE LOWER(name) = LOWER($1) AND type = $2',
-      [categoryName, categoryType]
+      'SELECT id FROM categories WHERE LOWER(name) = LOWER($1)',
+      [categoryName]
     );
 
     if (existingCategory.rows.length > 0) {
       return existingCategory.rows[0].id;
     }
 
-    // Create new category
+    // If not found, create new category with the specified type
     const newCategory = await pool.query(
       `INSERT INTO categories (name, type, is_active) 
        VALUES ($1, $2, true) 
@@ -33,7 +34,7 @@ class VendorService {
     );
 
     return newCategory.rows[0].id;
-  }
+}
 
   /**
    * Create a new vendor

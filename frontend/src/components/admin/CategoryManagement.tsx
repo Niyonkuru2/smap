@@ -19,7 +19,6 @@ import {
 } from '../../services/categoryService';
 import referencePriceService, { 
   type ReferencePriceWithDetails, 
-  type ProductWithReferencePrice,
   type CreateProductWithPriceRequest 
 } from '../../services/referencePriceService';
 
@@ -346,9 +345,6 @@ export default function CategoryManagement() {
 
   // Group categories by type
   const productCategories = categories.filter(c => c.type === 'product');
-  const businessCategories = categories.filter(c => c.type === 'business');
-  const vendorCategories = categories.filter(c => c.type === 'vendor');
-
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -404,7 +400,7 @@ export default function CategoryManagement() {
                   </div>
                 </div>
                 <DialogFooter>
-                  <Button variant="outline" onClick={() => setIsAddCategoryOpen(false)} className="btn-outline-premium">
+                  <Button variant="outline" onClick={() => setIsAddCategoryOpen(false)}>
                     Cancel
                   </Button>
                   <Button onClick={handleAddCategory} className="bg-primary hover:bg-primary/90">
@@ -507,7 +503,7 @@ export default function CategoryManagement() {
                   </div>
                 </div>
                 <DialogFooter>
-                  <Button variant="outline" onClick={() => setIsAddMarketOpen(false)} className="btn-outline-premium">
+                  <Button variant="outline" onClick={() => setIsAddMarketOpen(false)}>
                     Cancel
                   </Button>
                   <Button onClick={() => {

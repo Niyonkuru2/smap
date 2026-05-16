@@ -57,11 +57,6 @@ export default function VendorDashboard({
       icon: <List className="h-5 w-5" />,
     },
     {
-      id: 'sales',
-      label: t('mySales'),
-      icon: <TrendingUp className="h-5 w-5" />,
-    },
-    {
       id: 'subscription',
       label: 'Subscription',
       icon: <Crown className="h-5 w-5" />,
@@ -262,14 +257,6 @@ export default function VendorDashboard({
             </TabsTrigger>
 
             <TabsTrigger
-              value="sales"
-              className="tab-trigger-premium"
-            >
-              <TrendingUp className="h-4 w-4 mr-2" />
-              {t('mySales')}
-            </TabsTrigger>
-
-            <TabsTrigger
               value="subscription"
               className="tab-trigger-premium"
             >
@@ -323,18 +310,6 @@ export default function VendorDashboard({
               vendorId={user.id}
             />
           </TabsContent>
-
-          {/* Sales */}
-          <TabsContent
-            value="sales"
-            className="flex-1 animate-fadeIn"
-          >
-            <MySales
-              vendorName={user.name}
-              vendorId={user.id}
-            />
-          </TabsContent>
-
           {/* Subscription */}
           <TabsContent
             value="subscription"

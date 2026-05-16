@@ -22,6 +22,7 @@ import referencePriceRoutes from './referencePriceRoutes.js';
 import vendorReferenceRoutes from './vendorRefernceRoute.js';
 import smsRoutes from './smsRoutes.js';
 import advertisementRoutes from './advertisementRoutes.js';
+import anomalyRoutes from './anomalyRoutes.js';
 
 const router = express.Router();
 
@@ -59,5 +60,6 @@ router.use('/seasonal', historyRoutes);
 router.use('/compare', priceRoutes);
 router.use('/searches', searchRoutes);
 router.use('/profile', authRoutes);
+router.use('/anomalies', anomalyRoutes);
 
 export default router;
