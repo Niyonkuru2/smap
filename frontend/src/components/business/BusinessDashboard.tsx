@@ -1,4 +1,4 @@
-﻿import { useState } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { Button } from '../ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 
@@ -14,6 +14,7 @@ import {
   UserCog,
   MoreVertical,
   X,
+  Bell,
 } from 'lucide-react';
 
 import type { User } from '../../App';
@@ -23,6 +24,7 @@ import ComparisonTools from './ComparisonTools';
 import PurchasePlanning from './PurchasePlanning';
 import BusinessAnalytics from './BusinessAnalytics';
 import DataExport from './DataExport';
+import Notifications from './Notifications';
 
 import UserProfile from '../shared/UserProfile';
 
@@ -31,6 +33,8 @@ import ThemeToggle from '../ThemeToggle';
 import TabCarousel from '../mobile/TabCarousel';
 
 import { useLanguage } from '../../contexts/LanguageContext';
+import { getUnreadCount } from '../../services/notificationService';
+import { Badge } from '../ui/badge';
 
 interface BusinessDashboardProps {
   user: User;
@@ -47,38 +51,65 @@ export default function BusinessDashboard({
 }: BusinessDashboardProps) {
   const [activeTab, setActiveTab] = useState('analysis');
   const [showMobileMenu, setShowMobileMenu] = useState(false);
-
+  const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
   const { t } = useLanguage();
+
+  // Fetch unread notification count
+  const fetchUnreadCount = async () => {
+    try {
+      const response = await getUnreadCount();
+      if (response.success) {
+        setUnreadNotificationCount(response.count || 0);
+      }
+    } catch (error) {
+      console.error('Error fetching unread count:', error);
+    }
+  };
+
+  useEffect(() => {
+    fetchUnreadCount();
+    
+    // Poll for new notifications every 30 seconds
+    const interval = setInterval(fetchUnreadCount, 30000);
+    
+    return () => clearInterval(interval);
+  }, []);
 
   const navItems = [
     {
       id: 'analysis',
-      label: t('priceAnalysis'),
+      label: t('priceAnalysis') || 'Price Analysis',
       icon: <TrendingUp className="h-5 w-5" />,
     },
     {
       id: 'compare',
-      label: t('comparisonTools'),
+      label: t('comparisonTools') || 'Comparison',
       icon: <BarChart3 className="h-5 w-5" />,
     },
     {
       id: 'purchase',
-      label: t('purchasePlanning'),
+      label: t('purchasePlanning') || 'Purchase Planning',
       icon: <ShoppingCart className="h-5 w-5" />,
     },
     {
+      id: 'notifications',
+      label: t('notifications') || 'Notifications',
+      icon: <Bell className="h-5 w-5" />,
+      badge: unreadNotificationCount,
+    },
+    {
       id: 'analytics',
-      label: t('businessAnalytics'),
+      label: t('businessAnalytics') || 'Analytics',
       icon: <BarChart3 className="h-5 w-5" />,
     },
     {
       id: 'export',
-      label: t('dataExport'),
+      label: t('dataExport') || 'Export',
       icon: <Download className="h-5 w-5" />,
     },
     {
       id: 'profile',
-      label: t('userProfile'),
+      label: t('userProfile') || 'Profile',
       icon: <UserIcon className="h-5 w-5" />,
     },
   ];
@@ -111,11 +142,11 @@ export default function BusinessDashboard({
 
                 <div>
                   <h1 className="text-2xl font-extrabold tracking-tight gradient-text">
-                    {t('businessPortal')}
+                    {t('businessPortal') || 'Business Portal'}
                   </h1>
 
                   <p className="text-sm text-muted-foreground">
-                    {t('welcome')},{' '}
+                    {t('welcome') || 'Welcome'},{' '}
                     <span className="font-semibold text-white">
                       {user.name}
                     </span>
@@ -150,7 +181,7 @@ export default function BusinessDashboard({
                   "
                 >
                   <LogOut className="h-4 w-4 mr-2" />
-                  {t('logout')}
+                  {t('logout') || 'Logout'}
                 </Button>
               </div>
             </div>
@@ -169,7 +200,7 @@ export default function BusinessDashboard({
 
                 <div className="min-w-0">
                   <h1 className="text-base font-bold gradient-text truncate">
-                    {t('businessPortal')}
+                    {t('businessPortal') || 'Business Portal'}
                   </h1>
 
                   <p className="text-xs text-muted-foreground truncate">
@@ -250,7 +281,7 @@ export default function BusinessDashboard({
                     "
                   >
                     <LogOut className="h-5 w-5" />
-                    {t('logout')}
+                    {t('logout') || 'Logout'}
                   </button>
                 </div>
               </div>
@@ -267,7 +298,7 @@ export default function BusinessDashboard({
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <UserCog className="h-4 w-4 text-cyan-400" />
-                {t('viewingAsAdmin')}
+                {t('viewingAsAdmin') || 'Viewing as Admin'}
               </div>
 
               <Button
@@ -276,7 +307,7 @@ export default function BusinessDashboard({
                 className="btn-outline-premium w-full sm:w-auto"
               >
                 <ArrowLeft className="h-4 w-4 mr-2" />
-                {t('returnToAdmin')}
+                {t('returnToAdmin') || 'Return to Admin'}
               </Button>
             </div>
           </div>
@@ -306,37 +337,64 @@ export default function BusinessDashboard({
           >
             <TabsTrigger value="analysis" className="tab-trigger-premium">
               <TrendingUp className="h-4 w-4 mr-2" />
-              {t('priceAnalysis')}
+              {t('priceAnalysis') || 'Price Analysis'}
             </TabsTrigger>
 
             <TabsTrigger value="compare" className="tab-trigger-premium">
               <BarChart3 className="h-4 w-4 mr-2" />
-              {t('comparisonTools')}
+              {t('comparisonTools') || 'Comparison'}
             </TabsTrigger>
 
             <TabsTrigger value="purchase" className="tab-trigger-premium">
               <ShoppingCart className="h-4 w-4 mr-2" />
-              {t('purchasePlanning')}
+              {t('purchasePlanning') || 'Purchase Planning'}
+            </TabsTrigger>
+
+            <TabsTrigger value="notifications" className="tab-trigger-premium relative">
+              <Bell className="h-4 w-4 mr-2" />
+              {t('notifications') || 'Notifications'}
+              {unreadNotificationCount > 0 && (
+                <Badge 
+                  className="
+                    absolute 
+                    -top-2 
+                    -right-2 
+                    px-1.5 
+                    py-0.5 
+                    min-w-[20px] 
+                    h-5 
+                    text-[10px] 
+                    font-bold 
+                    bg-red-500 
+                    text-white 
+                    border-none 
+                    rounded-full 
+                    animate-pulse
+                    shadow-lg
+                  "
+                >
+                  {unreadNotificationCount > 99 ? '99+' : unreadNotificationCount}
+                </Badge>
+              )}
             </TabsTrigger>
 
             <TabsTrigger value="analytics" className="tab-trigger-premium">
               <BarChart3 className="h-4 w-4 mr-2" />
-              {t('businessAnalytics')}
+              {t('businessAnalytics') || 'Analytics'}
             </TabsTrigger>
 
             <TabsTrigger value="export" className="tab-trigger-premium">
               <Download className="h-4 w-4 mr-2" />
-              {t('dataExport')}
+              {t('dataExport') || 'Export'}
             </TabsTrigger>
 
             <TabsTrigger value="profile" className="tab-trigger-premium">
               <UserIcon className="h-4 w-4 mr-2" />
-              {t('userProfile')}
+              {t('userProfile') || 'Profile'}
             </TabsTrigger>
           </TabsList>
 
           {/* Tab Contents */}
-
           <TabsContent value="analysis" className="animate-fadeIn mt-4">
             <PriceAnalysis />
           </TabsContent>
@@ -347,6 +405,10 @@ export default function BusinessDashboard({
 
           <TabsContent value="purchase" className="animate-fadeIn">
             <PurchasePlanning />
+          </TabsContent>
+
+          <TabsContent value="notifications" className="animate-fadeIn">
+            <Notifications userId={user.id} onNotificationRead={fetchUnreadCount} />
           </TabsContent>
 
           <TabsContent value="analytics" className="animate-fadeIn">
@@ -365,7 +427,10 @@ export default function BusinessDashboard({
         {/* Mobile Bottom Tabs */}
         <div className="md:hidden">
           <TabCarousel
-            items={navItems}
+            items={navItems.map(item => ({
+              ...item,
+              badge: item.id === 'notifications' ? unreadNotificationCount : undefined
+            }))}
             activeTab={activeTab}
             onTabChange={setActiveTab}
           />

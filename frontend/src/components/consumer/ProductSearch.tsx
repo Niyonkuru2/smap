@@ -1,6 +1,5 @@
 ﻿import { useState, useEffect } from 'react';
 import { Card } from '../ui/card';
-import { Input } from '../ui/input';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
@@ -9,7 +8,7 @@ import { getProvinceColor, allProvinces } from '../../utils/provinceUtils';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { getLivePrices } from '../../lib/api';
 import { toast } from 'sonner';
-import { AdBanner, SponsoredListing } from '../shared/AdDisplay';
+import { AdBanner} from '../shared/AdDisplay';
 import { VoiceSearch, SpeakPriceButton } from '../VoiceSearch';
 
 interface LivePrice {
@@ -27,7 +26,6 @@ interface LivePrice {
 
 export default function ProductSearch() {
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedMarket, setSelectedMarket] = useState('all');
   const [selectedProvince, setSelectedProvince] = useState('all');
   const [favorites, setFavorites] = useState<string[]>([]);

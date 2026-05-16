@@ -5,6 +5,72 @@ import PriceRepository from '../repositories/PriceRepository.js';
 import * as mlPrediction from '../services/MLPredictionService.js';
 import * as priceHistory from '../services/priceHistory.js';
 
+// Helper function to create notifications
+async function createNotification(userId, title, message, notificationType, priority = 'normal', data = null) {
+    try {
+        await pool.query(
+            `INSERT INTO notifications (user_id, title, message, notification_type, priority, data, created_at)
+             VALUES ($1, $2, $3, $4, $5, $6, NOW())`,
+            [userId, title, message, notificationType, priority, data ? JSON.stringify(data) : null]
+        );
+    } catch (error) {
+        console.error('Error creating notification:', error);
+    }
+}
+
+// Helper function to notify admins about new submissions
+async function notifyAdminsAboutNewSubmission(submissionData) {
+    try {
+        const admins = await pool.query(
+            "SELECT id FROM users WHERE role = 'admin' AND is_active = true"
+        );
+        
+        const title = '📝 New Price Submission';
+        const message = `${submissionData.vendor_name} submitted a new price for ${submissionData.product_name} at ${submissionData.market_name}: ${submissionData.price.toLocaleString()} RWF`;
+        
+        for (const admin of admins.rows) {
+            await createNotification(
+                admin.id,
+                title,
+                message,
+                'price_submitted',
+                submissionData.is_anomaly ? 'high' : 'normal',
+                {
+                    price_id: submissionData.price_id,
+                    product_name: submissionData.product_name,
+                    market_name: submissionData.market_name,
+                    vendor_name: submissionData.vendor_name,
+                    price: submissionData.price,
+                    is_anomaly: submissionData.is_anomaly
+                }
+            );
+        }
+    } catch (error) {
+        console.error('Error notifying admins:', error);
+    }
+}
+
+// Helper function to get status badge text
+function getStatusBadgeText(status) {
+    const statusMap = {
+        'pending': { text: 'Pending', color: 'yellow' },
+        'approved': { text: 'Approved', color: 'green' },
+        'rejected': { text: 'Rejected', color: 'red' },
+        'flagged': { text: 'Flagged', color: 'orange' }
+    };
+    return statusMap[status] || { text: status, color: 'gray' };
+}
+
+// Helper to extract severity from flag reason
+function getSeverityFromDeviation(flagReason) {
+    if (!flagReason) return null;
+    if (flagReason.includes('Critical')) return 'critical';
+    if (flagReason.includes('High')) return 'high';
+    if (flagReason.includes('Medium')) return 'medium';
+    if (flagReason.includes('Low')) return 'low';
+    return null;
+}
+
 // ============================================
 // PUBLIC ENDPOINTS
 // ============================================
@@ -96,7 +162,6 @@ export const getMySubmissions = catchAsync(async (req, res) => {
     
     const result = await pool.query(query, [req.user.id]);
     
-    // Format the response properly
     const submissions = result.rows.map(row => ({
         id: row.id,
         product_id: row.product_id,
@@ -114,7 +179,6 @@ export const getMySubmissions = catchAsync(async (req, res) => {
         flag_reason: row.flag_reason,
         created_at: row.created_at,
         updated_at: row.updated_at,
-        // Add formatted fields for UI
         formatted_price: `${parseFloat(row.price).toLocaleString()} RWF`,
         formatted_date: new Date(row.created_at).toLocaleString(),
         status_badge: getStatusBadgeText(row.status),
@@ -127,27 +191,6 @@ export const getMySubmissions = catchAsync(async (req, res) => {
         count: submissions.length
     });
 });
-
-// Helper function for status badge text
-function getStatusBadgeText(status) {
-    const statusMap = {
-        'pending': { text: 'Pending', color: 'yellow' },
-        'approved': { text: 'Approved', color: 'green' },
-        'rejected': { text: 'Rejected', color: 'red' },
-        'flagged': { text: 'Flagged', color: 'orange' }
-    };
-    return statusMap[status] || { text: status, color: 'gray' };
-}
-
-// Helper to extract severity from flag reason
-function getSeverityFromDeviation(flagReason) {
-    if (!flagReason) return null;
-    if (flagReason.includes('Critical')) return 'critical';
-    if (flagReason.includes('High')) return 'high';
-    if (flagReason.includes('Medium')) return 'medium';
-    if (flagReason.includes('Low')) return 'low';
-    return null;
-}
 
 export const getMyStats = catchAsync(async (req, res) => {
     const query = `
@@ -182,11 +225,19 @@ export const getMyStats = catchAsync(async (req, res) => {
 export const submitPrice = catchAsync(async (req, res) => {
     const { productId, marketId, price, unit, notes } = req.body;
     
-    // Start transaction
     await pool.query('BEGIN');
     
     try {
-        // Check reference price first
+        // Get product and market info
+        const productResult = await pool.query('SELECT name FROM products WHERE id = $1', [parseInt(productId)]);
+        const marketResult = await pool.query('SELECT name FROM markets WHERE id = $1', [marketId]);
+        const vendorResult = await pool.query('SELECT name FROM users WHERE id = $1', [req.user.id]);
+        
+        const productName = productResult.rows[0]?.name || 'Product';
+        const marketName = marketResult.rows[0]?.name || 'Market';
+        const vendorName = vendorResult.rows[0]?.name || 'Vendor';
+        
+        // Check reference price
         const refPriceQuery = `
             SELECT 
                 rp.id as reference_price_id,
@@ -204,7 +255,6 @@ export const submitPrice = catchAsync(async (req, res) => {
         const refResult = await pool.query(refPriceQuery, [parseInt(productId), marketId]);
         const referencePrice = refResult.rows[0];
         
-        // Calculate deviation if reference exists
         let deviation_pct = null;
         let isAnomaly = false;
         let anomalySeverity = null;
@@ -228,30 +278,18 @@ export const submitPrice = catchAsync(async (req, res) => {
             }
         }
         
-        // Insert the price
+        // Insert price
         const insertQuery = `
             INSERT INTO prices (
-                product_id, 
-                market_id, 
-                vendor_id, 
-                price, 
-                unit, 
-                vendor_notes, 
-                status, 
-                flagged, 
-                flag_reason,
-                created_at
+                product_id, market_id, vendor_id, price, unit, vendor_notes, 
+                status, flagged, flag_reason, created_at
             ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
             RETURNING *
         `;
         
         const values = [
-            parseInt(productId),
-            marketId,
-            req.user.id,
-            price,
-            unit || 'kg',
-            notes || null,
+            parseInt(productId), marketId, req.user.id, price,
+            unit || 'kg', notes || null,
             isAnomaly && anomalySeverity !== 'low' ? 'flagged' : 'pending',
             isAnomaly,
             isAnomaly ? `Price deviates by ${deviation_pct.toFixed(1)}% from reference price` : null
@@ -265,38 +303,19 @@ export const submitPrice = catchAsync(async (req, res) => {
         if (isAnomaly && referencePrice) {
             const anomalyInsert = `
                 INSERT INTO price_anomalies (
-                    price_id,
-                    product_id,
-                    market_id,
-                    vendor_id,
-                    reference_price_id,
-                    reference_price,
-                    vendor_price,
-                    price_difference,
-                    deviation_percentage,
-                    anomaly_type,
-                    severity,
-                    status,
-                    details,
-                    auto_flagged,
-                    flag_reason
+                    price_id, product_id, market_id, vendor_id, reference_price_id,
+                    reference_price, vendor_price, price_difference, deviation_percentage,
+                    anomaly_type, severity, status, details, auto_flagged, flag_reason
                 ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'new', $12, true, $13)
                 RETURNING *
             `;
             
             const anomalyValues = [
-                submission.id,
-                parseInt(productId),
-                marketId,
-                req.user.id,
-                referencePrice.reference_price_id,
-                referencePrice.reference_price,
-                price,
-                price - referencePrice.reference_price,
-                deviation_pct,
-                anomalyType,
+                submission.id, parseInt(productId), marketId, req.user.id,
+                referencePrice.reference_price_id, referencePrice.reference_price, price,
+                price - referencePrice.reference_price, deviation_pct, anomalyType,
                 anomalySeverity,
-                `Price is ${deviation_pct.toFixed(1)}% ${price > referencePrice.reference_price ? 'above' : 'below'} reference price of ${referencePrice.reference_price} RWF`,
+                `Price is ${deviation_pct.toFixed(1)}% ${price > referencePrice.reference_price ? 'above' : 'below'} reference price`,
                 `Auto-detected anomaly: ${anomalySeverity} deviation`
             ];
             
@@ -305,24 +324,58 @@ export const submitPrice = catchAsync(async (req, res) => {
         }
         
         // Record in price change history
-        const historyQuery = `
-            INSERT INTO price_change_history (
-                price_id, product_id, market_id, new_price, 
-                change_type, recorded_at
-            ) VALUES ($1, $2, $3, $4, $5, NOW())
-        `;
+        await pool.query(
+            `INSERT INTO price_change_history (price_id, product_id, market_id, new_price, change_type, recorded_at)
+             VALUES ($1, $2, $3, $4, $5, NOW())`,
+            [submission.id, parseInt(productId), marketId, price, 'new']
+        );
         
-        await pool.query(historyQuery, [
-            submission.id,
-            parseInt(productId),
-            marketId,
-            price,
-            'new'
-        ]);
+        // Send notification to vendor about submission
+        let vendorMessage = '';
+        let vendorTitle = '';
+        
+        if (anomaly && (anomalySeverity === 'critical' || anomalySeverity === 'high')) {
+            vendorTitle = '⚠️ Price Flagged for Review';
+            vendorMessage = `Your price submission for ${productName} (${price.toLocaleString()} RWF) at ${marketName} has been flagged for immediate review due to significant deviation from market prices.`;
+            await createNotification(
+                req.user.id, vendorTitle, vendorMessage, 'price_rejection', 'high',
+                { price_id: submission.id, product_name: productName, market_name: marketName, price: price, severity: anomalySeverity }
+            );
+        } else if (anomaly && anomalySeverity === 'medium') {
+            vendorTitle = 'ℹ️ Price Under Review';
+            vendorMessage = `Your price submission for ${productName} (${price.toLocaleString()} RWF) at ${marketName} has been flagged for moderate deviation and is under review.`;
+            await createNotification(
+                req.user.id, vendorTitle, vendorMessage, 'price_submitted', 'normal',
+                { price_id: submission.id, product_name: productName, market_name: marketName, price: price }
+            );
+        } else if (!anomaly) {
+            vendorTitle = '✅ Price Auto-Approved';
+            vendorMessage = `Your price submission for ${productName} (${price.toLocaleString()} RWF) at ${marketName} has been automatically approved as it's within normal range.`;
+            await createNotification(
+                req.user.id, vendorTitle, vendorMessage, 'price_approval', 'normal',
+                { price_id: submission.id, product_name: productName, market_name: marketName, price: price }
+            );
+        } else {
+            vendorTitle = '📝 Price Submitted';
+            vendorMessage = `Your price submission for ${productName} (${price.toLocaleString()} RWF) at ${marketName} has been received and is pending review.`;
+            await createNotification(
+                req.user.id, vendorTitle, vendorMessage, 'price_submitted', 'normal',
+                { price_id: submission.id, product_name: productName, market_name: marketName, price: price }
+            );
+        }
+        
+        // Notify admins about new submission
+        await notifyAdminsAboutNewSubmission({
+            price_id: submission.id,
+            product_name: productName,
+            market_name: marketName,
+            vendor_name: vendorName,
+            price: price,
+            is_anomaly: isAnomaly
+        });
         
         await pool.query('COMMIT');
         
-        // Prepare response
         let responseMessage = '✓ Price submitted successfully';
         let anomalyInfo = null;
         
@@ -404,6 +457,16 @@ export const updateMySubmission = catchAsync(async (req, res) => {
         updated_at: new Date()
     });
     
+    // Notify vendor about update
+    await createNotification(
+        req.user.id,
+        '✏️ Price Updated',
+        `Your price submission has been updated successfully. It will be reviewed again.`,
+        'price_submitted',
+        'normal',
+        { price_id: id, new_price: price }
+    );
+    
     res.json({ success: true, submission: updated, message: 'Submission updated successfully' });
 });
 
@@ -482,7 +545,6 @@ export const getLivePrices = catchAsync(async (req, res) => {
     
     const result = await pool.query(query, params);
     
-    // Get distinct latest prices per product-market combination
     const latestPrices = {};
     for (const price of result.rows) {
         const key = `${price.product_id}-${price.market_id}`;
@@ -515,9 +577,6 @@ export const getLivePrices = catchAsync(async (req, res) => {
 // VENDOR STATISTICS ENDPOINT
 // ============================================
 
-/**
- * Get vendor price statistics (for vendor profile or admin)
- */
 export const getVendorStats = catchAsync(async (req, res) => {
     const { vendorId } = req.params;
     
@@ -554,9 +613,6 @@ export const getVendorStats = catchAsync(async (req, res) => {
 // ADMIN PRICE MANAGEMENT ENDPOINTS
 // ============================================
 
-/**
- * Get all pending price submissions (Admin only)
- */
 export const getPendingSubmissions = catchAsync(async (req, res) => {
     const query = `
         SELECT 
@@ -590,7 +646,6 @@ export const getPendingSubmissions = catchAsync(async (req, res) => {
     const { limit = 50, offset = 0 } = req.query;
     const result = await pool.query(query, [parseInt(limit), parseInt(offset)]);
     
-    // Get total count
     const countResult = await pool.query(
         'SELECT COUNT(*) FROM prices WHERE status = $1',
         ['pending']
@@ -607,81 +662,156 @@ export const getPendingSubmissions = catchAsync(async (req, res) => {
     });
 });
 
-/**
- * Approve a price submission (Admin only)
- */
 export const approvePrice = catchAsync(async (req, res) => {
     const { id } = req.params;
     const { adminNotes } = req.body;
     
-    const query = `
-        UPDATE prices 
-        SET 
-            status = 'approved',
-            approved_by = $1,
-            approved_at = NOW(),
-            admin_notes = COALESCE($2, admin_notes),
-            updated_at = NOW()
-        WHERE id = $3
-        AND status = 'pending'
-        RETURNING *
-    `;
+    await pool.query('BEGIN');
     
-    const result = await pool.query(query, [req.user.id, adminNotes, id]);
-    
-    if (result.rows.length === 0) {
-        return res.status(404).json({ 
-            success: false, 
-            message: 'Price submission not found or already processed' 
+    try {
+        const priceQuery = `
+            SELECT 
+                p.*,
+                pr.name as product_name,
+                m.name as market_name,
+                u.name as vendor_name,
+                u.email as vendor_email
+            FROM prices p
+            LEFT JOIN products pr ON p.product_id = pr.id
+            LEFT JOIN markets m ON p.market_id = m.id
+            LEFT JOIN users u ON p.vendor_id = u.id
+            WHERE p.id = $1
+        `;
+        
+        const priceResult = await pool.query(priceQuery, [id]);
+        
+        if (priceResult.rows.length === 0) {
+            await pool.query('ROLLBACK');
+            return res.status(404).json({ success: false, message: 'Price submission not found' });
+        }
+        
+        const priceData = priceResult.rows[0];
+        
+        const updateQuery = `
+            UPDATE prices 
+            SET status = 'approved', approved_by = $1, approved_at = NOW(),
+                admin_notes = COALESCE($2, admin_notes), updated_at = NOW()
+            WHERE id = $3 AND status = 'pending'
+            RETURNING *
+        `;
+        
+        const updateResult = await pool.query(updateQuery, [req.user.id, adminNotes, id]);
+        
+        if (updateResult.rows.length === 0) {
+            await pool.query('ROLLBACK');
+            return res.status(404).json({ success: false, message: 'Price submission not found or already processed' });
+        }
+        
+        // Notify vendor
+        await createNotification(
+            priceData.vendor_id,
+            '✅ Price Approved',
+            `Your price for ${priceData.product_name} (${parseFloat(priceData.price).toLocaleString()} RWF) at ${priceData.market_name} has been approved and is now live.`,
+            'price_approval',
+            'normal',
+            {
+                price_id: parseInt(id),
+                product_name: priceData.product_name,
+                market_name: priceData.market_name,
+                price: parseFloat(priceData.price),
+                admin_notes: adminNotes
+            }
+        );
+        
+        await pool.query('COMMIT');
+        
+        res.json({
+            success: true,
+            submission: updateResult.rows[0],
+            message: 'Price approved successfully and vendor notified'
         });
+        
+    } catch (error) {
+        await pool.query('ROLLBACK');
+        throw error;
     }
-    
-    res.json({
-        success: true,
-        submission: result.rows[0],
-        message: 'Price approved successfully'
-    });
 });
 
-/**
- * Reject a price submission (Admin only)
- */
 export const rejectPrice = catchAsync(async (req, res) => {
     const { id } = req.params;
     const { rejectionReason } = req.body;
     
     if (!rejectionReason) {
-        return res.status(400).json({ 
-            success: false, 
-            message: 'Rejection reason is required' 
-        });
+        return res.status(400).json({ success: false, message: 'Rejection reason is required' });
     }
     
-    const query = `
-        UPDATE prices 
-        SET 
-            status = 'rejected',
-            rejected_by = $1,
-            rejected_at = NOW(),
-            rejection_reason = $2,
-            updated_at = NOW()
-        WHERE id = $3
-        AND status = 'pending'
-        RETURNING *
-    `;
+    await pool.query('BEGIN');
     
-    const result = await pool.query(query, [req.user.id, rejectionReason, id]);
-    
-    if (result.rows.length === 0) {
-        return res.status(404).json({ 
-            success: false, 
-            message: 'Price submission not found or already processed' 
+    try {
+        const priceQuery = `
+            SELECT 
+                p.*,
+                pr.name as product_name,
+                m.name as market_name,
+                u.name as vendor_name,
+                u.email as vendor_email
+            FROM prices p
+            LEFT JOIN products pr ON p.product_id = pr.id
+            LEFT JOIN markets m ON p.market_id = m.id
+            LEFT JOIN users u ON p.vendor_id = u.id
+            WHERE p.id = $1
+        `;
+        
+        const priceResult = await pool.query(priceQuery, [id]);
+        
+        if (priceResult.rows.length === 0) {
+            await pool.query('ROLLBACK');
+            return res.status(404).json({ success: false, message: 'Price submission not found' });
+        }
+        
+        const priceData = priceResult.rows[0];
+        
+        const updateQuery = `
+            UPDATE prices 
+            SET status = 'rejected', rejected_by = $1, rejected_at = NOW(),
+                rejection_reason = $2, updated_at = NOW()
+            WHERE id = $3 AND status = 'pending'
+            RETURNING *
+        `;
+        
+        const updateResult = await pool.query(updateQuery, [req.user.id, rejectionReason, id]);
+        
+        if (updateResult.rows.length === 0) {
+            await pool.query('ROLLBACK');
+            return res.status(404).json({ success: false, message: 'Price submission not found or already processed' });
+        }
+        
+        // Notify vendor about rejection
+        await createNotification(
+            priceData.vendor_id,
+            '❌ Price Rejected',
+            `Your price for ${priceData.product_name} (${parseFloat(priceData.price).toLocaleString()} RWF) at ${priceData.market_name} was rejected. Reason: ${rejectionReason}`,
+            'price_rejection',
+            'high',
+            {
+                price_id: parseInt(id),
+                product_name: priceData.product_name,
+                market_name: priceData.market_name,
+                price: parseFloat(priceData.price),
+                rejection_reason: rejectionReason
+            }
+        );
+        
+        await pool.query('COMMIT');
+        
+        res.json({
+            success: true,
+            submission: updateResult.rows[0],
+            message: 'Price rejected successfully and vendor notified'
         });
+        
+    } catch (error) {
+        await pool.query('ROLLBACK');
+        throw error;
     }
-    
-    res.json({
-        success: true,
-        submission: result.rows[0],
-        message: 'Price rejected successfully'
-    });
 });
