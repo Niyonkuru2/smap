@@ -1,5 +1,4 @@
-﻿// components/admin/PriceApprovals.tsx
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { Card } from '../ui/card';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
@@ -65,7 +64,6 @@ export default function PriceApprovals() {
   const [adminNotes, setAdminNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [expandedId, setExpandedId] = useState<number | null>(null);
-  const { t } = useLanguage();
   const { products } = useProducts();
   const { markets } = useMarkets();
 
@@ -310,7 +308,6 @@ export default function PriceApprovals() {
           variant="outline"
           size="sm"
           onClick={() => loadSubmissions()}
-          className="btn-outline-premium"
         >
           <RefreshCw className="h-4 w-4 mr-2" />
           Refresh

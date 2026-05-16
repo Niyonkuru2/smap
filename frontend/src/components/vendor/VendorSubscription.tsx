@@ -270,7 +270,7 @@ export default function VendorSubscription({ vendorId, vendorName }: VendorSubsc
                   variant="outline"
                   size="sm"
                   onClick={() => setIsCancelDialogOpen(true)}
-                  className="mt-2 bg-red-600 text-white hover:bg-red-700 focus-visible:ring-red-200"
+                  className="mt-2"
                 >
                   Cancel Subscription
                 </Button>
@@ -513,7 +513,7 @@ export default function VendorSubscription({ vendorId, vendorName }: VendorSubsc
               </div>
 
               <div className="flex gap-2 pt-2">
-                <Button variant="outline" onClick={() => setIsSubscribeDialogOpen(false)} className="flex-1 btn-outline-premium">
+                <Button variant="outline" onClick={() => setIsSubscribeDialogOpen(false)}>
                   Cancel
                 </Button>
                 <Button onClick={handleSubscribeConfirm} disabled={isSubscribing} className="flex-1 btn-premium">

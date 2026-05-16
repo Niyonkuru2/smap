@@ -479,63 +479,97 @@ body {
    ======================================== */
 
 .tab-trigger-premium {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
 
-  min-height: 48px;
-  min-width: max-content;
+  height: 52px;
 
-  padding: 0.75rem 1.1rem;
+  padding: 0.75rem 1.2rem;
 
-  font-size: 0.875rem;
-  font-weight: 600;
-
-  color: hsl(var(--muted-foreground));
-
-  border-radius: 14px;
-
-  position: relative;
-  overflow: hidden;
-
-  border: 1px solid transparent;
-
-  transition: all 0.3s ease;
+  border-radius: 16px;
 
   white-space: nowrap;
   flex-shrink: 0;
 
+  font-size: 0.9rem;
+  font-weight: 600;
+
+  color: hsl(var(--muted-foreground));
+
+  border: 1px solid transparent;
+
   background: transparent;
+
+  position: relative;
+  overflow: hidden;
+
+  transition:
+    background 0.25s ease,
+    border-color 0.25s ease,
+    color 0.25s ease,
+    transform 0.25s ease,
+    box-shadow 0.25s ease;
 }
 
 /* Hover */
 .tab-trigger-premium:hover {
   color: white;
-  background: rgba(16, 185, 129, 0.12);
-  border-color: rgba(16, 185, 129, 0.25);
+
+  background: rgba(16, 185, 129, 0.08);
+
+  border-color: rgba(16, 185, 129, 0.2);
+
+  transform: translateY(-1px);
 }
 
 /* Active */
 .tab-trigger-premium[data-state='active'] {
-  background: linear-gradient(
-    135deg,
-    #059669 0%,
-    #10b981 55%,
-    #047857 100%
-  ) !important;
-
   color: white !important;
 
-  border-color: rgba(16, 185, 129, 0.4);
+  background:
+    linear-gradient(
+      135deg,
+      rgba(5, 150, 105, 1) 0%,
+      rgba(16, 185, 129, 1) 55%,
+      rgba(4, 120, 87, 1) 100%
+    );
+
+  border-color: rgba(16, 185, 129, 0.35);
 
   box-shadow:
-    0 4px 20px rgba(5, 150, 105, 0.35),
-    0 0 30px rgba(16, 185, 129, 0.15);
+    0 8px 24px rgba(16, 185, 129, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
-/* Active Icon */
+/* Active icon */
 .tab-trigger-premium[data-state='active'] svg {
   color: white !important;
+}
+
+/* Shine effect */
+.tab-trigger-premium[data-state='active']::before {
+  content: '';
+
+  position: absolute;
+  inset: 0;
+
+  background:
+    linear-gradient(
+      120deg,
+      transparent 20%,
+      rgba(255, 255, 255, 0.12) 50%,
+      transparent 80%
+    );
+
+  transform: translateX(-100%);
+  animation: premiumTabShine 2.8s linear infinite;
+}
+
+@keyframes premiumTabShine {
+  to {
+    transform: translateX(100%);
+  }
 }
 /* Fresh Badge - For new/fresh items */
 .fresh-badge {

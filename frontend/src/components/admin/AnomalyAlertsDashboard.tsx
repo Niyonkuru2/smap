@@ -135,7 +135,6 @@ export function AnomalyAlertsDashboard() {
             variant="outline" 
             onClick={handleRefresh}
             disabled={isRefreshing}
-            className="btn-outline-premium"
           >
             <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
             Refresh
@@ -277,7 +276,7 @@ export function AnomalyAlertsDashboard() {
                   {/* Expanded Actions */}
                   {expandedId === alert.id && (alert.status === 'new' || alert.status === 'investigating') && (
                     <div className="mt-4 p-4 rounded-lg bg-white/5 border border-white/10 space-y-4">
-                      <Textarea 
+                      <Textarea
                         placeholder="Add resolution notes..."
                         value={resolution}
                         onChange={(e) => setResolution(e.target.value)}

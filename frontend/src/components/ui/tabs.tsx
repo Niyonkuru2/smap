@@ -26,18 +26,20 @@ function TabsList({
         data-slot="tabs-list"
         className={cn(
           `
+          flex
+          w-max
+          min-w-max
+          items-center
+          gap-2
+
+          rounded-2xl
+          p-2
+
           dark-glass
           border
           border-white/10
-          inline-flex
-          min-w-full
-          w-max
-          items-center
-          gap-2
-          rounded-2xl
-          p-2
-          shadow-sm
           bg-transparent
+          shadow-sm
           `,
           className
         )}

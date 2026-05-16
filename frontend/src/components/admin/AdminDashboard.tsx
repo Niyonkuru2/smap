@@ -335,52 +335,44 @@ export default function AdminDashboard({
         >
           {/* Desktop Tabs */}
 <div className="hidden md:block mb-6">
-  <div
+  <TabsList
     className="
-      overflow-x-auto
-      scrollbar-hide
-      rounded-2xl
-      border
-      border-white/10
-      dark-glass
-      shadow-2xl
-      p-2
+      scrollbar-thin
+      scrollbar-thumb-emerald-500/30
+      scrollbar-track-transparent
     "
   >
-    <TabsList
-      className="
-        flex
-        w-max
-        min-w-full
-        gap-2
-        bg-transparent
-        h-auto
-        p-0
-      "
-    >
-      {navItems.map((item) => (
-        <TabsTrigger
-          key={item.id}
-          value={item.id}
-          className="tab-trigger-premium flex items-center whitespace-nowrap shrink-0"
-        >
-          <span className="flex items-center gap-2">
-            {item.icon}
+    {navItems.map((item) => (
+      <TabsTrigger
+        key={item.id}
+        value={item.id}
+        className="tab-trigger-premium"
+      >
+        <span className="flex items-center gap-2">
+          {item.icon}
 
-            <span className="text-sm font-medium">
-              {item.label}
-            </span>
-
-            {item.badge && item.badge > 0 && (
-              <Badge className="ml-1 bg-white/20 text-white border-white/20">
-                {item.badge}
-              </Badge>
-            )}
+          <span className="text-sm font-medium whitespace-nowrap">
+            {item.label}
           </span>
-        </TabsTrigger>
-      ))}
-    </TabsList>
-  </div>
+
+          {item.badge && item.badge > 0 && (
+            <Badge
+              className="
+                ml-1
+                bg-white/10
+                text-white
+                border
+                border-white/10
+                backdrop-blur-md
+              "
+            >
+              {item.badge}
+            </Badge>
+          )}
+        </span>
+      </TabsTrigger>
+    ))}
+  </TabsList>
 </div>
 
           {/* CONTENTS */}

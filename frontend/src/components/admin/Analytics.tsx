@@ -238,7 +238,7 @@ export default function Analytics() {
     const activeVendors = activeVendorsSet.size;
     
     // Approximate total users
-    let totalUsers = activeVendors + 10; // Base + active vendors
+    let totalUsers = activeVendors + 10;
     
     setAnalyticsData(prev => ({
       ...prev,
@@ -410,7 +410,6 @@ export default function Analytics() {
             variant="outline"
             size="sm"
             onClick={handleExport}
-            className="btn-outline-premium text-xs"
           >
             <Download className="h-4 w-4 mr-2" />
             Export CSV

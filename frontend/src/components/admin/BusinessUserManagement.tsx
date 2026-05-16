@@ -1,18 +1,16 @@
-// BusinessUserManagement.tsx - Updated to use API
 import { useState, useEffect } from 'react';
 import { Button } from '../ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
+import { Card } from '../ui/card';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
 import { Badge } from '../ui/badge';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { 
-  Plus, Pencil, Trash2, Briefcase, Mail, Phone, MapPin, 
-  CheckCircle, XCircle, Building2, User, Calendar, 
-  TrendingUp, DollarSign, AlertCircle, Loader2, RefreshCw
+  Plus, Pencil, Trash2, Briefcase, Mail, Phone, Building2, User, Calendar, 
+  TrendingUp, DollarSign, AlertCircle, Loader2, RefreshCw, Search, Filter,
+  CheckCircle, XCircle
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -204,6 +202,34 @@ export default function BusinessUserManagement() {
     return <Badge className={color}>{tier.charAt(0).toUpperCase() + tier.slice(1)}</Badge>;
   };
 
+  const formatDate = (dateString: string) => {
+    if (!dateString) return 'N/A';
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return 'N/A';
+      return date.toLocaleDateString('en-US', { 
+        year: 'numeric', 
+        month: 'short', 
+        day: 'numeric' 
+      });
+    } catch {
+      return 'N/A';
+    }
+  };
+
+  const getTimeAgo = (dateString: string) => {
+    if (!dateString) return 'N/A';
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    
+    if (diffHours < 24) return `${diffHours} hours ago`;
+    if (diffDays < 30) return `${diffDays} days ago`;
+    return formatDate(dateString);
+  };
+
   const filteredBusinesses = businessUsers
     .filter(b => statusFilter === 'all' || b.status === statusFilter)
     .filter(b => {
@@ -217,6 +243,14 @@ export default function BusinessUserManagement() {
       );
     });
 
+  const statsData = {
+    total: stats?.total_businesses || 0,
+    active: stats?.active_count || 0,
+    pending: stats?.pending_count || 0,
+    premium: (stats?.premium_count || 0) + (stats?.enterprise_count || 0),
+    revenue: stats?.total_revenue || 0
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -228,134 +262,125 @@ export default function BusinessUserManagement() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h2 className="text-2xl font-bold gradient-text">Business User Management</h2>
-          <p className="text-muted-foreground mt-1">
-            Manage business accounts, track performance, and approve registrations
-          </p>
+      {/* Header Card */}
+      <Card className="p-6 rounded-xl dark-glass border-white/10 shadow-lg">
+        <div className="flex items-start gap-4">
+          <div className="p-3 rounded-xl bg-primary/20">
+            <Building2 className="h-8 w-8 text-primary" />
+          </div>
+          <div className="flex-1">
+            <h2 className="font-semibold gradient-text text-xl mb-1">Business User Management</h2>
+            <p className="text-sm text-muted-foreground">Manage business accounts, track performance, and approve registrations</p>
+          </div>
+          <Button onClick={handleAddBusiness} className="bg-primary hover:bg-primary/90">
+            <Plus className="h-4 w-4 mr-2" />
+            Add Business
+          </Button>
         </div>
-        <Button onClick={handleAddBusiness} className="btn-premium">
-          <Plus className="h-4 w-4 mr-2" />
-          Add Business User
-        </Button>
-      </div>
+      </Card>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-        <Card className="dark-glass border-white/10">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Businesses</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-white">{stats?.total_businesses || 0}</div>
-          </CardContent>
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+        <Card className="p-3 rounded-xl dark-glass border-white/10 shadow-lg text-center">
+          <p className="text-xl font-semibold text-white">{statsData.total}</p>
+          <p className="text-xs text-muted-foreground">Total Businesses</p>
         </Card>
-        <Card className="dark-glass border-white/10">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Active Accounts</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-emerald-400">{stats?.active_count || 0}</div>
-          </CardContent>
+        <Card className="p-3 rounded-xl dark-glass border-white/10 shadow-lg text-center">
+          <p className="text-xl font-semibold text-emerald-400">{statsData.active}</p>
+          <p className="text-xs text-muted-foreground">Active</p>
         </Card>
-        <Card className="dark-glass border-white/10">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Pending Approval</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-yellow-400">{stats?.pending_count || 0}</div>
-          </CardContent>
+        <Card className="p-3 rounded-xl dark-glass border-white/10 shadow-lg text-center">
+          <p className="text-xl font-semibold text-yellow-400">{statsData.pending}</p>
+          <p className="text-xs text-muted-foreground">Pending</p>
         </Card>
-        <Card className="dark-glass border-white/10">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Premium Members</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-primary">{(stats?.premium_count || 0) + (stats?.enterprise_count || 0)}</div>
-          </CardContent>
+        <Card className="p-3 rounded-xl dark-glass border-white/10 shadow-lg text-center">
+          <p className="text-xl font-semibold text-primary">{statsData.premium}</p>
+          <p className="text-xs text-muted-foreground">Premium</p>
         </Card>
-        <Card className="dark-glass border-white/10">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Revenue</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-white">{formatCurrency(stats?.total_revenue || 0)}</div>
-          </CardContent>
+        <Card className="p-3 rounded-xl dark-glass border-white/10 shadow-lg text-center">
+          <p className="text-xl font-semibold text-white">{formatCurrency(statsData.revenue)}</p>
+          <p className="text-xs text-muted-foreground">Revenue</p>
         </Card>
       </div>
 
-      {/* Search and Filter */}
-      <Card className="dark-glass border-white/10">
-        <CardContent className="pt-6">
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="flex-1">
-              <Input
-                placeholder="Search by business name, owner, email..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="bg-white/5 border-white/10 text-white placeholder:text-muted-foreground"
-              />
-            </div>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-[180px] bg-white/5 border-white/10 text-white">
-                <SelectValue placeholder="Filter by status" />
-              </SelectTrigger>
-              <SelectContent className="dark-glass border-white/10">
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="pending">Pending</SelectItem>
-                <SelectItem value="inactive">Inactive</SelectItem>
-                <SelectItem value="suspended">Suspended</SelectItem>
-              </SelectContent>
-            </Select>
+      {/* Search & Filter */}
+      <Card className="p-4 rounded-xl dark-glass border-white/10 shadow-lg">
+        <div className="flex flex-col sm:flex-row gap-4">
+          <div className="flex-1 relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search by business name, owner, email..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-9 bg-white/5 border-white/10 text-white placeholder:text-muted-foreground"
+            />
           </div>
-        </CardContent>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-[180px] bg-white/5 border-white/10 text-white">
+              <Filter className="h-4 w-4 mr-2" />
+              <SelectValue placeholder="Filter by status" />
+            </SelectTrigger>
+            <SelectContent className="dark-glass border-white/10">
+              <SelectItem value="all">All Status</SelectItem>
+              <SelectItem value="active">Active</SelectItem>
+              <SelectItem value="pending">Pending</SelectItem>
+              <SelectItem value="inactive">Inactive</SelectItem>
+              <SelectItem value="suspended">Suspended</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </Card>
 
       {/* Business Users Table */}
-      <Card className="dark-glass border-white/10">
-        <CardHeader>
-          <CardTitle>Business Directory</CardTitle>
-          <CardDescription>View and manage all registered business users</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow className="border-white/10">
-                  <TableHead>Business</TableHead>
-                  <TableHead>Owner</TableHead>
-                  <TableHead>Contact</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Tier</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Total Spent</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredBusinesses.map((business) => (
-                  <TableRow key={business.id} className="border-white/5 hover:bg-white/5 cursor-pointer" onClick={() => handleViewBusiness(business)}>
-                    <TableCell>
+      <Card className="rounded-xl dark-glass border-white/10 shadow-lg overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left">
+            <thead>
+              <tr className="border-b border-white/10 bg-white/5">
+                <th className="p-4 text-muted-foreground font-medium text-sm">Business</th>
+                <th className="p-4 text-muted-foreground font-medium text-sm">Owner</th>
+                <th className="p-4 text-muted-foreground font-medium text-sm">Contact</th>
+                <th className="p-4 text-muted-foreground font-medium text-sm">Type</th>
+                <th className="p-4 text-muted-foreground font-medium text-sm">Tier</th>
+                <th className="p-4 text-muted-foreground font-medium text-sm">Status</th>
+                <th className="p-4 text-muted-foreground font-medium text-sm">Joined</th>
+                <th className="p-4 text-muted-foreground font-medium text-sm text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredBusinesses.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="p-8 text-center text-muted-foreground">
+                    <Building2 className="h-12 w-12 mx-auto mb-3 opacity-30" />
+                    <p>No businesses found</p>
+                    <p className="text-sm mt-1">Try adjusting your search or filter</p>
+                  </td>
+                </tr>
+              ) : (
+                filteredBusinesses.map((business) => (
+                  <tr 
+                    key={business.id} 
+                    className="border-b border-white/10 hover:bg-white/5 transition-colors cursor-pointer"
+                    onClick={() => handleViewBusiness(business)}
+                  >
+                    <td className="p-4">
                       <div className="flex items-center gap-3">
-                        <div className="icon-container">
-                          <Building2 className="h-4 w-4 text-primary" />
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary/80 to-primary flex items-center justify-center text-white font-semibold shadow-sm">
+                          {business.businessName.charAt(0).toUpperCase()}
                         </div>
                         <div>
-                          <div className="font-medium text-white">{business.businessName}</div>
-                          <div className="text-xs text-muted-foreground">ID: {business.registrationNumber || 'N/A'}</div>
+                          <p className="font-medium text-white">{business.businessName}</p>
+                          <p className="text-xs text-muted-foreground">ID: {business.registrationNumber || 'N/A'}</p>
                         </div>
                       </div>
-                    </TableCell>
-                    <TableCell>
+                    </td>
+                    <td className="p-4">
                       <div className="flex items-center gap-2">
                         <User className="h-3 w-3 text-muted-foreground" />
                         <span className="text-muted-foreground">{business.ownerName}</span>
                       </div>
-                    </TableCell>
-                    <TableCell>
+                    </td>
+                    <td className="p-4">
                       <div className="space-y-1">
                         <div className="flex items-center gap-1 text-sm">
                           <Mail className="h-3 w-3 text-muted-foreground" />
@@ -366,53 +391,56 @@ export default function BusinessUserManagement() {
                           <span className="text-muted-foreground">{business.phone || 'Not provided'}</span>
                         </div>
                       </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className="border-primary/30 text-primary">
-                        {business.businessType || 'N/A'}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>{getTierBadge(business.tier)}</TableCell>
-                    <TableCell>{getStatusBadge(business.status)}</TableCell>
-                    <TableCell>
-                      <div className="font-semibold text-emerald-400">
-                        {formatCurrency(business.totalSpent)}
+                    </td>
+                    <td className="p-4">
+                      {business.businessType ? (
+                        <Badge variant="outline" className="border-primary/30 text-primary">
+                          {business.businessType}
+                        </Badge>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      )}
+                    </td>
+                    <td className="p-4">
+                      {getTierBadge(business.tier)}
+                    </td>
+                    <td className="p-4">
+                      {getStatusBadge(business.status)}
+                    </td>
+                    <td className="p-4">
+                      <div className="flex items-center gap-1 text-sm text-muted-foreground" title={formatDate(business.joinDate || business.created_at || '')}>
+                        <Calendar className="h-3 w-3" />
+                        <span>{getTimeAgo(business.joinDate || business.created_at || '')}</span>
                       </div>
-                    </TableCell>
-                    <TableCell onClick={(e) => e.stopPropagation()}>
-                      <div className="flex items-center gap-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
+                    </td>
+                    <td className="p-4 text-right" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex items-center justify-end gap-1">
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
                           onClick={() => handleEditBusiness(business)}
-                          className="h-8 w-8 p-0 hover:bg-white/10"
+                          className="hover:bg-white/10 h-8 w-8 p-0"
+                          title="Edit business"
                         >
                           <Pencil className="h-4 w-4 text-muted-foreground hover:text-white" />
                         </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
                           onClick={() => handleDeleteBusiness(business.id)}
-                          className="h-8 w-8 p-0 hover:bg-red-500/10"
+                          className="hover:bg-red-500/10 h-8 w-8 p-0"
+                          title="Delete business"
                         >
                           <Trash2 className="h-4 w-4 text-red-400 hover:text-red-300" />
                         </Button>
                       </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-
-          {filteredBusinesses.length === 0 && (
-            <div className="text-center py-12">
-              <Building2 className="h-12 w-12 mx-auto text-muted-foreground opacity-30 mb-4" />
-              <p className="text-white">No businesses found</p>
-              <p className="text-sm text-muted-foreground mt-1">Click "Add Business User" to create one</p>
-            </div>
-          )}
-        </CardContent>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </Card>
 
       {/* Add/Edit Business Dialog */}
@@ -420,7 +448,7 @@ export default function BusinessUserManagement() {
         <DialogContent className="dark-glass border-white/10 sm:max-w-[500px] md:max-w-[550px] w-full max-h-[90vh] overflow-y-auto">
           <DialogHeader className="sticky top-0 bg-inherit pb-4 border-b border-white/10">
             <DialogTitle className="gradient-text text-xl">
-              {editingBusiness ? 'Edit Business User' : 'Add New Business User'}
+              {editingBusiness ? 'Edit Business' : 'Add New Business'}
             </DialogTitle>
             <DialogDescription className="text-muted-foreground">
               Fill in the business details below
@@ -564,14 +592,14 @@ export default function BusinessUserManagement() {
               variant="outline" 
               onClick={() => setIsDialogOpen(false)}
               disabled={isSaving}
-              className="btn-outline-premium flex-1 sm:flex-none"
+              className=""
             >
               Cancel
             </Button>
             <Button 
               onClick={handleSaveBusiness} 
               disabled={isSaving}
-              className="btn-premium flex-1 sm:flex-none"
+              className="bg-primary hover:bg-primary/90 flex-1 sm:flex-none"
             >
               {isSaving ? (
                 <>
@@ -604,7 +632,7 @@ export default function BusinessUserManagement() {
                 </div>
                 <div className="flex-1">
                   <h3 className="text-xl font-bold text-white">{viewingBusiness.businessName}</h3>
-                  <p className="text-muted-foreground">Registered: {viewingBusiness.joinDate || 'N/A'}</p>
+                  <p className="text-muted-foreground">ID: {viewingBusiness.registrationNumber || 'N/A'}</p>
                 </div>
                 {getStatusBadge(viewingBusiness.status)}
               </div>
@@ -668,16 +696,19 @@ export default function BusinessUserManagement() {
                   </div>
                   <div className="p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/30 text-center">
                     <div className="flex items-center justify-center gap-1 mb-2">
-                      <span className="text-yellow-400">★</span>
-                      <span className="text-yellow-400">★</span>
-                      <span className="text-yellow-400">★</span>
-                      <span className="text-yellow-400">★</span>
-                      <span className="text-yellow-400">★</span>
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <span key={star} className="text-yellow-400">★</span>
+                      ))}
                     </div>
                     <p className="text-xs text-muted-foreground">Rating</p>
                     <p className="text-xl font-bold text-white">{viewingBusiness.rating || 'N/A'}</p>
                   </div>
                 </div>
+              </div>
+
+              <div className="p-3 rounded-lg bg-white/5 border border-white/10">
+                <p className="text-xs text-muted-foreground">Joined Date</p>
+                <p className="text-white font-medium mt-1">{formatDate(viewingBusiness.joinDate || viewingBusiness.created_at || '')}</p>
               </div>
             </div>
           )}
@@ -689,6 +720,28 @@ export default function BusinessUserManagement() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <style>{`
+        .btn-outline-premium {
+          background: rgba(255, 255, 255, 0.05);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          color: hsl(var(--foreground));
+          transition: all 0.2s ease;
+        }
+
+        .btn-outline-premium:hover {
+          background: rgba(255, 255, 255, 0.1);
+          border-color: rgba(255, 255, 255, 0.2);
+          transform: translateY(-1px);
+        }
+
+        .gradient-text {
+          background: linear-gradient(135deg, #fff 0%, #a78bfa 100%);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
+        }
+      `}</style>
     </div>
   );
 }
