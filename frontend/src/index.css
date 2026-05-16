@@ -465,6 +465,76 @@ body {
   box-shadow: 5px 5px 0 #8B4513 !important;
 }
 
+/* ========================================
+   PREMIUM TAB STYLES
+   ======================================== */
+
+.tab-trigger-premium {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  padding: 0.6rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: hsl(var(--muted-foreground));
+  border-radius: 14px;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Hover */
+.tab-trigger-premium:hover {
+  color: white;
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  transform: translateY(-1px);
+}
+
+/* Active / Selected */
+.tab-trigger-premium[data-state="active"] {
+  background: linear-gradient(
+    135deg,
+    #059669 0%,
+    #10B981 55%,
+    #047857 100%
+  ) !important;
+
+  color: white !important;
+
+  border: 1px solid rgba(16, 185, 129, 0.4);
+
+  box-shadow:
+    0 4px 20px rgba(5, 150, 105, 0.35),
+    0 0 30px rgba(16, 185, 129, 0.15);
+
+  transform: translateY(-2px);
+}
+
+/* Active icon color */
+.tab-trigger-premium[data-state="active"] svg {
+  color: white !important;
+}
+
+/* Glow animation */
+.tab-trigger-premium[data-state="active"]::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255,255,255,0.18),
+    transparent
+  );
+
+  transform: translateX(-100%);
+  animation: tabGlow 2.5s infinite;
+}
+
+@keyframes tabGlow {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
 /* Fresh Badge - For new/fresh items */
 .fresh-badge {
   background: linear-gradient(135deg, #10B981 0%, #059669 100%) !important;

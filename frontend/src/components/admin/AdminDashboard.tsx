@@ -1,29 +1,48 @@
 ﻿import { useState, useEffect } from 'react';
 import { Button } from '../ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
-import { LogOut, BarChart3, CheckSquare, Users, Settings, Bell, Download, Upload, UserCog, Mail, Smartphone, Brain, Megaphone, AlertTriangle, MoreVertical, X, Store, Plus, Briefcase, Crown } from 'lucide-react';
+import {
+  LogOut,
+  BarChart3,
+  CheckSquare,
+  Users,
+  Settings,
+  Bell,
+  Upload,
+  UserCog,
+  Brain,
+  Megaphone,
+  AlertTriangle,
+  MoreVertical,
+  X,
+  Store,
+  Briefcase,
+  Crown,
+} from 'lucide-react';
+
 import type { User, UserRole } from '../../App';
 import { globalNotifications } from '../../state/globalState';
+
 import PriceApprovals from './PriceApprovals';
 import Analytics from './Analytics';
 import CategoryManagement from './CategoryManagement';
 import UserManagement from './UserManagement';
 import NotificationManagement from './NotificationManagement';
 import BulkPriceImport from './BulkPriceImport';
-import { EmailPreview } from './EmailPreview';
-import SMSUSSDManagement from './SMSUSSDManagement';
 import { MLModelDashboard } from './MLModelDashboard';
 import { AdAnalyticsDashboard } from './AdAnalyticsDashboard';
 import { AnomalyAlertsDashboard } from './AnomalyAlertsDashboard';
+import VendorManagement from './VendorManagement';
+import BusinessUserManagement from './BusinessUserManagement';
+import SubscriptionManagement from './SubscriptionManagement';
+
 import LanguageSwitcher from '../LanguageSwitcherVibrant';
 import RoleViewSwitcher from '../RoleViewSwitcher';
-import { useLanguage } from '../../contexts/LanguageContext';
-import { Badge } from '../ui/badge';
 import ThemeToggle from '../ThemeToggle';
 import TabCarousel from '../mobile/TabCarousel';
-import VendorManagement from './VendorManagement';
-import BusinessUserManagement from './BusinessUserManagement'; 
-import SubscriptionManagement from './SubscriptionManagement';
+
+import { useLanguage } from '../../contexts/LanguageContext';
+import { Badge } from '../ui/badge';
 
 interface AdminDashboardProps {
   user: User;
@@ -31,76 +50,162 @@ interface AdminDashboardProps {
   onViewAsRole: (role: UserRole) => void;
 }
 
-export default function AdminDashboard({ user, onLogout, onViewAsRole }: AdminDashboardProps) {
+export default function AdminDashboard({
+  user,
+  onLogout,
+  onViewAsRole,
+}: AdminDashboardProps) {
   const [activeTab, setActiveTab] = useState('approvals');
   const [showMobileMenu, setShowMobileMenu] = useState(false);
-  const { t } = useLanguage();
   const [notificationCount, setNotificationCount] = useState(0);
 
-  const navItems = [
-    { id: 'approvals', label: t('priceApprovals'), icon: <CheckSquare className="h-5 w-5" />, badge: notificationCount },
-    { id: 'anomalies', label: t('anomalyAlerts') || 'Anomaly Alerts', icon: <AlertTriangle className="h-5 w-5" />, badge: 3 },
-    { id: 'analytics', label: t('analytics'), icon: <BarChart3 className="h-5 w-5" /> },
-    { id: 'categories', label: t('categories'), icon: <Settings className="h-5 w-5" /> },
-    { id: 'users', label: t('users'), icon: <Users className="h-5 w-5" /> },
-    { id: 'vendors', label: t('vendors') || 'Vendors', icon: <Store className="h-5 w-5" /> },
-    { id: 'businesses', label: 'Businesses', icon: <Briefcase className="h-5 w-5" /> },
-     { id: 'subscriptions', label: 'Subscriptions', icon: <Crown className="h-5 w-5" /> },
-    { id: 'notifications', label: t('notifications'), icon: <Bell className="h-5 w-5" />, badge: notificationCount },
-    { id: 'import', label: t('bulkPriceImport'), icon: <Upload className="h-5 w-5" /> },
-    { id: 'emails', label: t('emailTemplates'), icon: <Mail className="h-5 w-5" /> },
-    { id: 'sms', label: t('smsUssd'), icon: <Smartphone className="h-5 w-5" /> },
-    { id: 'ml', label: t('mlModels'), icon: <Brain className="h-5 w-5" /> },
-    { id: 'ads', label: t('adAnalytics') || 'Ad Analytics', icon: <Megaphone className="h-5 w-5" /> },
-  ];
-
-  // All tabs for mobile carousel
-  const allTabs = [...navItems];
+  const { t } = useLanguage();
 
   useEffect(() => {
-    // Update notification count
     const interval = setInterval(() => {
       const unreadCount = globalNotifications.filter(
-        n => n.userRole === 'admin' && !n.read
+        (n) => n.userRole === 'admin' && !n.read
       ).length;
+
       setNotificationCount(unreadCount);
     }, 1000);
 
     return () => clearInterval(interval);
   }, []);
 
+  const navItems = [
+    {
+      id: 'approvals',
+      label: t('priceApprovals'),
+      icon: <CheckSquare className="h-5 w-5" />,
+      badge: notificationCount,
+    },
+    {
+      id: 'anomalies',
+      label: t('anomalyAlerts') || 'Anomaly Alerts',
+      icon: <AlertTriangle className="h-5 w-5" />,
+      badge: 3,
+    },
+    {
+      id: 'analytics',
+      label: t('analytics'),
+      icon: <BarChart3 className="h-5 w-5" />,
+    },
+    {
+      id: 'categories',
+      label: t('categories'),
+      icon: <Settings className="h-5 w-5" />,
+    },
+    {
+      id: 'users',
+      label: t('users'),
+      icon: <Users className="h-5 w-5" />,
+    },
+    {
+      id: 'vendors',
+      label: t('vendors') || 'Vendors',
+      icon: <Store className="h-5 w-5" />,
+    },
+    {
+      id: 'businesses',
+      label: 'Businesses',
+      icon: <Briefcase className="h-5 w-5" />,
+    },
+    {
+      id: 'subscriptions',
+      label: 'Subscriptions',
+      icon: <Crown className="h-5 w-5" />,
+    },
+    {
+      id: 'notifications',
+      label: t('notifications'),
+      icon: <Bell className="h-5 w-5" />,
+      badge: notificationCount,
+    },
+    {
+      id: 'import',
+      label: t('bulkPriceImport'),
+      icon: <Upload className="h-5 w-5" />,
+    },
+    {
+      id: 'ml',
+      label: t('mlModels'),
+      icon: <Brain className="h-5 w-5" />,
+    },
+    {
+      id: 'ads',
+      label: t('adAnalytics') || 'Ad Analytics',
+      icon: <Megaphone className="h-5 w-5" />,
+    },
+  ];
+
   return (
-    <div className="min-h-screen flex flex-col">
-      {/* Background - Same as consumer dashboard */}
+    <div className="min-h-screen flex flex-col relative overflow-hidden">
+      {/* Background */}
       <div className="app-bg" />
       <div className="app-overlay" />
 
+      {/* Floating Glow Effects */}
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="absolute top-20 left-10 h-72 w-72 rounded-full bg-emerald-500/10 blur-3xl" />
+        <div className="absolute bottom-20 right-10 h-72 w-72 rounded-full bg-teal-500/10 blur-3xl" />
+      </div>
+
       {/* Header */}
-      <header className="dark-glass border-b border-white/10 sticky top-0 z-40 shadow-lg backdrop-blur-xl">
-        <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-primary via-slate-500 to-purple-500" />
-        
+      <header className="sticky top-0 z-50 border-b border-white/10 dark-glass backdrop-blur-2xl shadow-2xl">
+        <div className="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-emerald-500 via-teal-400 to-green-500" />
+
         {/* Desktop Header */}
         <div className="hidden md:block">
-          <div className="max-w-7xl mx-auto px-6 py-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
+          <div className="max-w-7xl mx-auto px-6 py-4">
+            <div className="flex items-center justify-between gap-4">
+              {/* Left */}
+              <div className="flex items-center gap-4">
                 <div className="icon-container">
-                  <UserCog className="h-5 w-5 text-primary" />
+                  <UserCog className="h-6 w-6 text-emerald-400" />
                 </div>
+
                 <div>
-                  <h1 className="text-lg font-bold gradient-text">{t('adminDashboard')}</h1>
-                  <p className="text-xs text-muted-foreground">{t('welcome')}, <span className="font-semibold text-white">{user.name}</span></p>
+                  <h1 className="text-2xl font-extrabold tracking-tight gradient-text">
+                    {t('adminDashboard')}
+                  </h1>
+
+                  <p className="text-sm text-muted-foreground">
+                    {t('welcome')},{' '}
+                    <span className="font-semibold text-white">
+                      {user.name}
+                    </span>
+                  </p>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
+
+              {/* Right */}
+              <div className="flex items-center gap-3">
                 <ThemeToggle />
+
                 <LanguageSwitcher />
+
                 <RoleViewSwitcher onViewAsRole={onViewAsRole} />
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={onLogout} 
-                  className="bg-red-500/10 border border-red-500/30 text-red-400 hover:bg-red-500/20 hover:text-red-300 hover:border-red-500/50 transition-all duration-200 focus:outline-none focus:ring-0"
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={onLogout}
+                  className="
+                    bg-red-500/10
+                    border
+                    border-red-500/30
+                    text-red-400
+                    hover:bg-red-500/20
+                    hover:text-red-300
+                    hover:border-red-500/50
+                    transition-all
+                    duration-300
+                    rounded-xl
+                    px-4
+                    focus:outline-none
+                    focus:ring-0
+                  "
                 >
                   <LogOut className="h-4 w-4 mr-2" />
                   {t('logout')}
@@ -112,49 +217,104 @@ export default function AdminDashboard({ user, onLogout, onViewAsRole }: AdminDa
 
         {/* Mobile Header */}
         <div className="md:hidden">
-          <div className="relative px-4 py-3">
+          <div className="px-4 py-3 relative">
             <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-2.5 min-w-0 flex-1">
+              {/* Left */}
+              <div className="flex items-center gap-3 min-w-0 flex-1">
                 <div className="icon-container flex-shrink-0">
-                  <UserCog className="h-6 w-6 text-primary" />
+                  <UserCog className="h-6 w-6 text-emerald-400" />
                 </div>
+
                 <div className="min-w-0">
-                  <h1 className="text-base font-bold gradient-text truncate">{t('adminDashboard')}</h1>
-                  <p className="text-xs text-muted-foreground truncate">{user.name}</p>
+                  <h1 className="text-base font-bold gradient-text truncate">
+                    {t('adminDashboard')}
+                  </h1>
+
+                  <p className="text-xs text-muted-foreground truncate">
+                    {user.name}
+                  </p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 flex-shrink-0">
+              {/* Right */}
+              <div className="flex items-center gap-2">
                 <ThemeToggle />
+
                 <button
                   onClick={() => setShowMobileMenu(!showMobileMenu)}
-                  className="p-2 rounded-lg text-muted-foreground hover:text-white hover:bg-white/10 active:bg-white/20 transition-colors"
-                  aria-label="Menu"
+                  className="
+                    p-2.5
+                    rounded-xl
+                    border
+                    border-white/10
+                    bg-white/5
+                    text-muted-foreground
+                    hover:text-white
+                    hover:bg-white/10
+                    transition-all
+                  "
                 >
-                  {showMobileMenu ? <X className="h-6 w-6" /> : <MoreVertical className="h-6 w-6" />}
+                  {showMobileMenu ? (
+                    <X className="h-5 w-5" />
+                  ) : (
+                    <MoreVertical className="h-5 w-5" />
+                  )}
                 </button>
               </div>
             </div>
 
-            {/* Mobile Menu Dropdown */}
+            {/* Mobile Dropdown */}
             {showMobileMenu && (
-              <div className="absolute right-4 top-14 dark-glass border border-white/10 rounded-lg shadow-lg z-50 min-w-max">
-                <div className="p-3 space-y-2">
-                  <div className="px-4 py-2">
+              <div
+                className="
+                  absolute
+                  right-4
+                  top-16
+                  z-50
+                  w-64
+                  rounded-2xl
+                  border
+                  border-white/10
+                  dark-glass
+                  shadow-2xl
+                  overflow-hidden
+                  animate-scaleIn
+                "
+              >
+                <div className="p-4 space-y-4">
+                  <div>
                     <LanguageSwitcher />
                   </div>
-                  <div className="px-4 py-2 border-t border-white/10">
-                    <RoleViewSwitcher onViewAsRole={(role) => {
-                      onViewAsRole(role);
-                      setShowMobileMenu(false);
-                    }} />
+
+                  <div className="border-t border-white/10 pt-4">
+                    <RoleViewSwitcher
+                      onViewAsRole={(role) => {
+                        onViewAsRole(role);
+                        setShowMobileMenu(false);
+                      }}
+                    />
                   </div>
+
                   <button
                     onClick={() => {
                       onLogout();
                       setShowMobileMenu(false);
                     }}
-                    className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-base text-red-400 hover:bg-red-500/10 active:bg-red-500/20 transition-colors"
+                    className="
+                      w-full
+                      flex
+                      items-center
+                      gap-3
+                      rounded-xl
+                      px-4
+                      py-3
+                      text-red-400
+                      bg-red-500/5
+                      border
+                      border-red-500/20
+                      hover:bg-red-500/10
+                      transition-all
+                    "
                   >
                     <LogOut className="h-5 w-5" />
                     {t('logout')}
@@ -166,82 +326,122 @@ export default function AdminDashboard({ user, onLogout, onViewAsRole }: AdminDa
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-6 pb-24 md:pb-6 relative z-10">
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          {/* Desktop Tab Navigation */}
-          <TabsList className="mb-6 p-1 dark-glass border border-white/10 shadow-lg rounded-xl flex-wrap gap-1 h-auto hidden md:flex">
-            <TabsTrigger value="approvals" className="tab-trigger-premium data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg">
+      {/* Main */}
+      <main className="relative z-10 flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 py-5 sm:py-6 pb-24 md:pb-6">
+        <Tabs
+          value={activeTab}
+          onValueChange={setActiveTab}
+          className="flex flex-col"
+        >
+          {/* Desktop Tabs */}
+          <TabsList
+            className="
+              hidden
+              md:flex
+              mb-6
+              h-auto
+              flex-wrap
+              gap-2
+              rounded-2xl
+              border
+              border-white/10
+              dark-glass
+              p-2
+              shadow-2xl
+            "
+          >
+            {/* Approvals */}
+            <TabsTrigger value="approvals" className="tab-trigger-premium">
               <CheckSquare className="h-4 w-4 mr-2" />
               {t('priceApprovals')}
+
               {notificationCount > 0 && (
-                <Badge className="ml-1 bg-primary/20 text-primary border border-primary/30 px-1 py-0 text-[10px]">
+                <Badge className="ml-2 bg-white/20 text-white border-white/20">
                   {notificationCount}
                 </Badge>
               )}
             </TabsTrigger>
-            <TabsTrigger value="anomalies" className="tab-trigger-premium data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg">
+
+            {/* Anomalies */}
+            <TabsTrigger value="anomalies" className="tab-trigger-premium">
               <AlertTriangle className="h-4 w-4 mr-2" />
               {t('anomalyAlerts') || 'Anomaly Alerts'}
-              <Badge className="ml-1 bg-orange-500/20 text-orange-400 border border-orange-500/30 px-1 py-0 text-[10px]">3</Badge>
+
+              <Badge className="ml-2 bg-orange-500/20 text-orange-300 border border-orange-400/20">
+                3
+              </Badge>
             </TabsTrigger>
-            <TabsTrigger value="analytics" className="tab-trigger-premium data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg">
+
+            {/* Analytics */}
+            <TabsTrigger value="analytics" className="tab-trigger-premium">
               <BarChart3 className="h-4 w-4 mr-2" />
               {t('analytics')}
             </TabsTrigger>
-            <TabsTrigger value="categories" className="tab-trigger-premium data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg">
+
+            {/* Categories */}
+            <TabsTrigger value="categories" className="tab-trigger-premium">
               <Settings className="h-4 w-4 mr-2" />
               {t('categories')}
             </TabsTrigger>
-            <TabsTrigger value="users" className="tab-trigger-premium data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg">
+
+            {/* Users */}
+            <TabsTrigger value="users" className="tab-trigger-premium">
               <Users className="h-4 w-4 mr-2" />
               {t('users')}
             </TabsTrigger>
-            <TabsTrigger value="vendors" className="tab-trigger-premium data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg">
+
+            {/* Vendors */}
+            <TabsTrigger value="vendors" className="tab-trigger-premium">
               <Store className="h-4 w-4 mr-2" />
               {t('vendors') || 'Vendors'}
             </TabsTrigger>
-            <TabsTrigger value="businesses" className="tab-trigger-premium data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg">
-               <Briefcase className="h-4 w-4 mr-2" />
-                Businesses
-             </TabsTrigger>
-            <TabsTrigger value="notifications" className="tab-trigger-premium data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg">
+
+            {/* Businesses */}
+            <TabsTrigger value="businesses" className="tab-trigger-premium">
+              <Briefcase className="h-4 w-4 mr-2" />
+              Businesses
+            </TabsTrigger>
+
+            {/* Subscriptions */}
+            <TabsTrigger value="subscriptions" className="tab-trigger-premium">
+              <Crown className="h-4 w-4 mr-2" />
+              Subscriptions
+            </TabsTrigger>
+
+            {/* Notifications */}
+            <TabsTrigger value="notifications" className="tab-trigger-premium">
               <Bell className="h-4 w-4 mr-2" />
               {t('notifications')}
+
               {notificationCount > 0 && (
-                <Badge className="ml-1 bg-primary/20 text-primary border border-primary/30 px-1 py-0 text-[10px]">
+                <Badge className="ml-2 bg-white/20 text-white border-white/20">
                   {notificationCount}
                 </Badge>
               )}
             </TabsTrigger>
-            <TabsTrigger value="subscriptions" className="tab-trigger-premium data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg">
-           <Crown className="h-4 w-4 mr-2" />
-          Subscriptions
-           </TabsTrigger>
-            <TabsTrigger value="import" className="tab-trigger-premium data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg">
+
+            {/* Import */}
+            <TabsTrigger value="import" className="tab-trigger-premium">
               <Upload className="h-4 w-4 mr-2" />
               {t('bulkPriceImport')}
             </TabsTrigger>
-            <TabsTrigger value="emails" className="tab-trigger-premium data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg">
-              <Mail className="h-4 w-4 mr-2" />
-              {t('emailTemplates')}
-            </TabsTrigger>
-            <TabsTrigger value="sms" className="tab-trigger-premium data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg">
-              <Smartphone className="h-4 w-4 mr-2" />
-              {t('smsUssd')}
-            </TabsTrigger>
-            <TabsTrigger value="ml" className="tab-trigger-premium data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg">
+
+            {/* ML */}
+            <TabsTrigger value="ml" className="tab-trigger-premium">
               <Brain className="h-4 w-4 mr-2" />
               {t('mlModels')}
             </TabsTrigger>
-            <TabsTrigger value="ads" className="tab-trigger-premium data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg">
+
+            {/* Ads */}
+            <TabsTrigger value="ads" className="tab-trigger-premium">
               <Megaphone className="h-4 w-4 mr-2" />
-              {t('adAnalytics')}
+              {t('adAnalytics') || 'Ad Analytics'}
             </TabsTrigger>
           </TabsList>
 
-          {/* Tab Contents */}
-          <TabsContent value="approvals" className="mt-4 animate-fadeIn">
+          {/* CONTENTS */}
+
+          <TabsContent value="approvals" className="animate-fadeIn mt-4">
             <PriceApprovals />
           </TabsContent>
 
@@ -266,25 +466,19 @@ export default function AdminDashboard({ user, onLogout, onViewAsRole }: AdminDa
           </TabsContent>
 
           <TabsContent value="businesses" className="animate-fadeIn">
-         <BusinessUserManagement />
-     </TabsContent>
-   <TabsContent value="subscriptions" className="animate-fadeIn">
-  <SubscriptionManagement />
-</TabsContent>
+            <BusinessUserManagement />
+          </TabsContent>
+
+          <TabsContent value="subscriptions" className="animate-fadeIn">
+            <SubscriptionManagement />
+          </TabsContent>
+
           <TabsContent value="notifications" className="animate-fadeIn">
             <NotificationManagement />
           </TabsContent>
 
           <TabsContent value="import" className="animate-fadeIn">
             <BulkPriceImport />
-          </TabsContent>
-
-          <TabsContent value="emails" className="animate-fadeIn">
-            <EmailPreview />
-          </TabsContent>
-
-          <TabsContent value="sms" className="animate-fadeIn">
-            <SMSUSSDManagement />
           </TabsContent>
 
           <TabsContent value="ml" className="animate-fadeIn">
@@ -296,65 +490,126 @@ export default function AdminDashboard({ user, onLogout, onViewAsRole }: AdminDa
           </TabsContent>
         </Tabs>
 
-        {/* Mobile Tab Carousel Footer */}
+        {/* Mobile Bottom Tabs */}
         <div className="md:hidden">
           <TabCarousel
-            items={allTabs}
+            items={navItems}
             activeTab={activeTab}
             onTabChange={setActiveTab}
           />
         </div>
       </main>
 
+      {/* Styles */}
       <style>{`
         @keyframes fadeIn {
-          from { opacity: 0; }
-          to { opacity: 1; }
+          from {
+            opacity: 0;
+            transform: translateY(8px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
         }
-        
+
         @keyframes scaleIn {
           from {
             opacity: 0;
-            transform: scale(0.95);
+            transform: scale(0.96);
           }
           to {
             opacity: 1;
             transform: scale(1);
           }
         }
-        
+
+        @keyframes tabGlow {
+          100% {
+            transform: translateX(100%);
+          }
+        }
+
         .animate-fadeIn {
-          animation: fadeIn 0.2s ease-out;
+          animation: fadeIn 0.35s ease-out;
         }
-        
+
         .animate-scaleIn {
-          animation: scaleIn 0.3s ease-out;
+          animation: scaleIn 0.25s ease-out;
         }
+
+        /* ========================================
+           PREMIUM TAB STYLES
+           ======================================== */
 
         .tab-trigger-premium {
-          transition: all 0.2s ease;
-          padding: 0.5rem 1rem;
+          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          padding: 0.7rem 1rem;
           font-size: 0.875rem;
-          font-weight: 500;
+          font-weight: 600;
           color: hsl(var(--muted-foreground));
+          border-radius: 14px;
+          position: relative;
+          overflow: hidden;
+          border: 1px solid transparent;
+          backdrop-filter: blur(10px);
         }
 
+        /* Hover */
         .tab-trigger-premium:hover {
           color: white;
-          background: rgba(255, 255, 255, 0.1);
+          background: rgba(16, 185, 129, 0.12);
+          border: 1px solid rgba(16, 185, 129, 0.25);
+          transform: translateY(-1px);
         }
 
+        /* Active / Selected */
         .tab-trigger-premium[data-state="active"] {
-          background: hsl(var(--primary));
-          color: white;
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+          background: linear-gradient(
+            135deg,
+            #059669 0%,
+            #10b981 55%,
+            #047857 100%
+          ) !important;
+
+          color: white !important;
+
+          border: 1px solid rgba(16, 185, 129, 0.4);
+
+          box-shadow:
+            0 4px 20px rgba(5, 150, 105, 0.35),
+            0 0 30px rgba(16, 185, 129, 0.15);
+
+          transform: translateY(-2px);
         }
 
+        /* Active icon */
+        .tab-trigger-premium[data-state="active"] svg {
+          color: white !important;
+        }
+
+        /* Glow animation */
+        .tab-trigger-premium[data-state="active"]::before {
+          content: '';
+          position: absolute;
+          inset: 0;
+          background: linear-gradient(
+            90deg,
+            transparent,
+            rgba(255, 255, 255, 0.18),
+            transparent
+          );
+
+          transform: translateX(-100%);
+          animation: tabGlow 2.5s infinite;
+        }
+
+        /* Button */
         .btn-outline-premium {
           background: rgba(255, 255, 255, 0.05);
           border: 1px solid rgba(255, 255, 255, 0.1);
           color: hsl(var(--foreground));
-          transition: all 0.2s ease;
+          transition: all 0.25s ease;
         }
 
         .btn-outline-premium:hover {
@@ -363,11 +618,31 @@ export default function AdminDashboard({ user, onLogout, onViewAsRole }: AdminDa
           transform: translateY(-1px);
         }
 
+        /* Icon container */
         .icon-container {
-          padding: 0.5rem;
+          padding: 0.75rem;
           background: rgba(255, 255, 255, 0.05);
-          border-radius: 0.75rem;
-          border: 1px solid rgba(255, 255, 255, 0.1);
+          border-radius: 1rem;
+          border: 1px solid rgba(255, 255, 255, 0.08);
+
+          box-shadow:
+            inset 0 1px 0 rgba(255, 255, 255, 0.05),
+            0 4px 14px rgba(0, 0, 0, 0.2);
+
+          backdrop-filter: blur(10px);
+        }
+
+        .gradient-text {
+          background: linear-gradient(
+            135deg,
+            #ffffff 0%,
+            #d1fae5 45%,
+            #6ee7b7 100%
+          );
+
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
         }
       `}</style>
     </div>

@@ -1,8 +1,25 @@
 ﻿import { useState } from 'react';
 import { Button } from '../ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
-import { LogOut, Search, TrendingUp, Heart, Bell, AlertCircle, User as UserIcon, ArrowLeft, UserCog, Map, Brain, Users, MoreVertical, X } from 'lucide-react';
+import {
+  LogOut,
+  Search,
+  TrendingUp,
+  Heart,
+  Bell,
+  AlertCircle,
+  User as UserIcon,
+  ArrowLeft,
+  UserCog,
+  Map,
+  Brain,
+  Users,
+  MoreVertical,
+  X,
+} from 'lucide-react';
+
 import type { User } from '../../App';
+
 import ProductSearch from './ProductSearch';
 import PriceComparison from './PriceComparison';
 import PriceTrends from './PriceTrends';
@@ -11,8 +28,10 @@ import Notifications from './Notifications';
 import PriceAlerts from './PriceAlerts';
 import MultiMarketComparison from './MultiMarketComparison';
 import PriceForecast from './PriceForecast';
+
 import UserProfile from '../shared/UserProfile';
 import { VendorProfiles } from '../shared/VendorProfiles';
+
 import LanguageSwitcher from '../LanguageSwitcherVibrant';
 import { useLanguage } from '../../contexts/LanguageContext';
 import ThemeToggle from '../ThemeToggle';
@@ -25,65 +44,129 @@ interface ConsumerDashboardProps {
   onReturnToAdmin?: () => void;
 }
 
-export default function ConsumerDashboard({ user, onLogout, isAdminViewing, onReturnToAdmin }: ConsumerDashboardProps) {
+export default function ConsumerDashboard({
+  user,
+  onLogout,
+  isAdminViewing,
+  onReturnToAdmin,
+}: ConsumerDashboardProps) {
   const [activeTab, setActiveTab] = useState('search');
   const [showMobileMenu, setShowMobileMenu] = useState(false);
+
   const { t } = useLanguage();
 
   const navItems = [
-    { id: 'search', label: t('searchProducts'), icon: <Search className="h-5 w-5" /> },
-    { id: 'compare', label: t('comparePrices'), icon: <TrendingUp className="h-5 w-5" /> },
-    { id: 'markets', label: t('multiMarket'), icon: <Map className="h-5 w-5" /> },
-    { id: 'forecast', label: t('aiForecast'), icon: <Brain className="h-5 w-5" /> },
-    { id: 'trends', label: t('priceTrends'), icon: <TrendingUp className="h-5 w-5" /> },
-    { id: 'favorites', label: t('favorites'), icon: <Heart className="h-5 w-5" /> },
+    {
+      id: 'search',
+      label: t('searchProducts'),
+      icon: <Search className="h-5 w-5" />,
+    },
+    {
+      id: 'compare',
+      label: t('comparePrices'),
+      icon: <TrendingUp className="h-5 w-5" />,
+    },
+    {
+      id: 'markets',
+      label: t('multiMarket'),
+      icon: <Map className="h-5 w-5" />,
+    },
+    {
+      id: 'forecast',
+      label: t('aiForecast'),
+      icon: <Brain className="h-5 w-5" />,
+    },
+    {
+      id: 'trends',
+      label: t('priceTrends'),
+      icon: <TrendingUp className="h-5 w-5" />,
+    },
+    {
+      id: 'favorites',
+      label: t('favorites'),
+      icon: <Heart className="h-5 w-5" />,
+    },
   ];
 
   const moreMenuItems = [
-    { id: 'notifications', label: t('notifications'), icon: <Bell className="h-5 w-5" /> },
-    { id: 'alerts', label: t('priceAlerts'), icon: <AlertCircle className="h-5 w-5" /> },
-    { id: 'vendors', label: t('vendors') || 'Vendors', icon: <Users className="h-5 w-5" /> },
-    { id: 'profile', label: t('profile'), icon: <UserIcon className="h-5 w-5" /> },
+    {
+      id: 'notifications',
+      label: t('notifications'),
+      icon: <Bell className="h-5 w-5" />,
+    },
+    {
+      id: 'alerts',
+      label: t('priceAlerts'),
+      icon: <AlertCircle className="h-5 w-5" />,
+    },
+    {
+      id: 'vendors',
+      label: t('vendors') || 'Vendors',
+      icon: <Users className="h-5 w-5" />,
+    },
+    {
+      id: 'profile',
+      label: t('profile'),
+      icon: <UserIcon className="h-5 w-5" />,
+    },
   ];
 
-  // All tabs combined for carousel (mobile)
   const allTabs = [...navItems, ...moreMenuItems];
 
   return (
-    <div className="min-h-screen flex flex-col">
-      {/* Background - Same as login page */}
+    <div className="min-h-screen flex flex-col relative overflow-hidden">
+      {/* Background */}
       <div className="app-bg" />
       <div className="app-overlay" />
 
+      {/* Decorative Glow */}
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="absolute top-0 left-1/3 h-72 w-72 rounded-full bg-emerald-500/10 blur-3xl" />
+        <div className="absolute bottom-0 right-1/4 h-72 w-72 rounded-full bg-teal-500/10 blur-3xl" />
+      </div>
+
       {/* Header */}
-      <header className="dark-glass border-b border-white/10 sticky top-0 z-40 shadow-lg backdrop-blur-xl">
-        <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-primary via-slate-500 to-purple-500" />
-        
+      <header className="sticky top-0 z-40 border-b border-white/10 backdrop-blur-2xl bg-black/20">
+        <div className="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-700" />
+
         {/* Desktop Header */}
         <div className="hidden md:block">
-          <div className="max-w-7xl mx-auto px-6 py-3">
+          <div className="max-w-7xl mx-auto px-6 py-4">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
+              {/* Left */}
+              <div className="flex items-center gap-4">
                 <div className="icon-container">
-                  <UserIcon className="h-5 w-5 text-primary" />
+                  <UserIcon className="h-6 w-6 text-emerald-400" />
                 </div>
+
                 <div>
-                  <h1 className="text-lg font-bold gradient-text">{t('consumerDashboard')}</h1>
-                  <p className="text-xs text-muted-foreground">{t('welcome')}, <span className="font-semibold text-white">{user.name}</span></p>
+                  <h1 className="text-xl font-bold premium-gradient-text">
+                    {t('consumerDashboard')}
+                  </h1>
+
+                  <p className="text-sm text-muted-foreground">
+                    {t('welcome')},{' '}
+                    <span className="font-semibold text-white">
+                      {user.name}
+                    </span>
+                  </p>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
+
+              {/* Right */}
+              <div className="flex items-center gap-3">
                 <ThemeToggle />
                 <LanguageSwitcher />
-                <Button 
-  variant="outline" 
-  size="sm" 
-  onClick={onLogout} 
-  className="bg-red-500/10 border border-red-500/30 text-red-400 hover:bg-red-500/20 hover:text-red-300 hover:border-red-500/50 transition-all duration-200 focus:outline-none focus:ring-0"
->
-  <LogOut className="h-4 w-4 mr-2" />
-  {t('logout')}
-</Button>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={onLogout}
+                  className="logout-btn-premium"
+                >
+                  <LogOut className="h-4 w-4 mr-2" />
+                  {t('logout')}
+                </Button>
               </div>
             </div>
           </div>
@@ -93,41 +176,54 @@ export default function ConsumerDashboard({ user, onLogout, isAdminViewing, onRe
         <div className="md:hidden">
           <div className="relative px-4 py-3">
             <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-2.5 min-w-0 flex-1">
+              {/* Left */}
+              <div className="flex items-center gap-3 min-w-0 flex-1">
                 <div className="icon-container flex-shrink-0">
-                  <UserIcon className="h-6 w-6 text-primary" />
+                  <UserIcon className="h-5 w-5 text-emerald-400" />
                 </div>
+
                 <div className="min-w-0">
-                  <h1 className="text-base font-bold gradient-text truncate">{t('consumerDashboard')}</h1>
-                  <p className="text-xs text-muted-foreground truncate">{user.name}</p>
+                  <h1 className="text-base font-bold premium-gradient-text truncate">
+                    {t('consumerDashboard')}
+                  </h1>
+
+                  <p className="text-xs text-muted-foreground truncate">
+                    {user.name}
+                  </p>
                 </div>
               </div>
 
+              {/* Right */}
               <div className="flex items-center gap-2 flex-shrink-0">
                 <ThemeToggle />
+
                 <button
                   onClick={() => setShowMobileMenu(!showMobileMenu)}
-                  className="p-2 rounded-lg text-muted-foreground hover:text-white hover:bg-white/10 active:bg-white/20 transition-colors"
-                  aria-label="Menu"
+                  className="mobile-menu-btn"
                 >
-                  {showMobileMenu ? <X className="h-6 w-6" /> : <MoreVertical className="h-6 w-6" />}
+                  {showMobileMenu ? (
+                    <X className="h-5 w-5" />
+                  ) : (
+                    <MoreVertical className="h-5 w-5" />
+                  )}
                 </button>
               </div>
             </div>
 
-            {/* Mobile Menu Dropdown */}
+            {/* Mobile Dropdown */}
             {showMobileMenu && (
-              <div className="absolute right-4 top-14 dark-glass border border-white/10 rounded-lg shadow-lg z-50 min-w-max">
+              <div className="absolute right-4 top-16 z-50 w-60 rounded-2xl border border-white/10 bg-black/80 backdrop-blur-2xl shadow-2xl overflow-hidden">
                 <div className="p-3 space-y-2">
-                  <div className="px-4 py-2">
+                  <div className="rounded-xl bg-white/5 border border-white/10 p-3">
                     <LanguageSwitcher />
                   </div>
+
                   <button
                     onClick={() => {
                       onLogout();
                       setShowMobileMenu(false);
                     }}
-                    className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-base text-red-400 hover:bg-red-500/10 active:bg-red-500/20 transition-colors"
+                    className="mobile-dropdown-btn text-red-400 hover:bg-red-500/10"
                   >
                     <LogOut className="h-5 w-5" />
                     {t('logout')}
@@ -139,17 +235,22 @@ export default function ConsumerDashboard({ user, onLogout, isAdminViewing, onRe
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-6 pb-24 md:pb-6 relative z-10">
-        {/* Admin Viewing Banner */}
+      {/* Main */}
+      <main className="relative z-10 flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 py-5 sm:py-6 pb-24 md:pb-6">
+        {/* Admin Banner */}
         {isAdminViewing && onReturnToAdmin && (
-          <div className="mb-4 dark-glass border border-white/10 rounded-lg p-4">
+          <div className="mb-5 rounded-2xl border border-white/10 bg-white/5 backdrop-blur-xl p-4 shadow-xl">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              <span className="text-sm text-muted-foreground flex items-center gap-2">
-                <UserCog className="h-4 w-4 text-primary" />
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <UserCog className="h-4 w-4 text-emerald-400" />
                 {t('viewingAsAdmin')}
-              </span>
-              <Button onClick={onReturnToAdmin} size="sm" className="btn-outline-premium w-full sm:w-auto">
+              </div>
+
+              <Button
+                onClick={onReturnToAdmin}
+                size="sm"
+                className="btn-outline-premium w-full sm:w-auto"
+              >
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 {t('returnToAdmin')}
               </Button>
@@ -158,93 +259,102 @@ export default function ConsumerDashboard({ user, onLogout, isAdminViewing, onRe
         )}
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          {/* Desktop Tab Navigation */}
-          <TabsList className="mb-6 p-1 dark-glass border border-white/10 shadow-lg rounded-xl flex-wrap gap-1 h-auto hidden md:flex">
-            <TabsTrigger value="search" className="">
+          {/* Desktop Tabs */}
+          <TabsList className="hidden md:flex mb-7 h-auto flex-wrap gap-2 rounded-2xl border border-white/10 bg-white/5 backdrop-blur-2xl p-2 shadow-2xl">
+            <TabsTrigger value="search" className="tab-trigger-premium">
               <Search className="h-4 w-4 mr-2" />
               {t('searchProducts')}
             </TabsTrigger>
-            <TabsTrigger value="compare" className="tab-trigger-premium data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg">
+
+            <TabsTrigger value="compare" className="tab-trigger-premium">
               <TrendingUp className="h-4 w-4 mr-2" />
               {t('comparePrices')}
             </TabsTrigger>
-            <TabsTrigger value="markets" className="tab-trigger-premium data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg">
+
+            <TabsTrigger value="markets" className="tab-trigger-premium">
               <Map className="h-4 w-4 mr-2" />
               {t('multiMarket')}
             </TabsTrigger>
-            <TabsTrigger value="forecast" className="tab-trigger-premium data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg">
+
+            <TabsTrigger value="forecast" className="tab-trigger-premium">
               <Brain className="h-4 w-4 mr-2" />
               {t('aiForecast')}
             </TabsTrigger>
-            <TabsTrigger value="trends" className="tab-trigger-premium data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg">
+
+            <TabsTrigger value="trends" className="tab-trigger-premium">
               <TrendingUp className="h-4 w-4 mr-2" />
               {t('priceTrends')}
             </TabsTrigger>
-            <TabsTrigger value="favorites" className="tab-trigger-premium data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg">
+
+            <TabsTrigger value="favorites" className="tab-trigger-premium">
               <Heart className="h-4 w-4 mr-2" />
               {t('favorites')}
             </TabsTrigger>
-            <TabsTrigger value="notifications" className="tab-trigger-premium data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg">
+
+            <TabsTrigger value="notifications" className="tab-trigger-premium">
               <Bell className="h-4 w-4 mr-2" />
               {t('notifications')}
             </TabsTrigger>
-            <TabsTrigger value="alerts" className="tab-trigger-premium data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg">
+
+            <TabsTrigger value="alerts" className="tab-trigger-premium">
               <AlertCircle className="h-4 w-4 mr-2" />
               {t('priceAlerts')}
             </TabsTrigger>
-            <TabsTrigger value="vendors" className="tab-trigger-premium data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg">
+
+            <TabsTrigger value="vendors" className="tab-trigger-premium">
               <Users className="h-4 w-4 mr-2" />
               {t('vendors') || 'Vendors'}
             </TabsTrigger>
-            <TabsTrigger value="profile" className="tab-trigger-premium data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg">
+
+            <TabsTrigger value="profile" className="tab-trigger-premium">
               <UserIcon className="h-4 w-4 mr-2" />
               {t('profile')}
             </TabsTrigger>
           </TabsList>
 
-          {/* Tab Contents */}
-          <TabsContent value="search" className="mt-4">
+          {/* Content */}
+          <TabsContent value="search" className="animate-fadeIn mt-4">
             <ProductSearch />
           </TabsContent>
 
-          <TabsContent value="compare">
+          <TabsContent value="compare" className="animate-fadeIn">
             <PriceComparison />
           </TabsContent>
 
-          <TabsContent value="markets">
+          <TabsContent value="markets" className="animate-fadeIn">
             <MultiMarketComparison />
           </TabsContent>
 
-          <TabsContent value="forecast">
+          <TabsContent value="forecast" className="animate-fadeIn">
             <PriceForecast />
           </TabsContent>
 
-          <TabsContent value="trends">
+          <TabsContent value="trends" className="animate-fadeIn">
             <PriceTrends />
           </TabsContent>
 
-          <TabsContent value="favorites">
+          <TabsContent value="favorites" className="animate-fadeIn">
             <Favorites userId={user.id} />
           </TabsContent>
 
-          <TabsContent value="notifications">
+          <TabsContent value="notifications" className="animate-fadeIn">
             <Notifications />
           </TabsContent>
 
-          <TabsContent value="alerts">
+          <TabsContent value="alerts" className="animate-fadeIn">
             <PriceAlerts userId={user.id} />
           </TabsContent>
 
-          <TabsContent value="vendors">
+          <TabsContent value="vendors" className="animate-fadeIn">
             <VendorProfiles />
           </TabsContent>
 
-          <TabsContent value="profile">
+          <TabsContent value="profile" className="animate-fadeIn">
             <UserProfile user={user} />
           </TabsContent>
         </Tabs>
 
-        {/* Mobile Tab Carousel Footer */}
+        {/* Mobile Carousel */}
         <div className="md:hidden">
           <TabCarousel
             items={allTabs}
@@ -256,58 +366,208 @@ export default function ConsumerDashboard({ user, onLogout, isAdminViewing, onRe
 
       <style>{`
         @keyframes fadeIn {
-          from { opacity: 0; }
-          to { opacity: 1; }
+          from {
+            opacity: 0;
+            transform: translateY(10px);
+          }
+
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
         }
-        
+
         @keyframes scaleIn {
           from {
             opacity: 0;
-            transform: scale(0.95);
+            transform: scale(0.96);
           }
+
           to {
             opacity: 1;
             transform: scale(1);
           }
         }
-        
-        .animate-fadeIn {
-          animation: fadeIn 0.2s ease-out;
+
+        @keyframes tabGlow {
+          100% {
+            transform: translateX(100%);
+          }
         }
-        
+
+        .animate-fadeIn {
+          animation: fadeIn 0.35s ease;
+        }
+
         .animate-scaleIn {
-          animation: scaleIn 0.3s ease-out;
+          animation: scaleIn 0.35s ease;
+        }
+
+        .premium-gradient-text {
+          background: linear-gradient(
+            135deg,
+            #ffffff 0%,
+            #10b981 45%,
+            #34d399 100%
+          );
+
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
+        }
+
+        .icon-container {
+          padding: 0.8rem;
+          border-radius: 1rem;
+
+          background: rgba(255, 255, 255, 0.05);
+
+          border: 1px solid rgba(255, 255, 255, 0.1);
+
+          box-shadow:
+            0 8px 24px rgba(0, 0, 0, 0.2),
+            inset 0 1px 0 rgba(255, 255, 255, 0.05);
+
+          backdrop-filter: blur(20px);
+        }
+
+        .mobile-menu-btn {
+          padding: 0.65rem;
+          border-radius: 0.9rem;
+
+          color: hsl(var(--muted-foreground));
+
+          background: rgba(255, 255, 255, 0.04);
+
+          border: 1px solid rgba(255, 255, 255, 0.08);
+
+          transition: all 0.25s ease;
+        }
+
+        .mobile-menu-btn:hover {
+          color: white;
+          background: rgba(255, 255, 255, 0.08);
+        }
+
+        .mobile-dropdown-btn {
+          width: 100%;
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+
+          padding: 0.9rem 1rem;
+
+          border-radius: 1rem;
+
+          transition: all 0.25s ease;
         }
 
         .tab-trigger-premium {
-          transition: all 0.2s ease;
-          padding: 0.5rem 1rem;
+          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+          padding: 0.7rem 1rem;
+
           font-size: 0.875rem;
-          font-weight: 500;
+          font-weight: 600;
+
           color: hsl(var(--muted-foreground));
+
+          border-radius: 14px;
+
+          position: relative;
+          overflow: hidden;
+
+          border: 1px solid transparent;
+
+          backdrop-filter: blur(20px);
         }
 
         .tab-trigger-premium:hover {
           color: white;
-          background: rgba(255, 255, 255, 0.1);
+
+          background: rgba(16, 185, 129, 0.12);
+
+          border: 1px solid rgba(16, 185, 129, 0.25);
+
+          transform: translateY(-1px);
         }
 
         .tab-trigger-premium[data-state="active"] {
-          background: hsl(var(--primary));
-          color: white;
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+          background: linear-gradient(
+            135deg,
+            #059669 0%,
+            #10b981 55%,
+            #047857 100%
+          ) !important;
+
+          color: white !important;
+
+          border: 1px solid rgba(16, 185, 129, 0.4);
+
+          box-shadow:
+            0 4px 20px rgba(5, 150, 105, 0.35),
+            0 0 30px rgba(16, 185, 129, 0.15);
+
+          transform: translateY(-2px);
+        }
+
+        .tab-trigger-premium[data-state="active"] svg {
+          color: white !important;
+        }
+
+        .tab-trigger-premium[data-state="active"]::before {
+          content: '';
+
+          position: absolute;
+          inset: 0;
+
+          background: linear-gradient(
+            90deg,
+            transparent,
+            rgba(255,255,255,0.18),
+            transparent
+          );
+
+          transform: translateX(-100%);
+
+          animation: tabGlow 2.5s infinite;
         }
 
         .btn-outline-premium {
           background: rgba(255, 255, 255, 0.05);
-          border: 1px solid rgba(255, 255, 255, 0.1);
-          color: hsl(var(--foreground));
-          transition: all 0.2s ease;
+
+          border: 1px solid rgba(255, 255, 255, 0.12);
+
+          color: white;
+
+          transition: all 0.25s ease;
         }
 
         .btn-outline-premium:hover {
-          background: rgba(255, 255, 255, 0.1);
-          border-color: rgba(255, 255, 255, 0.2);
+          background: rgba(16, 185, 129, 0.12);
+
+          border-color: rgba(16, 185, 129, 0.35);
+
+          transform: translateY(-1px);
+        }
+
+        .logout-btn-premium {
+          background: rgba(239, 68, 68, 0.08);
+
+          border: 1px solid rgba(239, 68, 68, 0.25);
+
+          color: rgb(248 113 113);
+
+          transition: all 0.25s ease;
+        }
+
+        .logout-btn-premium:hover {
+          background: rgba(239, 68, 68, 0.18);
+
+          border-color: rgba(239, 68, 68, 0.4);
+
+          color: white;
+
           transform: translateY(-1px);
         }
       `}</style>
