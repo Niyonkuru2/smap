@@ -12,13 +12,35 @@ const buttonVariants = cva(
         default: "bg-green-600 text-white hover:bg-green-700",
         destructive:
           "bg-green-600 text-white hover:bg-green-700 focus-visible:ring-green-200",
-        outline:
-          "border border-border bg-card text-foreground hover:bg-secondary hover:text-foreground",
         secondary:
           "bg-secondary text-foreground hover:bg-secondary/80",
         ghost:
           "hover:bg-secondary/50 hover:text-foreground text-foreground",
         link: "text-green-600 underline-offset-4 hover:underline",
+        premium:
+    `
+    bg-white/5
+    border border-white/10
+    text-white
+    hover:bg-white/10
+    hover:border-white/20
+    backdrop-blur-md
+    shadow-sm
+    transition-all
+    duration-200
+    `,
+    outline:
+  `
+  bg-white/5
+  border border-white/10
+  text-white
+  hover:bg-white/10
+  hover:border-white/20
+  backdrop-blur-md
+  shadow-sm
+  transition-all
+  duration-200
+  `,
       },
       size: {
         default: "h-9 px-4 py-2 has-[>svg]:px-3",

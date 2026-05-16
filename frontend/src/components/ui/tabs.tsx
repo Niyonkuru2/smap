@@ -10,7 +10,7 @@ function Tabs({
   return (
     <TabsPrimitive.Root
       data-slot="tabs"
-      className={cn("flex flex-col gap-2", className)}
+      className={cn("flex flex-col gap-4 w-full", className)}
       {...props}
     />
   );
@@ -21,14 +21,29 @@ function TabsList({
   ...props
 }: React.ComponentProps<typeof TabsPrimitive.List>) {
   return (
-    <TabsPrimitive.List
-      data-slot="tabs-list"
-      className={cn(
-        "dark-glass border-white/10 inline-flex h-auto w-fit items-center justify-center rounded-xl p-1 gap-1 shadow-sm flex-wrap",
-        className,
-      )}
-      {...props}
-    />
+    <div className="w-full overflow-x-auto scrollbar-hide">
+      <TabsPrimitive.List
+        data-slot="tabs-list"
+        className={cn(
+          `
+          dark-glass
+          border
+          border-white/10
+          inline-flex
+          min-w-full
+          w-max
+          items-center
+          gap-2
+          rounded-2xl
+          p-2
+          shadow-sm
+          bg-transparent
+          `,
+          className
+        )}
+        {...props}
+      />
+    </div>
   );
 }
 
@@ -40,8 +55,51 @@ function TabsTrigger({
     <TabsPrimitive.Trigger
       data-slot="tabs-trigger"
       className={cn(
-        "tab-trigger-premium data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-md focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:outline-ring text-muted-foreground hover:text-white hover:bg-white/10 inline-flex h-[calc(100%-1px)] flex-1 items-center justify-center gap-1.5 rounded-lg border border-transparent px-3 py-2 text-sm font-medium whitespace-nowrap transition-all duration-200 focus-visible:ring-[3px] focus-visible:outline-1 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
-        className,
+        `
+        tab-trigger-premium
+
+        inline-flex
+        items-center
+        justify-center
+        gap-2
+
+        shrink-0
+        whitespace-nowrap
+
+        rounded-xl
+
+        border
+        border-transparent
+
+        px-4
+        py-2.5
+
+        text-sm
+        font-medium
+
+        text-muted-foreground
+
+        transition-all
+        duration-200
+
+        hover:bg-white/10
+        hover:text-white
+
+        data-[state=active]:bg-primary
+        data-[state=active]:text-white
+        data-[state=active]:shadow-lg
+
+        focus-visible:outline-none
+        focus-visible:ring-2
+        focus-visible:ring-primary/40
+
+        disabled:pointer-events-none
+        disabled:opacity-50
+
+        [&_svg]:size-4
+        [&_svg]:shrink-0
+        `,
+        className
       )}
       {...props}
     />
@@ -55,7 +113,10 @@ function TabsContent({
   return (
     <TabsPrimitive.Content
       data-slot="tabs-content"
-      className={cn("flex-1 outline-none mt-4", className)}
+      className={cn(
+        "flex-1 outline-none mt-4 animate-fadeIn",
+        className
+      )}
       {...props}
     />
   );

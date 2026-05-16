@@ -94,7 +94,7 @@ export default function Notifications({ vendorName, vendorId }: NotificationsPro
             </p>
           </div>
         </div>
-        <Button variant="outline" size="sm" className="btn-outline-premium h-8 px-2.5 text-xs" onClick={markAllAsRead}>
+        <Button variant="premium" size="sm" onClick={markAllAsRead}>
           Mark all as read
         </Button>
       </div>

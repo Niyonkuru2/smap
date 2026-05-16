@@ -154,16 +154,10 @@ export default function MySubmissions({ vendorName, vendorId }: MySubmissionsPro
           <h2 className="text-2xl font-bold gradient-text">My Price Submissions</h2>
           <p className="text-muted-foreground mt-1">Track the status of your submitted prices</p>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => loadSubmissions()}
-          disabled={refreshing}
-          className="btn-outline-premium"
-        >
-          <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-          Refresh
-        </Button>
+        <Button variant="premium" size="sm">
+  <RefreshCw className="h-4 w-4" />
+  Refresh
+</Button>
       </div>
 
       {/* Stats Cards */}

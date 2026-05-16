@@ -42,6 +42,15 @@
   --radius: 0.5rem;
 }
 
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
 /* Dark mode - Use the same unified Emerald Green + Black theme */
 .dark {
   /* Background & Text */
@@ -470,71 +479,64 @@ body {
    ======================================== */
 
 .tab-trigger-premium {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  padding: 0.6rem 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  min-height: 48px;
+  min-width: max-content;
+
+  padding: 0.75rem 1.1rem;
+
   font-size: 0.875rem;
   font-weight: 600;
+
   color: hsl(var(--muted-foreground));
+
   border-radius: 14px;
+
   position: relative;
   overflow: hidden;
+
+  border: 1px solid transparent;
+
+  transition: all 0.3s ease;
+
+  white-space: nowrap;
+  flex-shrink: 0;
+
+  background: transparent;
 }
 
 /* Hover */
 .tab-trigger-premium:hover {
   color: white;
   background: rgba(16, 185, 129, 0.12);
-  border: 1px solid rgba(16, 185, 129, 0.25);
-  transform: translateY(-1px);
+  border-color: rgba(16, 185, 129, 0.25);
 }
 
-/* Active / Selected */
-.tab-trigger-premium[data-state="active"] {
+/* Active */
+.tab-trigger-premium[data-state='active'] {
   background: linear-gradient(
     135deg,
     #059669 0%,
-    #10B981 55%,
+    #10b981 55%,
     #047857 100%
   ) !important;
 
   color: white !important;
 
-  border: 1px solid rgba(16, 185, 129, 0.4);
+  border-color: rgba(16, 185, 129, 0.4);
 
   box-shadow:
     0 4px 20px rgba(5, 150, 105, 0.35),
     0 0 30px rgba(16, 185, 129, 0.15);
-
-  transform: translateY(-2px);
 }
 
-/* Active icon color */
-.tab-trigger-premium[data-state="active"] svg {
+/* Active Icon */
+.tab-trigger-premium[data-state='active'] svg {
   color: white !important;
 }
-
-/* Glow animation */
-.tab-trigger-premium[data-state="active"]::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgba(255,255,255,0.18),
-    transparent
-  );
-
-  transform: translateX(-100%);
-  animation: tabGlow 2.5s infinite;
-}
-
-@keyframes tabGlow {
-  100% {
-    transform: translateX(100%);
-  }
-}
-
 /* Fresh Badge - For new/fresh items */
 .fresh-badge {
   background: linear-gradient(135deg, #10B981 0%, #059669 100%) !important;

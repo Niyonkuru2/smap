@@ -159,34 +159,60 @@ export default function VendorSubscription({ vendorId, vendorName }: VendorSubsc
   };
 
   const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'active':
-        return <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30">
-          <CheckCircle className="h-3 w-3 mr-1" /> Active
-        </Badge>;
-      case 'pending':
-        return <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500/30">
-          <Clock className="h-3 w-3 mr-1" /> Pending Approval
-        </Badge>;
-      case 'expired':
-        return <Badge className="bg-red-500/20 text-red-400 border-red-500/30">
-          <AlertCircle className="h-3 w-3 mr-1" /> Expired
-        </Badge>;
-      case 'cancelled':
-        return <Badge className="bg-gray-500/20 text-gray-400 border-gray-500/30">
-          <XCircle className="h-3 w-3 mr-1" /> Cancelled
-        </Badge>;
-      default:
-        return <Badge>{status}</Badge>;
-    }
-  };
+  const baseBadge =
+    "inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium border whitespace-nowrap";
 
-  const getDaysRemainingText = (endDate: string) => {
-    const days = getDaysRemaining(endDate);
-    if (days <= 0) return 'Expired';
-    if (days === 1) return '1 day remaining';
-    return `${days} days remaining`;
-  };
+  switch (status) {
+    case "active":
+      return (
+        <span
+          className={`${baseBadge} bg-emerald-500/10 text-emerald-300 border-emerald-500/30`}
+        >
+          <CheckCircle className="h-3 w-3" />
+          Active
+        </span>
+      );
+
+    case "pending":
+      return (
+        <span
+          className={`${baseBadge} bg-yellow-500/10 text-yellow-300 border-yellow-500/30`}
+        >
+          <Clock className="h-3 w-3" />
+          Pending Approval
+        </span>
+      );
+
+    case "expired":
+      return (
+        <span
+          className={`${baseBadge} bg-red-500/10 text-red-300 border-red-500/30`}
+        >
+          <AlertCircle className="h-3 w-3" />
+          Expired
+        </span>
+      );
+
+    case "cancelled":
+      return (
+        <span
+          className={`${baseBadge} bg-white/5 text-gray-300 border-white/10`}
+        >
+          <XCircle className="h-3 w-3" />
+          Cancelled
+        </span>
+      );
+
+    default:
+      return (
+        <span
+          className={`${baseBadge} bg-white/5 text-white border-white/10`}
+        >
+          {status}
+        </span>
+      );
+  }
+};
 
   if (isLoading) {
     return (
@@ -206,10 +232,9 @@ export default function VendorSubscription({ vendorId, vendorName }: VendorSubsc
           <p className="text-muted-foreground mt-1">Manage your subscription plan and benefits</p>
         </div>
         <Button
-          variant="outline"
+          variant="premium"
           size="sm"
           onClick={() => fetchAllData()}
-          className="btn-outline-premium"
         >
           <RefreshCw className="h-4 w-4 mr-2" />
           Refresh
@@ -245,7 +270,7 @@ export default function VendorSubscription({ vendorId, vendorName }: VendorSubsc
                   variant="outline"
                   size="sm"
                   onClick={() => setIsCancelDialogOpen(true)}
-                  className="mt-2 text-red-400 border-red-500/30 hover:bg-red-500/10"
+                  className="mt-2 bg-red-600 text-white hover:bg-red-700 focus-visible:ring-red-200"
                 >
                   Cancel Subscription
                 </Button>

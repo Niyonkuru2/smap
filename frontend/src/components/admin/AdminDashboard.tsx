@@ -334,110 +334,54 @@ export default function AdminDashboard({
           className="flex flex-col"
         >
           {/* Desktop Tabs */}
-          <TabsList
-            className="
-              hidden
-              md:flex
-              mb-6
-              h-auto
-              flex-wrap
-              gap-2
-              rounded-2xl
-              border
-              border-white/10
-              dark-glass
-              p-2
-              shadow-2xl
-            "
-          >
-            {/* Approvals */}
-            <TabsTrigger value="approvals" className="tab-trigger-premium">
-              <CheckSquare className="h-4 w-4 mr-2" />
-              {t('priceApprovals')}
+<div className="hidden md:block mb-6">
+  <div
+    className="
+      overflow-x-auto
+      scrollbar-hide
+      rounded-2xl
+      border
+      border-white/10
+      dark-glass
+      shadow-2xl
+      p-2
+    "
+  >
+    <TabsList
+      className="
+        flex
+        w-max
+        min-w-full
+        gap-2
+        bg-transparent
+        h-auto
+        p-0
+      "
+    >
+      {navItems.map((item) => (
+        <TabsTrigger
+          key={item.id}
+          value={item.id}
+          className="tab-trigger-premium flex items-center whitespace-nowrap shrink-0"
+        >
+          <span className="flex items-center gap-2">
+            {item.icon}
 
-              {notificationCount > 0 && (
-                <Badge className="ml-2 bg-white/20 text-white border-white/20">
-                  {notificationCount}
-                </Badge>
-              )}
-            </TabsTrigger>
+            <span className="text-sm font-medium">
+              {item.label}
+            </span>
 
-            {/* Anomalies */}
-            <TabsTrigger value="anomalies" className="tab-trigger-premium">
-              <AlertTriangle className="h-4 w-4 mr-2" />
-              {t('anomalyAlerts') || 'Anomaly Alerts'}
-
-              <Badge className="ml-2 bg-orange-500/20 text-orange-300 border border-orange-400/20">
-                3
+            {item.badge && item.badge > 0 && (
+              <Badge className="ml-1 bg-white/20 text-white border-white/20">
+                {item.badge}
               </Badge>
-            </TabsTrigger>
-
-            {/* Analytics */}
-            <TabsTrigger value="analytics" className="tab-trigger-premium">
-              <BarChart3 className="h-4 w-4 mr-2" />
-              {t('analytics')}
-            </TabsTrigger>
-
-            {/* Categories */}
-            <TabsTrigger value="categories" className="tab-trigger-premium">
-              <Settings className="h-4 w-4 mr-2" />
-              {t('categories')}
-            </TabsTrigger>
-
-            {/* Users */}
-            <TabsTrigger value="users" className="tab-trigger-premium">
-              <Users className="h-4 w-4 mr-2" />
-              {t('users')}
-            </TabsTrigger>
-
-            {/* Vendors */}
-            <TabsTrigger value="vendors" className="tab-trigger-premium">
-              <Store className="h-4 w-4 mr-2" />
-              {t('vendors') || 'Vendors'}
-            </TabsTrigger>
-
-            {/* Businesses */}
-            <TabsTrigger value="businesses" className="tab-trigger-premium">
-              <Briefcase className="h-4 w-4 mr-2" />
-              Businesses
-            </TabsTrigger>
-
-            {/* Subscriptions */}
-            <TabsTrigger value="subscriptions" className="tab-trigger-premium">
-              <Crown className="h-4 w-4 mr-2" />
-              Subscriptions
-            </TabsTrigger>
-
-            {/* Notifications */}
-            <TabsTrigger value="notifications" className="tab-trigger-premium">
-              <Bell className="h-4 w-4 mr-2" />
-              {t('notifications')}
-
-              {notificationCount > 0 && (
-                <Badge className="ml-2 bg-white/20 text-white border-white/20">
-                  {notificationCount}
-                </Badge>
-              )}
-            </TabsTrigger>
-
-            {/* Import */}
-            <TabsTrigger value="import" className="tab-trigger-premium">
-              <Upload className="h-4 w-4 mr-2" />
-              {t('bulkPriceImport')}
-            </TabsTrigger>
-
-            {/* ML */}
-            <TabsTrigger value="ml" className="tab-trigger-premium">
-              <Brain className="h-4 w-4 mr-2" />
-              {t('mlModels')}
-            </TabsTrigger>
-
-            {/* Ads */}
-            <TabsTrigger value="ads" className="tab-trigger-premium">
-              <Megaphone className="h-4 w-4 mr-2" />
-              {t('adAnalytics') || 'Ad Analytics'}
-            </TabsTrigger>
-          </TabsList>
+            )}
+          </span>
+        </TabsTrigger>
+      ))}
+    </TabsList>
+  </div>
+</div>
 
           {/* CONTENTS */}
 
