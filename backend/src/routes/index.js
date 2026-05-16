@@ -23,6 +23,7 @@ import vendorReferenceRoutes from './vendorRefernceRoute.js';
 import smsRoutes from './smsRoutes.js';
 import advertisementRoutes from './advertisementRoutes.js';
 import anomalyRoutes from './anomalyRoutes.js';
+import analyticsRoutes from './analyticsRoutes.js';
 
 const router = express.Router();
 
@@ -49,7 +50,7 @@ router.use('/community', communityRoutes);
 router.use('/ratings', ratingRoutes);
 router.use('/history', historyRoutes);
 router.use('/predict', predictionRoutes);
-router.use('/sms', smsRoutes);
+router.use('/analytics', analyticsRoutes);
 
 // Also handle legacy paths
 router.use('/import', exportRoutes);

@@ -74,7 +74,7 @@ export const getMySubmissions = catchAsync(async (req, res) => {
             p.product_id,
             p.market_id,
             p.vendor_id,
-            p.price,
+            p.price::DECIMAL(10,2) as price,
             p.unit,
             p.vendor_notes,
             p.status,
@@ -83,7 +83,10 @@ export const getMySubmissions = catchAsync(async (req, res) => {
             p.created_at,
             p.updated_at,
             pr.name as product_name,
-            m.name as market_name
+            pr.unit as product_unit,
+            m.name as market_name,
+            m.province,
+            m.district
         FROM prices p
         LEFT JOIN products pr ON p.product_id = pr.id
         LEFT JOIN markets m ON p.market_id = m.id
@@ -93,11 +96,58 @@ export const getMySubmissions = catchAsync(async (req, res) => {
     
     const result = await pool.query(query, [req.user.id]);
     
+    // Format the response properly
+    const submissions = result.rows.map(row => ({
+        id: row.id,
+        product_id: row.product_id,
+        product_name: row.product_name,
+        product_unit: row.product_unit,
+        market_id: row.market_id,
+        market_name: row.market_name,
+        market_location: `${row.province}, ${row.district}`,
+        vendor_id: row.vendor_id,
+        price: parseFloat(row.price),
+        unit: row.unit || row.product_unit || 'kg',
+        vendor_notes: row.vendor_notes,
+        status: row.status,
+        flagged: row.flagged || false,
+        flag_reason: row.flag_reason,
+        created_at: row.created_at,
+        updated_at: row.updated_at,
+        // Add formatted fields for UI
+        formatted_price: `${parseFloat(row.price).toLocaleString()} RWF`,
+        formatted_date: new Date(row.created_at).toLocaleString(),
+        status_badge: getStatusBadgeText(row.status),
+        severity: getSeverityFromDeviation(row.flag_reason)
+    }));
+    
     res.json({ 
         success: true, 
-        submissions: result.rows 
+        submissions,
+        count: submissions.length
     });
 });
+
+// Helper function for status badge text
+function getStatusBadgeText(status) {
+    const statusMap = {
+        'pending': { text: 'Pending', color: 'yellow' },
+        'approved': { text: 'Approved', color: 'green' },
+        'rejected': { text: 'Rejected', color: 'red' },
+        'flagged': { text: 'Flagged', color: 'orange' }
+    };
+    return statusMap[status] || { text: status, color: 'gray' };
+}
+
+// Helper to extract severity from flag reason
+function getSeverityFromDeviation(flagReason) {
+    if (!flagReason) return null;
+    if (flagReason.includes('Critical')) return 'critical';
+    if (flagReason.includes('High')) return 'high';
+    if (flagReason.includes('Medium')) return 'medium';
+    if (flagReason.includes('Low')) return 'low';
+    return null;
+}
 
 export const getMyStats = catchAsync(async (req, res) => {
     const query = `

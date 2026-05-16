@@ -5,7 +5,6 @@ import {
   TrendingUp,
   TrendingDown,
   Users,
-  ShoppingCart,
   MapPin,
   Activity,
   Package,
@@ -32,12 +31,8 @@ import {
 } from "recharts";
 import { useState, useEffect } from "react";
 import { useLanguage } from "../../contexts/LanguageContext";
-import { useMarkets, useProducts, usePrices } from "../../hooks/useAppData";
-import { getAllCategories, type Category } from "../../services/categoryService";
-import { getSubscriptionStats } from "../../services/subscriptionService";
-import { getAllAdvertisements } from "../../services/advertisementService";
-import { getVendors } from "../../services/vendorService";
 import { toast } from "sonner";
+import * as analyticsService from "../../services/analyticsService";
 
 // Types
 interface AnalyticsData {
@@ -94,9 +89,6 @@ const COLORS = [
 
 export default function Analytics() {
   const { t } = useLanguage();
-  const { markets, loading: marketsLoading } = useMarkets();
-  const { products, loading: productsLoading } = useProducts();
-  const { prices, loading: pricesLoading } = usePrices();
   
   const [analyticsData, setAnalyticsData] = useState<AnalyticsData>({
     totalProducts: 0,
@@ -121,49 +113,71 @@ export default function Analytics() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    fetchAllData();
-  }, [products, markets, prices]);
+    fetchAllAnalyticsData();
+  }, []);
 
-  const fetchAllData = async () => {
+  const fetchAllAnalyticsData = async () => {
     setIsLoading(true);
     try {
-      await Promise.all([
-        calculateAnalytics(),
-        fetchCategoriesAndDistribution(),
-        fetchSubscriptionData(),
-        fetchAdvertisementData()
+      // Fetch all analytics data in parallel
+      const [
+        dashboardData,
+        popularData,
+        marketsData,
+        weeklyActivityData,
+        categoriesData,
+        alertsData,
+        summaryData
+      ] = await Promise.all([
+        analyticsService.getAnalyticsDashboard(),
+        analyticsService.getPopularProducts(5),
+        analyticsService.getActiveMarkets(5),
+        analyticsService.getWeeklyActivity(),
+        analyticsService.getCategoryDistribution(),
+        analyticsService.getPriceAlerts(5),
+        analyticsService.getSummaryStats()
       ]);
-    } catch (error) {
-      console.error('Error fetching analytics data:', error);
-      toast.error('Failed to load analytics data');
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
-  const fetchCategoriesAndDistribution = async () => {
-    try {
-      const data = await getAllCategories();
-      const productCategories = data.filter(c => c.type === 'product');
-      
-      // Calculate category distribution from products
-      const categoryMap = new Map<string, number>();
-      products.forEach(product => {
-        if (product.category) {
-          const catName = product.category;
-          categoryMap.set(catName, (categoryMap.get(catName) || 0) + 1);
-        }
+      // Update analytics data
+      setAnalyticsData({
+        totalProducts: dashboardData.total_products,
+        totalMarkets: dashboardData.total_markets,
+        totalUsers: dashboardData.total_users,
+        activeVendors: dashboardData.total_vendors,
+        pendingApprovals: dashboardData.pending_approvals,
+        priceUpdatesToday: dashboardData.price_updates_today,
+        totalPriceSubmissions: dashboardData.total_price_submissions,
+        approvedPriceSubmissions: dashboardData.approved_submissions,
+        flaggedSubmissions: dashboardData.flagged_submissions,
+        activeSubscriptions: dashboardData.active_subscriptions,
+        totalAdvertisements: dashboardData.total_advertisements,
+        activeAdvertisements: dashboardData.active_advertisements,
       });
-      
-      const distribution = Array.from(categoryMap.entries())
-        .map(([name, value]) => ({ name, value }))
-        .sort((a, b) => b.value - a.value)
-        .slice(0, 5);
-      
-      if (distribution.length > 0) {
-        setCategoryDistribution(distribution);
+
+      // Update popular products
+      setPopularProducts(popularData.map(p => ({
+        name: p.name,
+        submissions: p.submissions,
+        markets: p.markets
+      })));
+
+      // Update active markets
+      setActiveMarkets(marketsData.map(m => ({
+        name: m.name,
+        submissions: m.submissions
+      })));
+
+      // Update weekly activity
+      setWeeklyData(weeklyActivityData.map(w => ({
+        day: w.day_name,
+        submissions: w.submissions
+      })));
+
+      // Update category distribution
+      if (categoriesData && categoriesData.length > 0) {
+        setCategoryDistribution(categoriesData);
       } else {
-        // Fallback to default if no categories found
+        // Fallback data if no categories
         setCategoryDistribution([
           { name: "Vegetables", value: 28 },
           { name: "Fruits", value: 22 },
@@ -172,8 +186,31 @@ export default function Analytics() {
           { name: "Other", value: 12 },
         ]);
       }
+
+      // Update price alerts
+      setPriceAlerts(alertsData.map(a => ({
+        product: a.product,
+        market: a.market,
+        change: a.change,
+        type: a.type,
+        percentage: a.percentage
+      })));
+
     } catch (error) {
-      console.error('Error fetching categories:', error);
+      console.error('Error fetching analytics data:', error);
+      toast.error('Failed to load analytics data');
+      
+      // Set fallback data for charts
+      setWeeklyData([
+        { day: "Mon", submissions: 0 },
+        { day: "Tue", submissions: 0 },
+        { day: "Wed", submissions: 0 },
+        { day: "Thu", submissions: 0 },
+        { day: "Fri", submissions: 0 },
+        { day: "Sat", submissions: 0 },
+        { day: "Sun", submissions: 0 },
+      ]);
+      
       setCategoryDistribution([
         { name: "Vegetables", value: 28 },
         { name: "Fruits", value: 22 },
@@ -181,172 +218,14 @@ export default function Analytics() {
         { name: "Proteins", value: 20 },
         { name: "Other", value: 12 },
       ]);
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const fetchSubscriptionData = async () => {
-    try {
-      const stats = await getSubscriptionStats();
-      setAnalyticsData(prev => ({
-        ...prev,
-        activeSubscriptions: stats?.active_count || 0,
-      }));
-    } catch (error) {
-      console.error('Error fetching subscription stats:', error);
-    }
-  };
-
-  const fetchAdvertisementData = async () => {
-    try {
-      const ads = await getAllAdvertisements();
-      const totalAdvertisements = ads.length;
-      const activeAdvertisements = ads.filter(ad => ad.status === 'active').length;
-      
-      setAnalyticsData(prev => ({
-        ...prev,
-        totalAdvertisements,
-        activeAdvertisements,
-      }));
-    } catch (error) {
-      console.error('Error fetching advertisements:', error);
-    }
-  };
-
-  const calculateAnalytics = () => {
-    // Basic counts
-    const totalProducts = products.length;
-    const totalMarkets = markets.length;
-    const totalPriceSubmissions = prices.length;
-    const approvedPriceSubmissions = prices.filter(p => p.status === 'approved').length;
-    const flaggedSubmissions = prices.filter(p => p.flagged).length;
-    const pendingApprovals = prices.filter(p => p.status === 'pending').length;
-    
-    // Today's price updates
-    const today = new Date().toISOString().split('T')[0];
-    const priceUpdatesToday = prices.filter(p => {
-      if (!p.created_at) return false;
-      return p.created_at.split('T')[0] === today;
-    }).length;
-    
-    // Active vendors (unique vendors with approved submissions)
-    const activeVendorsSet = new Set<number>();
-    prices.forEach(price => {
-      if (price.status === 'approved' && price.vendor_id) {
-        activeVendorsSet.add(price.vendor_id);
-      }
-    });
-    const activeVendors = activeVendorsSet.size;
-    
-    // Approximate total users
-    let totalUsers = activeVendors + 10;
-    
-    setAnalyticsData(prev => ({
-      ...prev,
-      totalProducts,
-      totalMarkets,
-      totalPriceSubmissions,
-      approvedPriceSubmissions,
-      flaggedSubmissions,
-      pendingApprovals,
-      priceUpdatesToday,
-      activeVendors,
-      totalUsers,
-    }));
-    
-    // Calculate popular products
-    const productSubmissions = new Map<string, { submissions: number; markets: Set<string> }>();
-    prices.forEach(price => {
-      const product = products.find(p => p.id === price.product_id);
-      if (product) {
-        const existing = productSubmissions.get(product.name) || { submissions: 0, markets: new Set<string>() };
-        existing.submissions++;
-        existing.markets.add(price.market_id);
-        productSubmissions.set(product.name, existing);
-      }
-    });
-    
-    const popular = Array.from(productSubmissions.entries())
-      .map(([name, data]) => ({ 
-        name, 
-        submissions: data.submissions, 
-        markets: data.markets.size 
-      }))
-      .sort((a, b) => b.submissions - a.submissions)
-      .slice(0, 5);
-    
-    setPopularProducts(popular);
-    
-    // Calculate active markets
-    const marketSubmissions = new Map<string, number>();
-    prices.forEach(price => {
-      const market = markets.find(m => m.id === price.market_id);
-      if (market) {
-        const current = marketSubmissions.get(market.name) || 0;
-        marketSubmissions.set(market.name, current + 1);
-      }
-    });
-    
-    const active = Array.from(marketSubmissions.entries())
-      .map(([name, submissions]) => ({ name, submissions }))
-      .sort((a, b) => b.submissions - a.submissions)
-      .slice(0, 5);
-    
-    setActiveMarkets(active);
-    
-    // Calculate price alerts
-    const priceMap = new Map<string, { current: number; previous: number; marketName: string; productName: string }>();
-    prices.forEach(price => {
-      const key = `${price.product_id}-${price.market_id}`;
-      const market = markets.find(m => m.id === price.market_id);
-      const product = products.find(p => p.id === price.product_id);
-      if (market && product && price.price) {
-        const existing = priceMap.get(key);
-        if (!existing) {
-          priceMap.set(key, { 
-            current: price.price, 
-            previous: price.price,
-            marketName: market.name,
-            productName: product.name
-          });
-        } else if (price.created_at && existing.current !== price.price) {
-          existing.previous = existing.current;
-          existing.current = price.price;
-        }
-      }
-    });
-    
-    const alerts: PriceAlert[] = [];
-    for (const [, data] of priceMap) {
-      if (data.previous !== data.current) {
-        const diff = data.current - data.previous;
-        const percentage = (diff / data.previous) * 100;
-        if (Math.abs(percentage) >= 5) {
-          alerts.push({
-            product: data.productName,
-            market: data.marketName,
-            change: `${percentage > 0 ? '+' : ''}${percentage.toFixed(1)}%`,
-            type: percentage > 0 ? 'increase' : 'decrease',
-            percentage
-          });
-        }
-      }
-    }
-    setPriceAlerts(alerts.slice(0, 5));
-    
-    // Calculate weekly activity (last 7 days)
-    const last7Days: WeeklyData[] = [];
-    for (let i = 6; i >= 0; i--) {
-      const date = new Date();
-      date.setDate(date.getDate() - i);
-      const dateStr = date.toISOString().split('T')[0];
-      const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
-      const dayPrices = prices.filter(p => p.created_at?.split('T')[0] === dateStr);
-      last7Days.push({
-        day: dayName,
-        submissions: dayPrices.length,
-      });
-    }
-    setWeeklyData(last7Days);
+  const handleRefresh = () => {
+    fetchAllAnalyticsData();
+    toast.success('Data refreshed');
   };
 
   const handleExport = () => {
@@ -370,23 +249,27 @@ export default function Analytics() {
       ['', ''],
       ['Active Markets', ''],
       ...activeMarkets.map(m => [m.name, `${m.submissions} submissions`]),
+      ['', ''],
+      ['Recent Price Alerts', ''],
+      ...priceAlerts.map(a => [`${a.product} at ${a.market}`, `${a.change} (${a.type})`]),
     ];
     
     const csvContent = csvData.map(row => row.join(',')).join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
     const element = document.createElement('a');
-    element.setAttribute('href', 'data:text/csv;charset=utf-8,' + encodeURIComponent(csvContent));
+    element.setAttribute('href', url);
     element.setAttribute('download', `analytics_${new Date().toISOString().split('T')[0]}.csv`);
     element.style.display = 'none';
     document.body.appendChild(element);
     element.click();
     document.body.removeChild(element);
+    URL.revokeObjectURL(url);
     
     toast.success('Exported successfully');
   };
 
-  const isLoadingState = productsLoading || marketsLoading || pricesLoading || isLoading;
-
-  if (isLoadingState) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -406,6 +289,14 @@ export default function Analytics() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRefresh}
+          >
+            <Activity className="h-4 w-4 mr-2" />
+            Refresh
+          </Button>
           <Button
             variant="outline"
             size="sm"
@@ -439,7 +330,7 @@ export default function Analytics() {
               <p className="text-sm text-muted-foreground">Total Markets</p>
               <p className="text-2xl font-semibold text-white">{analyticsData.totalMarkets}</p>
               <p className="text-xs text-muted-foreground mt-1">
-                Across {new Set(markets.map(m => m.province)).size} provinces
+                Active trading locations
               </p>
             </div>
             <MapPin className="h-8 w-8 text-primary/60" />
