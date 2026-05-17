@@ -1,15 +1,13 @@
 ﻿import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
 import { Download, FileText, FileSpreadsheet, File } from 'lucide-react';
-import { useLanguage } from '../../contexts/LanguageContext';
 import { toast } from 'sonner';
 
 export default function DataExport() {
-  const { t } = useLanguage();
+
 
   const handleExport = (format: string) => {
     toast.success(`Exporting data as ${format}...`);
-    // In a real app, this would trigger actual export
   };
 
   const exportOptions = [
@@ -76,7 +74,6 @@ export default function DataExport() {
                       <Button
                         onClick={() => handleExport(option.format)}
                         size="sm"
-                        className="mt-3 btn-outline-premium"
                       >
                         <Download className="h-4 w-4 mr-2" />
                         Export as {option.format}

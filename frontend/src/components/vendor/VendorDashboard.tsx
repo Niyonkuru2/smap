@@ -66,7 +66,17 @@ export default function VendorDashboard({
     // Poll for new notifications every 30 seconds
     const interval = setInterval(fetchUnreadCount, 30000);
     
-    return () => clearInterval(interval);
+    // Listen for notification read events
+    const handleNotificationRead = () => {
+      fetchUnreadCount();
+    };
+    
+    window.addEventListener('notification-read', handleNotificationRead);
+    
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('notification-read', handleNotificationRead);
+    };
   }, []);
 
   const navItems = [
@@ -291,33 +301,31 @@ export default function VendorDashboard({
 
             <TabsTrigger
               value="notifications"
-              className="tab-trigger-premium relative"
+              className="tab-trigger-premium"
             >
-              <Bell className="h-4 w-4 mr-2" />
-              {t('notifications')}
-              {unreadNotificationCount > 0 && (
-                <Badge 
-                  className="
-                    absolute 
-                    -top-2 
-                    -right-2 
-                    px-1.5 
-                    py-0.5 
-                    min-w-[20px] 
-                    h-5 
-                    text-[10px] 
-                    font-bold 
-                    bg-red-500 
-                    text-white 
-                    border-none 
-                    rounded-full 
-                    animate-pulse
-                    shadow-lg
-                  "
-                >
-                  {unreadNotificationCount > 99 ? '99+' : unreadNotificationCount}
-                </Badge>
-              )}
+              <span className="flex items-center gap-2">
+                <Bell className="h-4 w-4" />
+                {t('notifications')}
+                {unreadNotificationCount > 0 && (
+                  <Badge 
+                    className="
+                      ml-1.5
+                      px-1.5 
+                      py-0.5 
+                      min-w-[20px] 
+                      h-5 
+                      text-[10px] 
+                      font-bold 
+                      bg-red-500 
+                      text-white 
+                      border-none 
+                      rounded-full
+                    "
+                  >
+                    {unreadNotificationCount > 99 ? '99+' : unreadNotificationCount}
+                  </Badge>
+                )}
+              </span>
             </TabsTrigger>
 
             <TabsTrigger
@@ -471,6 +479,90 @@ export default function VendorDashboard({
         .btn-premium:hover {
           opacity: 0.9;
           transform: translateY(-1px);
+        }
+
+        .tab-trigger-premium {
+          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          padding: 0.7rem 1rem;
+          font-size: 0.875rem;
+          font-weight: 600;
+          color: hsl(var(--muted-foreground));
+          border-radius: 14px;
+          position: relative;
+          overflow: hidden;
+          border: 1px solid transparent;
+          backdrop-filter: blur(10px);
+        }
+
+        .tab-trigger-premium:hover {
+          color: white;
+          background: rgba(16, 185, 129, 0.12);
+          border: 1px solid rgba(16, 185, 129, 0.25);
+          transform: translateY(-1px);
+        }
+
+        .tab-trigger-premium[data-state="active"] {
+          background: linear-gradient(
+            135deg,
+            #059669 0%,
+            #10b981 55%,
+            #047857 100%
+          ) !important;
+
+          color: white !important;
+
+          border: 1px solid rgba(16, 185, 129, 0.4);
+
+          box-shadow:
+            0 4px 20px rgba(5, 150, 105, 0.35),
+            0 0 30px rgba(16, 185, 129, 0.15);
+
+          transform: translateY(-2px);
+        }
+
+        .tab-trigger-premium[data-state="active"] svg {
+          color: white !important;
+        }
+
+        .tab-trigger-premium[data-state="active"]::before {
+          content: '';
+          position: absolute;
+          inset: 0;
+          background: linear-gradient(
+            90deg,
+            transparent,
+            rgba(255, 255, 255, 0.18),
+            transparent
+          );
+
+          transform: translateX(-100%);
+          animation: tabGlow 2.5s infinite;
+        }
+
+        .gradient-text {
+          background: linear-gradient(
+            135deg,
+            #ffffff 0%,
+            #d1fae5 45%,
+            #6ee7b7 100%
+          );
+
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
+        }
+
+        .icon-container {
+          padding: 0.75rem;
+          background: rgba(255, 255, 255, 0.05);
+          border-radius: 1rem;
+          border: 1px solid rgba(255, 255, 255, 0.08);
+
+          box-shadow:
+            inset 0 1px 0 rgba(255, 255, 255, 0.05),
+            0 4px 14px rgba(0, 0, 0, 0.2);
+
+          backdrop-filter: blur(10px);
         }
       `}</style>
     </div>

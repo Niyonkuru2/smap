@@ -21,6 +21,12 @@ import referencePriceService, {
   type ReferencePriceWithDetails, 
   type CreateProductWithPriceRequest 
 } from '../../services/referencePriceService';
+import { 
+  createMarket, 
+  updateMarket, 
+  deleteMarket,
+  type Market 
+} from '../../services/marketService';
 
 // Extended Product type with reference prices
 interface ProductWithDetails {
@@ -48,6 +54,7 @@ export default function CategoryManagement() {
   const [isAddCategoryOpen, setIsAddCategoryOpen] = useState(false);
   const [isEditCategoryOpen, setIsEditCategoryOpen] = useState(false);
   const [isAddMarketOpen, setIsAddMarketOpen] = useState(false);
+  const [isEditMarketOpen, setIsEditMarketOpen] = useState(false);
   const [isAddProductOpen, setIsAddProductOpen] = useState(false);
   const [isSetPriceOpen, setIsSetPriceOpen] = useState(false);
   const [isEditPriceOpen, setIsEditPriceOpen] = useState(false);
@@ -55,11 +62,13 @@ export default function CategoryManagement() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [products, setProducts] = useState<ProductWithDetails[]>([]);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+  const [editingMarket, setEditingMarket] = useState<Market | null>(null);
   const [editingPrice, setEditingPrice] = useState<ReferencePriceWithDetails | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<ProductWithDetails | null>(null);
   const [newCategory, setNewCategory] = useState({ name: '', description: '', type: 'product' });
   const [editCategoryData, setEditCategoryData] = useState({ name: '', description: '', type: 'product' });
-  const [newMarket, setNewMarket] = useState({ name: '', location: '', district: '' });
+  const [newMarket, setNewMarket] = useState({ id: '', name: '', province: '', district: '', location: '' });
+  const [editMarketData, setEditMarketData] = useState<Market | null>(null);
   const [newProduct, setNewProduct] = useState<CreateProductWithPriceRequest>({ 
     product_name: '', 
     product_unit: '', 
@@ -83,7 +92,7 @@ export default function CategoryManagement() {
   });
 
   const { t } = useLanguage();
-  const { markets } = useMarkets();
+  const { markets, loading: marketsLoading } = useMarkets();
 
   // Fetch categories and products with prices
   useEffect(() => {
@@ -192,6 +201,89 @@ export default function CategoryManagement() {
     }
   };
 
+  // Market Management Functions
+  const handleAddMarket = () => {
+    setEditingMarket(null);
+    setNewMarket({ id: '', name: '', province: '', district: '', location: '' });
+    setIsAddMarketOpen(true);
+  };
+
+  const handleEditMarket = (market: any) => {
+    setEditingMarket(market);
+    setEditMarketData(market);
+    setIsEditMarketOpen(true);
+  };
+
+  const handleUpdateMarketSubmit = async () => {
+    if (!editMarketData) return;
+    if (!editMarketData.name?.trim()) {
+      toast.error('Market name is required');
+      return;
+    }
+
+    try {
+      await updateMarket(editMarketData.id, {
+        name: editMarketData.name,
+        province: editMarketData.province,
+        district: editMarketData.district,
+        latitude: editMarketData.latitude ? parseFloat(editMarketData.latitude as any) : undefined,
+        longitude: editMarketData.longitude ? parseFloat(editMarketData.longitude as any) : undefined,
+      });
+      toast.success('Market updated successfully');
+      setIsEditMarketOpen(false);
+      setEditingMarket(null);
+      setEditMarketData(null);
+      // Refresh markets
+      window.location.reload();
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to update market');
+    }
+  };
+
+  const handleSaveMarket = async () => {
+    if (!newMarket.name.trim()) {
+      toast.error('Market name is required');
+      return;
+    }
+    if (!newMarket.province) {
+      toast.error('Province is required');
+      return;
+    }
+    if (!newMarket.district) {
+      toast.error('District is required');
+      return;
+    }
+
+    try {
+      await createMarket({
+        id: newMarket.id || newMarket.name.toLowerCase().replace(/\s+/g, '_'),
+        name: newMarket.name,
+        province: newMarket.province,
+        district: newMarket.district,
+      });
+      toast.success('Market added successfully');
+      setNewMarket({ id: '', name: '', province: '', district: '', location: '' });
+      setIsAddMarketOpen(false);
+      // Refresh markets
+      window.location.reload();
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to add market');
+    }
+  };
+
+  const handleDeleteMarket = async (marketId: string, marketName: string) => {
+    if (window.confirm(`Are you sure you want to delete "${marketName}"? This action cannot be undone.`)) {
+      try {
+        await deleteMarket(marketId, true);
+        toast.success('Market deleted successfully');
+        // Refresh markets
+        window.location.reload();
+      } catch (error: any) {
+        toast.error(error.message || 'Failed to delete market');
+      }
+    }
+  };
+
   // Product Management Functions
   const handleAddProduct = async () => {
     if (!newProduct.product_name.trim()) {
@@ -294,7 +386,6 @@ export default function CategoryManagement() {
   const handleDeleteProduct = async (productId: number, productName: string) => {
     if (window.confirm(`Are you sure you want to delete "${productName}"? This will also delete all its reference prices.`)) {
       try {
-        // Note: You need to implement product deletion endpoint
         toast.info('Product deletion will be implemented soon');
       } catch (error: any) {
         toast.error(error.message || 'Failed to delete product');
@@ -305,10 +396,10 @@ export default function CategoryManagement() {
   const openSetPriceDialog = (product: ProductWithDetails) => {
     setSelectedProduct(product);
     setPriceData({
-      product_id: product.product_id,
+      product_id: product.id,
       market_id: '',
       price: 0,
-      unit: product.product_unit,
+      unit: product.unit,
       effective_date: new Date().toISOString().split('T')[0],
       expiry_date: '',
       notes: ''
@@ -334,7 +425,7 @@ export default function CategoryManagement() {
     }
   };
 
-  if (isLoading) {
+  if (isLoading || marketsLoading) {
     return (
       <div className="flex items-center justify-center py-12">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -345,6 +436,7 @@ export default function CategoryManagement() {
 
   // Group categories by type
   const productCategories = categories.filter(c => c.type === 'product');
+  
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -462,59 +554,10 @@ export default function CategoryManagement() {
               <MapPin className="h-5 w-5 text-primary" />
               <h3 className="text-lg gradient-text">{t('location')}</h3>
             </div>
-            <Dialog open={isAddMarketOpen} onOpenChange={setIsAddMarketOpen}>
-              <DialogTrigger asChild>
-                <Button size="sm" className="bg-primary hover:bg-primary/90">
-                  <Plus className="h-4 w-4 mr-2" />
-                  {t('addMarket')}
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="dark-glass border-white/10 sm:max-w-[450px]">
-                <DialogHeader>
-                  <DialogTitle className="gradient-text">{t('addNewMarket')}</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4 py-4">
-                  <div>
-                    <Label className="text-white">{t('marketName')} *</Label>
-                    <Input
-                      value={newMarket.name}
-                      onChange={(e) => setNewMarket({ ...newMarket, name: e.target.value })}
-                      placeholder="e.g., Kimironko Market"
-                      className="mt-1.5 bg-white/5 border-white/10 text-white"
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-white">{t('location')} *</Label>
-                    <Input
-                      value={newMarket.location}
-                      onChange={(e) => setNewMarket({ ...newMarket, location: e.target.value })}
-                      placeholder="e.g., Kimironko"
-                      className="mt-1.5 bg-white/5 border-white/10 text-white"
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-white">{t('district')} *</Label>
-                    <Input
-                      value={newMarket.district}
-                      onChange={(e) => setNewMarket({ ...newMarket, district: e.target.value })}
-                      placeholder="e.g., Gasabo"
-                      className="mt-1.5 bg-white/5 border-white/10 text-white"
-                    />
-                  </div>
-                </div>
-                <DialogFooter>
-                  <Button variant="outline" onClick={() => setIsAddMarketOpen(false)}>
-                    Cancel
-                  </Button>
-                  <Button onClick={() => {
-                    toast.info('Market creation API will be implemented soon');
-                    setIsAddMarketOpen(false);
-                  }} className="bg-primary hover:bg-primary/90">
-                    {t('addMarket')}
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
+            <Button size="sm" onClick={handleAddMarket} className="bg-primary hover:bg-primary/90">
+              <Plus className="h-4 w-4 mr-2" />
+              {t('addMarket')}
+            </Button>
           </div>
 
           <div className="space-y-2">
@@ -524,14 +567,14 @@ export default function CategoryManagement() {
                   <MapPin className="h-4 w-4 text-primary" />
                   <div>
                     <p className="font-medium text-white">{market.name}</p>
-                    <p className="text-sm text-muted-foreground">{market.location}, {market.district}</p>
+                    <p className="text-sm text-muted-foreground">{market.district}, {market.province}</p>
                   </div>
                 </div>
                 <div className="flex gap-2">
-                  <Button variant="ghost" size="sm" className="hover:bg-white/10">
+                  <Button variant="ghost" size="sm" onClick={() => handleEditMarket(market)} className="hover:bg-white/10">
                     <Edit className="h-4 w-4 text-muted-foreground hover:text-white" />
                   </Button>
-                  <Button variant="ghost" size="sm" className="hover:bg-red-500/10">
+                  <Button variant="ghost" size="sm" onClick={() => handleDeleteMarket(market.id, market.name)} className="hover:bg-red-500/10">
                     <Trash2 className="h-4 w-4 text-red-400 hover:text-red-300" />
                   </Button>
                 </div>
@@ -617,7 +660,7 @@ export default function CategoryManagement() {
                     <SelectContent className="dark-glass border-white/10">
                       {markets.map((market) => (
                         <SelectItem key={market.id} value={market.id}>
-                          {market.name} - {market.location}
+                          {market.name} - {market.district}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -662,7 +705,7 @@ export default function CategoryManagement() {
                 </div>
               </div>
               <DialogFooter>
-                <Button variant="outline" onClick={() => setIsAddProductOpen(false)} className="btn-outline-premium">
+                <Button variant="outline" onClick={() => setIsAddProductOpen(false)}>
                   Cancel
                 </Button>
                 <Button onClick={handleAddProduct} className="bg-primary hover:bg-primary/90">
@@ -675,14 +718,14 @@ export default function CategoryManagement() {
 
         <div className="space-y-4">
           {products.map((product) => (
-            <div key={product.product_id} className="border border-white/10 rounded-xl bg-white/5 overflow-hidden">
+            <div key={product.id} className="border border-white/10 rounded-xl bg-white/5 overflow-hidden">
               {/* Product Header */}
               <div className="p-4 border-b border-white/10 bg-white/10 flex items-center justify-between flex-wrap gap-3">
                 <div>
                   <div className="flex items-center gap-2 flex-wrap">
-                    <h4 className="font-semibold text-white">{product.product_name}</h4>
+                    <h4 className="font-semibold text-white">{product.name}</h4>
                     <Badge className="bg-primary/20 text-primary border-primary/30">
-                      {product.product_unit}
+                      {product.unit}
                     </Badge>
                     {product.category_name && (
                       <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30">
@@ -707,7 +750,7 @@ export default function CategoryManagement() {
                   <Button 
                     size="sm" 
                     variant="ghost"
-                    onClick={() => handleDeleteProduct(product.product_id, product.product_name)}
+                    onClick={() => handleDeleteProduct(product.id, product.name)}
                     className="hover:bg-red-500/10 text-red-400"
                   >
                     <Trash2 className="h-4 w-4" />
@@ -733,7 +776,7 @@ export default function CategoryManagement() {
                           <span className="text-lg font-bold text-emerald-400">
                             {price.reference_price.toLocaleString()} RWF
                           </span>
-                          <span className="text-sm text-muted-foreground">per {product.product_unit}</span>
+                          <span className="text-sm text-muted-foreground">per {product.unit}</span>
                         </div>
                         <div className="flex items-center gap-2 text-xs text-muted-foreground">
                           <Calendar className="h-3 w-3" />
@@ -758,14 +801,14 @@ export default function CategoryManagement() {
                           onClick={() => {
                             const fullPrice: ReferencePriceWithDetails = {
                               id: price.reference_price_id,
-                              product_id: product.product_id,
+                              product_id: product.id,
                               market_id: price.market_id,
                               price: price.reference_price,
-                              unit: product.product_unit,
+                              unit: product.unit,
                               effective_date: price.effective_date,
                               expiry_date: price.expiry_date,
                               notes: '',
-                              product_name: product.product_name,
+                              product_name: product.name,
                               market_name: price.market_name
                             };
                             openEditPriceDialog(fullPrice);
@@ -777,7 +820,7 @@ export default function CategoryManagement() {
                         <Button 
                           variant="ghost" 
                           size="sm"
-                          onClick={() => handleDeletePrice(price.reference_price_id, product.product_name, price.market_name)}
+                          onClick={() => handleDeletePrice(price.reference_price_id, product.name, price.market_name)}
                           className="hover:bg-red-500/10"
                         >
                           <Trash2 className="h-4 w-4 text-red-400 hover:text-red-300" />
@@ -812,12 +855,123 @@ export default function CategoryManagement() {
         </div>
       </Card>
 
+      {/* Add Market Dialog */}
+      <Dialog open={isAddMarketOpen} onOpenChange={setIsAddMarketOpen}>
+        <DialogContent className="dark-glass border-white/10 sm:max-w-[450px]">
+          <DialogHeader>
+            <DialogTitle className="gradient-text">{t('addNewMarket')}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div>
+              <Label className="text-white">{t('marketId')} (Optional)</Label>
+              <Input
+                value={newMarket.id}
+                onChange={(e) => setNewMarket({ ...newMarket, id: e.target.value })}
+                placeholder="e.g., kimironko"
+                className="mt-1.5 bg-white/5 border-white/10 text-white placeholder:text-muted-foreground"
+              />
+              <p className="text-xs text-muted-foreground mt-1">Leave empty for auto-generated ID</p>
+            </div>
+            <div>
+              <Label className="text-white">{t('marketName')} *</Label>
+              <Input
+                value={newMarket.name}
+                onChange={(e) => setNewMarket({ ...newMarket, name: e.target.value })}
+                placeholder="e.g., Kimironko Market"
+                className="mt-1.5 bg-white/5 border-white/10 text-white placeholder:text-muted-foreground"
+              />
+            </div>
+            <div>
+              <Label className="text-white">{t('province')} *</Label>
+              <Input
+                value={newMarket.province}
+                onChange={(e) => setNewMarket({ ...newMarket, province: e.target.value })}
+                placeholder="e.g., Kigali City"
+                className="mt-1.5 bg-white/5 border-white/10 text-white placeholder:text-muted-foreground"
+              />
+            </div>
+            <div>
+              <Label className="text-white">{t('district')} *</Label>
+              <Input
+                value={newMarket.district}
+                onChange={(e) => setNewMarket({ ...newMarket, district: e.target.value })}
+                placeholder="e.g., Gasabo"
+                className="mt-1.5 bg-white/5 border-white/10 text-white placeholder:text-muted-foreground"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsAddMarketOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveMarket} className="bg-primary hover:bg-primary/90">
+              {t('addMarket')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Market Dialog */}
+      <Dialog open={isEditMarketOpen} onOpenChange={setIsEditMarketOpen}>
+        <DialogContent className="dark-glass border-white/10 sm:max-w-[450px]">
+          <DialogHeader>
+            <DialogTitle className="gradient-text">Edit Market</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div>
+              <Label className="text-white">Market ID</Label>
+              <Input
+                value={editMarketData?.id || ''}
+                disabled
+                className="mt-1.5 bg-white/10 border-white/10 text-white/70"
+              />
+              <p className="text-xs text-muted-foreground mt-1">ID cannot be changed</p>
+            </div>
+            <div>
+              <Label className="text-white">Market Name *</Label>
+              <Input
+                value={editMarketData?.name || ''}
+                onChange={(e) => setEditMarketData(prev => prev ? { ...prev, name: e.target.value } : null)}
+                placeholder="e.g., Kimironko Market"
+                className="mt-1.5 bg-white/5 border-white/10 text-white placeholder:text-muted-foreground"
+              />
+            </div>
+            <div>
+              <Label className="text-white">Province *</Label>
+              <Input
+                value={editMarketData?.province || ''}
+                onChange={(e) => setEditMarketData(prev => prev ? { ...prev, province: e.target.value } : null)}
+                placeholder="e.g., Kigali City"
+                className="mt-1.5 bg-white/5 border-white/10 text-white placeholder:text-muted-foreground"
+              />
+            </div>
+            <div>
+              <Label className="text-white">District *</Label>
+              <Input
+                value={editMarketData?.district || ''}
+                onChange={(e) => setEditMarketData(prev => prev ? { ...prev, district: e.target.value } : null)}
+                placeholder="e.g., Gasabo"
+                className="mt-1.5 bg-white/5 border-white/10 text-white placeholder:text-muted-foreground"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditMarketOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleUpdateMarketSubmit} className="bg-primary hover:bg-primary/90">
+              Update Market
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Set Reference Price Dialog */}
       <Dialog open={isSetPriceOpen} onOpenChange={setIsSetPriceOpen}>
         <DialogContent className="dark-glass border-white/10 sm:max-w-[500px]">
           <DialogHeader>
             <DialogTitle className="gradient-text">
-              Set Reference Price for {selectedProduct?.product_name}
+              Set Reference Price for {selectedProduct?.name}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
@@ -833,7 +987,7 @@ export default function CategoryManagement() {
                 <SelectContent className="dark-glass border-white/10">
                   {markets.map((market) => (
                     <SelectItem key={market.id} value={market.id}>
-                      {market.name} - {market.location}
+                      {market.name} - {market.district}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -887,7 +1041,7 @@ export default function CategoryManagement() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsSetPriceOpen(false)} className="btn-outline-premium">
+            <Button variant="outline" onClick={() => setIsSetPriceOpen(false)}>
               Cancel
             </Button>
             <Button onClick={handleSetPrice} className="bg-primary hover:bg-primary/90">
@@ -952,7 +1106,7 @@ export default function CategoryManagement() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsEditPriceOpen(false)} className="btn-outline-premium">
+            <Button variant="outline" onClick={() => setIsEditPriceOpen(false)}>
               Cancel
             </Button>
             <Button onClick={handleEditPrice} className="bg-primary hover:bg-primary/90">
@@ -1005,7 +1159,7 @@ export default function CategoryManagement() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsEditCategoryOpen(false)} className="btn-outline-premium">
+            <Button variant="outline" onClick={() => setIsEditCategoryOpen(false)}>
               Cancel
             </Button>
             <Button onClick={handleUpdateCategory} className="bg-primary hover:bg-primary/90">

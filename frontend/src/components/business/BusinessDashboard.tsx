@@ -22,7 +22,6 @@ import type { User } from '../../App';
 import PriceAnalysis from './PriceAnalysis';
 import ComparisonTools from './ComparisonTools';
 import PurchasePlanning from './PurchasePlanning';
-import BusinessAnalytics from './BusinessAnalytics';
 import DataExport from './DataExport';
 import Notifications from './Notifications';
 
@@ -68,11 +67,17 @@ export default function BusinessDashboard({
 
   useEffect(() => {
     fetchUnreadCount();
-    
-    // Poll for new notifications every 30 seconds
     const interval = setInterval(fetchUnreadCount, 30000);
+    const handleNotificationRead = () => {
+      fetchUnreadCount();
+    };
     
-    return () => clearInterval(interval);
+    window.addEventListener('notification-read', handleNotificationRead);
+    
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('notification-read', handleNotificationRead);
+    };
   }, []);
 
   const navItems = [
@@ -96,11 +101,6 @@ export default function BusinessDashboard({
       label: t('notifications') || 'Notifications',
       icon: <Bell className="h-5 w-5" />,
       badge: unreadNotificationCount,
-    },
-    {
-      id: 'analytics',
-      label: t('businessAnalytics') || 'Analytics',
-      icon: <BarChart3 className="h-5 w-5" />,
     },
     {
       id: 'export',
@@ -350,37 +350,30 @@ export default function BusinessDashboard({
               {t('purchasePlanning') || 'Purchase Planning'}
             </TabsTrigger>
 
-            <TabsTrigger value="notifications" className="tab-trigger-premium relative">
-              <Bell className="h-4 w-4 mr-2" />
-              {t('notifications') || 'Notifications'}
-              {unreadNotificationCount > 0 && (
-                <Badge 
-                  className="
-                    absolute 
-                    -top-2 
-                    -right-2 
-                    px-1.5 
-                    py-0.5 
-                    min-w-[20px] 
-                    h-5 
-                    text-[10px] 
-                    font-bold 
-                    bg-red-500 
-                    text-white 
-                    border-none 
-                    rounded-full 
-                    animate-pulse
-                    shadow-lg
-                  "
-                >
-                  {unreadNotificationCount > 99 ? '99+' : unreadNotificationCount}
-                </Badge>
-              )}
-            </TabsTrigger>
-
-            <TabsTrigger value="analytics" className="tab-trigger-premium">
-              <BarChart3 className="h-4 w-4 mr-2" />
-              {t('businessAnalytics') || 'Analytics'}
+            <TabsTrigger value="notifications" className="tab-trigger-premium">
+              <span className="flex items-center gap-2">
+                <Bell className="h-4 w-4" />
+                {t('notifications') || 'Notifications'}
+                {unreadNotificationCount > 0 && (
+                  <Badge 
+                    className="
+                      ml-1.5
+                      px-1.5 
+                      py-0.5 
+                      min-w-[20px] 
+                      h-5 
+                      text-[10px] 
+                      font-bold 
+                      bg-red-500 
+                      text-white 
+                      border-none 
+                      rounded-full
+                    "
+                  >
+                    {unreadNotificationCount > 99 ? '99+' : unreadNotificationCount}
+                  </Badge>
+                )}
+              </span>
             </TabsTrigger>
 
             <TabsTrigger value="export" className="tab-trigger-premium">
@@ -409,10 +402,6 @@ export default function BusinessDashboard({
 
           <TabsContent value="notifications" className="animate-fadeIn">
             <Notifications userId={user.id} onNotificationRead={fetchUnreadCount} />
-          </TabsContent>
-
-          <TabsContent value="analytics" className="animate-fadeIn">
-            <BusinessAnalytics />
           </TabsContent>
 
           <TabsContent value="export" className="animate-fadeIn">

@@ -1,4 +1,4 @@
-﻿import { useState } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { Button } from '../ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import {
@@ -36,6 +36,8 @@ import LanguageSwitcher from '../LanguageSwitcherVibrant';
 import { useLanguage } from '../../contexts/LanguageContext';
 import ThemeToggle from '../ThemeToggle';
 import TabCarousel from '../mobile/TabCarousel';
+import { getUnreadCount } from '../../services/notificationService';
+import { Badge } from '../ui/badge';
 
 interface ConsumerDashboardProps {
   user: User;
@@ -52,8 +54,29 @@ export default function ConsumerDashboard({
 }: ConsumerDashboardProps) {
   const [activeTab, setActiveTab] = useState('search');
   const [showMobileMenu, setShowMobileMenu] = useState(false);
-
+  const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
   const { t } = useLanguage();
+
+  // Fetch unread notification count
+  const fetchUnreadCount = async () => {
+    try {
+      const response = await getUnreadCount();
+      if (response.success) {
+        setUnreadNotificationCount(response.count || 0);
+      }
+    } catch (error) {
+      console.error('Error fetching unread count:', error);
+    }
+  };
+
+  useEffect(() => {
+    fetchUnreadCount();
+    
+    // Poll for new notifications every 30 seconds
+    const interval = setInterval(fetchUnreadCount, 30000);
+    
+    return () => clearInterval(interval);
+  }, []);
 
   const navItems = [
     {
@@ -93,6 +116,7 @@ export default function ConsumerDashboard({
       id: 'notifications',
       label: t('notifications'),
       icon: <Bell className="h-5 w-5" />,
+      badge: unreadNotificationCount,
     },
     {
       id: 'alerts',
@@ -291,9 +315,32 @@ export default function ConsumerDashboard({
               {t('favorites')}
             </TabsTrigger>
 
-            <TabsTrigger value="notifications" className="tab-trigger-premium">
+            <TabsTrigger value="notifications" className="tab-trigger-premium relative">
               <Bell className="h-4 w-4 mr-2" />
               {t('notifications')}
+              {unreadNotificationCount > 0 && (
+                <Badge 
+                  className="
+                    absolute 
+                    -top-2 
+                    -right-2 
+                    px-1.5 
+                    py-0.5 
+                    min-w-[20px] 
+                    h-5 
+                    text-[10px] 
+                    font-bold 
+                    bg-red-500 
+                    text-white 
+                    border-none 
+                    rounded-full 
+                    animate-pulse
+                    shadow-lg
+                  "
+                >
+                  {unreadNotificationCount > 99 ? '99+' : unreadNotificationCount}
+                </Badge>
+              )}
             </TabsTrigger>
 
             <TabsTrigger value="alerts" className="tab-trigger-premium">
@@ -338,7 +385,7 @@ export default function ConsumerDashboard({
           </TabsContent>
 
           <TabsContent value="notifications" className="animate-fadeIn">
-            <Notifications />
+            <Notifications userId={user.id} onNotificationRead={fetchUnreadCount} />
           </TabsContent>
 
           <TabsContent value="alerts" className="animate-fadeIn">
@@ -357,7 +404,10 @@ export default function ConsumerDashboard({
         {/* Mobile Carousel */}
         <div className="md:hidden">
           <TabCarousel
-            items={allTabs}
+            items={allTabs.map(item => ({
+              ...item,
+              badge: item.id === 'notifications' ? unreadNotificationCount : undefined
+            }))}
             activeTab={activeTab}
             onTabChange={setActiveTab}
           />

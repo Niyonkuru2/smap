@@ -7,6 +7,7 @@ import { Search, MapPin, Heart, TrendingUp, TrendingDown, Minus, RefreshCw, Load
 import { getProvinceColor, allProvinces } from '../../utils/provinceUtils';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { getLivePrices } from '../../lib/api';
+import { addFavorite, removeFavorite, getFavorites } from '../../services/favoriteService';
 import { toast } from 'sonner';
 import { AdBanner} from '../shared/AdDisplay';
 import { VoiceSearch, SpeakPriceButton } from '../VoiceSearch';
@@ -24,14 +25,20 @@ interface LivePrice {
   source: string;
 }
 
+interface FavoriteItem {
+  product_id: number;
+  market_id: string;
+}
+
 export default function ProductSearch() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedMarket, setSelectedMarket] = useState('all');
   const [selectedProvince, setSelectedProvince] = useState('all');
-  const [favorites, setFavorites] = useState<string[]>([]);
+  const [favorites, setFavorites] = useState<FavoriteItem[]>([]);
   const [livePrices, setLivePrices] = useState<LivePrice[]>([]);
   const [loading, setLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
+  const [favoriteLoading, setFavoriteLoading] = useState<{ [key: string]: boolean }>({});
   const { t } = useLanguage();
 
   // Fetch live prices from the API
@@ -49,34 +56,70 @@ export default function ProductSearch() {
     }
   };
 
+  // Fetch user's favorites
+  const fetchFavorites = async () => {
+    try {
+      const response = await getFavorites();
+      if (response.success && response.favorites) {
+        setFavorites(response.favorites.map(f => ({ 
+          product_id: f.product_id, 
+          market_id: f.market_id 
+        })));
+      }
+    } catch (error) {
+      console.error('Failed to fetch favorites:', error);
+    }
+  };
+
   useEffect(() => {
     fetchLivePrices();
+    fetchFavorites();
     // Refresh prices every 5 minutes
     const interval = setInterval(fetchLivePrices, 5 * 60 * 1000);
     return () => clearInterval(interval);
   }, []);
 
-  const toggleFavorite = (productName: string) => {
-    setFavorites(prev =>
-      prev.includes(productName)
-        ? prev.filter(name => name !== productName)
-        : [...prev, productName]
-    );
+  const isFavorite = (productId: number, marketId: string) => {
+    return favorites.some(f => f.product_id === productId && f.market_id === marketId);
   };
 
-  // Get unique products from live prices
-  const uniqueProducts = [...new Set(livePrices.map(p => p.product_name))];
+  const toggleFavorite = async (productId: number, marketId: string, productName: string) => {
+    const key = `${productId}-${marketId}`;
+    const currentlyFavorite = isFavorite(productId, marketId);
+    
+    setFavoriteLoading(prev => ({ ...prev, [key]: true }));
+    
+    try {
+      if (currentlyFavorite) {
+        await removeFavorite({ productId, marketId });
+        setFavorites(prev => prev.filter(f => !(f.product_id === productId && f.market_id === marketId)));
+        toast.success(`Removed ${productName} from favorites`);
+      } else {
+        await addFavorite({ productId, marketId });
+        setFavorites(prev => [...prev, { product_id: productId, market_id: marketId }]);
+        toast.success(`Added ${productName} to favorites`);
+      }
+    } catch (error) {
+      console.error('Failed to toggle favorite:', error);
+      toast.error('Failed to update favorites');
+    } finally {
+      setFavoriteLoading(prev => ({ ...prev, [key]: false }));
+    }
+  };
+
+  // Get unique products from live prices (group by product name and ID)
+  const uniqueProducts = [...new Map(livePrices.map(p => [p.product_name, { name: p.product_name, id: p.product_id }])).values()];
   
   // Filter products based on search
-  const filteredProducts = uniqueProducts.filter(productName => {
-    const matchesSearch = productName.toLowerCase().includes(searchTerm.toLowerCase());
+  const filteredProducts = uniqueProducts.filter(product => {
+    const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase());
     return matchesSearch;
   });
 
   // Get prices for a specific product
-  const getProductPrices = (productName: string) => {
+  const getProductPrices = (productId: number) => {
     return livePrices.filter(p => {
-      const matchesProduct = p.product_name === productName;
+      const matchesProduct = p.product_id === productId;
       const matchesProvince = selectedProvince === 'all' || p.province === selectedProvince;
       const matchesMarket = selectedMarket === 'all' || p.market_name === selectedMarket;
       return matchesProduct && matchesProvince && matchesMarket;
@@ -282,27 +325,27 @@ export default function ProductSearch() {
 
       {/* Products Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-        {filteredProducts.map(productName => {
-          const productPrices = getProductPrices(productName);
+        {filteredProducts.map(product => {
+          const productPrices = getProductPrices(product.id);
           const avgPrice = productPrices.length > 0
             ? productPrices.reduce((sum, p) => sum + p.price, 0) / productPrices.length
             : 0;
           const lowestPrice = productPrices.length > 0
             ? Math.min(...productPrices.map(p => p.price))
             : 0;
-          const highestPrice = productPrices.length > 0
-            ? Math.max(...productPrices.map(p => p.price))
-            : 0;
           const cheapestMarket = productPrices.find(p => p.price === lowestPrice);
           const unit = productPrices[0]?.unit || 'unit';
+          const isFav = isFavorite(product.id, cheapestMarket?.market_id || '');
+          const favoriteKey = `${product.id}-${cheapestMarket?.market_id || ''}`;
+          const isFavLoading = favoriteLoading[favoriteKey];
 
           return (
-            <Card key={productName} className="relative overflow-hidden rounded-xl dark-glass border-white/10 p-3 transition-all duration-300 hover:-translate-y-0.5 hover:border-white/20 group">
+            <Card key={product.id} className="relative overflow-hidden rounded-xl dark-glass border-white/10 p-3 transition-all duration-300 hover:-translate-y-0.5 hover:border-white/20 group">
               <div className="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-primary via-purple-500 to-primary opacity-60 group-hover:opacity-100 transition-opacity" />
               
               <div className="flex items-start justify-between mb-2">
                 <div className="flex-1">
-                  <h3 className="font-semibold text-sm text-white leading-tight">{productName}</h3>
+                  <h3 className="font-semibold text-sm text-white leading-tight">{product.name}</h3>
                   <Badge variant="secondary" className="mt-1.5 text-[10px] bg-white/10 text-muted-foreground border-white/10">
                     {t('per')} {unit}
                   </Badge>
@@ -310,16 +353,21 @@ export default function ProductSearch() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => toggleFavorite(productName)}
+                  onClick={() => cheapestMarket && toggleFavorite(product.id, cheapestMarket.market_id, product.name)}
+                  disabled={isFavLoading}
                   className="p-1.5 hover:bg-white/10 rounded-md"
                 >
-                  <Heart
-                    className={`h-4 w-4 transition-colors ${
-                      favorites.includes(productName)
-                        ? 'fill-rose-500 text-rose-500'
-                        : 'text-gray-400 group-hover:text-rose-400'
-                    }`}
-                  />
+                  {isFavLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                  ) : (
+                    <Heart
+                      className={`h-4 w-4 transition-colors ${
+                        isFav
+                          ? 'fill-rose-500 text-rose-500'
+                          : 'text-gray-400 group-hover:text-rose-400'
+                      }`}
+                    />
+                  )}
                 </Button>
               </div>
 
@@ -346,7 +394,7 @@ export default function ProductSearch() {
                       <span className="text-muted-foreground">{t('cheapestAt')}</span>
                       <span className="font-medium text-emerald-400 truncate">{cheapestMarket.market_name}</span>
                       <SpeakPriceButton
-                        product={productName}
+                        product={product.name}
                         price={lowestPrice}
                         unit={cheapestMarket.unit || 'kg'}
                         market={cheapestMarket.market_name}

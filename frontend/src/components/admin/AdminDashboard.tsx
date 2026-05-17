@@ -44,6 +44,7 @@ import TabCarousel from '../mobile/TabCarousel';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { Badge } from '../ui/badge';
 import { getAnomalyStats } from '../../services/anomalyService';
+import { getUnreadCount as fetchUnreadNotifications } from '../../services/notificationService';
 
 interface AdminDashboardProps {
   user: User;
@@ -81,12 +82,21 @@ export default function AdminDashboard({
     }
   };
 
-  // Fetch notification count from existing system
-  const fetchNotificationCount = () => {
-    const unreadCount = globalNotifications.filter(
-      (n) => n.userRole === 'admin' && !n.read
-    ).length;
-    setNotificationCount(unreadCount);
+  // Fetch real notification count from API
+  const fetchNotificationCount = async () => {
+    try {
+      const response = await fetchUnreadNotifications();
+      if (response.success) {
+        setNotificationCount(response.count || 0);
+      }
+    } catch (error) {
+      console.error('Failed to fetch notification count:', error);
+      // Fallback to globalNotifications for backward compatibility
+      const unreadCount = globalNotifications.filter(
+        (n) => n.userRole === 'admin' && !n.read
+      ).length;
+      setNotificationCount(unreadCount);
+    }
   };
 
   // Initial load
@@ -95,8 +105,8 @@ export default function AdminDashboard({
     fetchNotificationCount();
     
     // Set up interval for real-time updates
-    const notificationInterval = setInterval(fetchNotificationCount, 5000);
-    const anomalyInterval = setInterval(fetchAnomalyCount, 30000); // Update every 30 seconds
+    const notificationInterval = setInterval(fetchNotificationCount, 30000);
+    const anomalyInterval = setInterval(fetchAnomalyCount, 30000);
     
     return () => {
       clearInterval(notificationInterval);
@@ -110,12 +120,18 @@ export default function AdminDashboard({
       fetchAnomalyCount();
     };
     
+    const handleNotificationUpdate = () => {
+      fetchNotificationCount();
+    };
+    
     window.addEventListener('anomaly-updated', handleAnomalyUpdate);
-    window.addEventListener('price-submitted', handleAnomalyUpdate);
+    window.addEventListener('notification-read', handleNotificationUpdate);
+    window.addEventListener('notification-sent', handleNotificationUpdate);
     
     return () => {
       window.removeEventListener('anomaly-updated', handleAnomalyUpdate);
-      window.removeEventListener('price-submitted', handleAnomalyUpdate);
+      window.removeEventListener('notification-read', handleNotificationUpdate);
+      window.removeEventListener('notification-sent', handleNotificationUpdate);
     };
   }, []);
 
@@ -393,7 +409,7 @@ export default function AdminDashboard({
                 <TabsTrigger
                   key={item.id}
                   value={item.id}
-                  className="tab-trigger-premium"
+                  className="tab-trigger-premium relative"
                 >
                   <span className="flex items-center gap-2">
                     {item.icon}
@@ -405,22 +421,26 @@ export default function AdminDashboard({
                     {item.badge !== undefined && item.badge > 0 && (
                       <Badge
                         className={`
-                          ml-1
-                          ${item.id === 'anomalies' && anomalyCount > 0 
-                            ? 'bg-red-500/20 text-red-400 border-red-500/30 animate-pulse' 
-                            : 'bg-white/10 text-white border-white/10'
+                          absolute
+                          -top-2
+                          -right-2
+                          px-1.5
+                          py-0.5
+                          min-w-[20px]
+                          h-5
+                          text-[10px]
+                          font-bold
+                          ${item.id === 'anomalies' 
+                            ? 'bg-red-500 text-white animate-pulse' 
+                            : 'bg-red-500 text-white'
                           }
-                          backdrop-blur-md
-                          transition-all
-                          duration-300
+                          border-none
+                          rounded-full
+                          shadow-lg
                         `}
                       >
-                        {item.badge}
+                        {item.badge > 99 ? '99+' : item.badge}
                       </Badge>
-                    )}
-
-                    {isLoadingAnomalies && item.id === 'anomalies' && (
-                      <div className="ml-1 w-4 h-4 rounded-full bg-emerald-500/30 animate-pulse" />
                     )}
                   </span>
                 </TabsTrigger>
@@ -433,7 +453,10 @@ export default function AdminDashboard({
             <TabCarousel
               items={navItems.map(item => ({
                 ...item,
-                badge: item.id === 'anomalies' ? anomalyCount : item.badge
+                badge: item.id === 'anomalies' ? anomalyCount : 
+                       item.id === 'approvals' ? notificationCount :
+                       item.id === 'notifications' ? notificationCount : 
+                       item.badge
               }))}
               activeTab={activeTab}
               onTabChange={setActiveTab}
@@ -442,7 +465,7 @@ export default function AdminDashboard({
 
           {/* Tab Contents */}
           <TabsContent value="approvals" className="animate-fadeIn mt-4">
-            <PriceApprovals />
+            <PriceApprovals onNotificationRead={fetchNotificationCount} />
           </TabsContent>
 
           <TabsContent value="anomalies" className="animate-fadeIn">
@@ -474,7 +497,7 @@ export default function AdminDashboard({
           </TabsContent>
 
           <TabsContent value="notifications" className="animate-fadeIn">
-            <NotificationManagement />
+            <NotificationManagement onNotificationUpdate={fetchNotificationCount} />
           </TabsContent>
 
           <TabsContent value="import" className="animate-fadeIn">

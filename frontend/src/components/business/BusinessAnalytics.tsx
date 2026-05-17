@@ -22,8 +22,6 @@ const savingsData = [
 ];
 
 export default function BusinessAnalytics() {
-  const { products } = useProducts();
-  const { prices: priceData } = usePrices();
 
   const handleExport = () => {
     exportBusinessAnalytics({
@@ -45,7 +43,7 @@ export default function BusinessAnalytics() {
           <h2 className="text-2xl gradient-text">Business Analytics</h2>
           <p className="text-muted-foreground">Insights to help optimize your purchasing decisions</p>
         </div>
-        <Button variant="outline" size="sm" onClick={handleExport} className="btn-outline-premium">
+        <Button variant="outline" size="sm" onClick={handleExport}>
           <Download className="h-4 w-4 mr-2" />
           Export Report
         </Button>
