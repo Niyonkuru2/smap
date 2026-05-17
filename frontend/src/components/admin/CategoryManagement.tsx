@@ -5,7 +5,7 @@ import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Badge } from '../ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import { Plus, Edit, Trash2, MapPin, Tag, Loader2, DollarSign, Calendar, Store, FileText } from 'lucide-react';
+import { Plus, Edit, Trash2, MapPin, Tag, Loader2, DollarSign, Calendar, Store, FileText, AlertTriangle } from 'lucide-react';
 import { useMarkets, useProducts } from '../../hooks/useAppData';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '../ui/dialog';
 import { useLanguage } from '../../contexts/LanguageContext';
@@ -58,6 +58,7 @@ export default function CategoryManagement() {
   const [isAddProductOpen, setIsAddProductOpen] = useState(false);
   const [isSetPriceOpen, setIsSetPriceOpen] = useState(false);
   const [isEditPriceOpen, setIsEditPriceOpen] = useState(false);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [categories, setCategories] = useState<Category[]>([]);
   const [products, setProducts] = useState<ProductWithDetails[]>([]);
@@ -65,6 +66,12 @@ export default function CategoryManagement() {
   const [editingMarket, setEditingMarket] = useState<Market | null>(null);
   const [editingPrice, setEditingPrice] = useState<ReferencePriceWithDetails | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<ProductWithDetails | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{
+    type: 'category' | 'market' | 'product' | 'price';
+    id: string | number;
+    name: string;
+    extraInfo?: string;
+  } | null>(null);
   const [newCategory, setNewCategory] = useState({ name: '', description: '', type: 'product' });
   const [editCategoryData, setEditCategoryData] = useState({ name: '', description: '', type: 'product' });
   const [newMarket, setNewMarket] = useState({ id: '', name: '', province: '', district: '', location: '' });
@@ -189,15 +196,41 @@ export default function CategoryManagement() {
     }
   };
 
-  const handleDeleteCategory = async (category: Category) => {
-    if (window.confirm(`Are you sure you want to delete "${category.name}"? This action cannot be undone.`)) {
-      try {
-        await deleteCategory(category.id);
-        toast.success('Category deleted successfully');
-        await fetchCategories();
-      } catch (error: any) {
-        toast.error(error.response?.data?.message || 'Failed to delete category');
+  const openDeleteConfirm = (type: 'category' | 'market' | 'product' | 'price', id: string | number, name: string, extraInfo?: string) => {
+    setDeleteTarget({ type, id, name, extraInfo });
+    setIsDeleteConfirmOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return;
+
+    try {
+      switch (deleteTarget.type) {
+        case 'category':
+          await deleteCategory(deleteTarget.id as number);
+          toast.success('Category deleted successfully');
+          await fetchCategories();
+          break;
+        case 'market':
+          await deleteMarket(deleteTarget.id as string, true);
+          toast.success('Market deleted successfully');
+          window.location.reload();
+          break;
+        case 'product':
+          toast.info('Product deletion will be implemented soon');
+          break;
+        case 'price':
+          const [productName, marketName] = deleteTarget.extraInfo?.split('|') || ['', ''];
+          await referencePriceService.deleteReferencePrice(deleteTarget.id as number);
+          toast.success(`Reference price for "${productName}" at "${marketName}" deleted successfully`);
+          await fetchProductsWithPrices();
+          break;
       }
+    } catch (error: any) {
+      toast.error(error.message || `Failed to delete ${deleteTarget.type}`);
+    } finally {
+      setIsDeleteConfirmOpen(false);
+      setDeleteTarget(null);
     }
   };
 
@@ -233,7 +266,6 @@ export default function CategoryManagement() {
       setIsEditMarketOpen(false);
       setEditingMarket(null);
       setEditMarketData(null);
-      // Refresh markets
       window.location.reload();
     } catch (error: any) {
       toast.error(error.message || 'Failed to update market');
@@ -264,23 +296,9 @@ export default function CategoryManagement() {
       toast.success('Market added successfully');
       setNewMarket({ id: '', name: '', province: '', district: '', location: '' });
       setIsAddMarketOpen(false);
-      // Refresh markets
       window.location.reload();
     } catch (error: any) {
       toast.error(error.message || 'Failed to add market');
-    }
-  };
-
-  const handleDeleteMarket = async (marketId: string, marketName: string) => {
-    if (window.confirm(`Are you sure you want to delete "${marketName}"? This action cannot be undone.`)) {
-      try {
-        await deleteMarket(marketId, true);
-        toast.success('Market deleted successfully');
-        // Refresh markets
-        window.location.reload();
-      } catch (error: any) {
-        toast.error(error.message || 'Failed to delete market');
-      }
     }
   };
 
@@ -371,28 +389,6 @@ export default function CategoryManagement() {
     }
   };
 
-  const handleDeletePrice = async (priceId: number, productName: string, marketName: string) => {
-    if (window.confirm(`Are you sure you want to delete the reference price for "${productName}" at "${marketName}"?`)) {
-      try {
-        await referencePriceService.deleteReferencePrice(priceId);
-        toast.success('Reference price deleted successfully');
-        await fetchProductsWithPrices();
-      } catch (error: any) {
-        toast.error(error.message || 'Failed to delete reference price');
-      }
-    }
-  };
-
-  const handleDeleteProduct = async (productId: number, productName: string) => {
-    if (window.confirm(`Are you sure you want to delete "${productName}"? This will also delete all its reference prices.`)) {
-      try {
-        toast.info('Product deletion will be implemented soon');
-      } catch (error: any) {
-        toast.error(error.message || 'Failed to delete product');
-      }
-    }
-  };
-
   const openSetPriceDialog = (product: ProductWithDetails) => {
     setSelectedProduct(product);
     setPriceData({
@@ -439,6 +435,55 @@ export default function CategoryManagement() {
   
   return (
     <div className="space-y-6">
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={isDeleteConfirmOpen} onOpenChange={setIsDeleteConfirmOpen}>
+        <DialogContent className="dark-glass border-white/10 sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle className="gradient-text flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-red-400" />
+              Confirm Deletion
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <div className="flex items-center gap-3 p-4 rounded-xl bg-red-500/10 border border-red-500/30 mb-4">
+              <AlertTriangle className="h-8 w-8 text-red-400" />
+              <div className="flex-1">
+                <p className="text-white font-medium">
+                  Are you sure you want to delete this {deleteTarget?.type}?
+                </p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  <strong className="text-white">{deleteTarget?.name}</strong>
+                  {deleteTarget?.extraInfo && (
+                    <span className="block text-xs text-muted-foreground mt-1">{deleteTarget.extraInfo}</span>
+                  )}
+                </p>
+              </div>
+            </div>
+            <p className="text-sm text-red-400">
+              Warning: This action cannot be undone. All associated data may be affected.
+            </p>
+          </div>
+          <DialogFooter className="gap-3">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsDeleteConfirmOpen(false);
+                setDeleteTarget(null);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleConfirmDelete}
+              className="bg-red-500 hover:bg-red-600"
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Delete {deleteTarget?.type}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Product Categories */}
         <Card className="p-6 rounded-xl dark-glass border-white/10 shadow-lg">
@@ -528,7 +573,7 @@ export default function CategoryManagement() {
                   <Button 
                     variant="ghost" 
                     size="sm" 
-                    onClick={() => handleDeleteCategory(category)}
+                    onClick={() => openDeleteConfirm('category', category.id, category.name)}
                     className="hover:bg-red-500/10"
                   >
                     <Trash2 className="h-4 w-4 text-red-400 hover:text-red-300" />
@@ -574,7 +619,7 @@ export default function CategoryManagement() {
                   <Button variant="ghost" size="sm" onClick={() => handleEditMarket(market)} className="hover:bg-white/10">
                     <Edit className="h-4 w-4 text-muted-foreground hover:text-white" />
                   </Button>
-                  <Button variant="ghost" size="sm" onClick={() => handleDeleteMarket(market.id, market.name)} className="hover:bg-red-500/10">
+                  <Button variant="ghost" size="sm" onClick={() => openDeleteConfirm('market', market.id, market.name)} className="hover:bg-red-500/10">
                     <Trash2 className="h-4 w-4 text-red-400 hover:text-red-300" />
                   </Button>
                 </div>
@@ -750,7 +795,7 @@ export default function CategoryManagement() {
                   <Button 
                     size="sm" 
                     variant="ghost"
-                    onClick={() => handleDeleteProduct(product.id, product.name)}
+                    onClick={() => openDeleteConfirm('product', product.id, product.name)}
                     className="hover:bg-red-500/10 text-red-400"
                   >
                     <Trash2 className="h-4 w-4" />
@@ -820,7 +865,7 @@ export default function CategoryManagement() {
                         <Button 
                           variant="ghost" 
                           size="sm"
-                          onClick={() => handleDeletePrice(price.reference_price_id, product.name, price.market_name)}
+                          onClick={() => openDeleteConfirm('price', price.reference_price_id, `${price.reference_price.toLocaleString()} RWF`, `${product.name}|${price.market_name}`)}
                           className="hover:bg-red-500/10"
                         >
                           <Trash2 className="h-4 w-4 text-red-400 hover:text-red-300" />

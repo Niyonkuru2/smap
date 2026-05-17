@@ -36,8 +36,10 @@ export default function BusinessUserManagement() {
   const [isSaving, setIsSaving] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [editingBusiness, setEditingBusiness] = useState<BusinessUser | null>(null);
   const [viewingBusiness, setViewingBusiness] = useState<BusinessUser | null>(null);
+  const [deletingBusiness, setDeletingBusiness] = useState<BusinessUser | null>(null);
   const [formData, setFormData] = useState<Partial<BusinessUser>>({});
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -118,16 +120,23 @@ export default function BusinessUserManagement() {
     setIsViewDialogOpen(true);
   };
 
-  const handleDeleteBusiness = async (businessId: string) => {
-    if (window.confirm('Are you sure you want to delete this business user?')) {
-      try {
-        await deleteBusiness(businessId);
-        toast.success('Business user deleted successfully');
-        await fetchBusinesses();
-        await fetchStats();
-      } catch (error: any) {
-        toast.error(error.response?.data?.message || 'Failed to delete business');
-      }
+  const handleDeleteClick = (business: BusinessUser) => {
+    setDeletingBusiness(business);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const handleDeleteBusiness = async () => {
+    if (!deletingBusiness) return;
+
+    try {
+      await deleteBusiness(deletingBusiness.id);
+      toast.success('Business user deleted successfully');
+      setIsDeleteDialogOpen(false);
+      setDeletingBusiness(null);
+      await fetchBusinesses();
+      await fetchStats();
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Failed to delete business');
     }
   };
 
@@ -427,7 +436,7 @@ export default function BusinessUserManagement() {
                         <Button 
                           variant="ghost" 
                           size="sm" 
-                          onClick={() => handleDeleteBusiness(business.id)}
+                          onClick={() => handleDeleteClick(business)}
                           className="hover:bg-red-500/10 h-8 w-8 p-0"
                           title="Delete business"
                         >
@@ -592,7 +601,6 @@ export default function BusinessUserManagement() {
               variant="outline" 
               onClick={() => setIsDialogOpen(false)}
               disabled={isSaving}
-              className=""
             >
               Cancel
             </Button>
@@ -716,6 +724,57 @@ export default function BusinessUserManagement() {
           <DialogFooter className="sticky bottom-0 bg-inherit pt-4 border-t border-white/10">
             <Button onClick={() => setIsViewDialogOpen(false)} className="btn-premium w-full">
               Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent className="dark-glass border-white/10 sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle className="gradient-text flex items-center gap-2">
+              <AlertCircle className="h-5 w-5 text-red-400" />
+              Delete Business
+            </DialogTitle>
+            <DialogDescription className="text-muted-foreground">
+              This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          {deletingBusiness && (
+            <div className="py-4">
+              <div className="flex items-center gap-3 p-4 rounded-xl bg-red-500/10 border border-red-500/30 mb-4">
+                <AlertCircle className="h-8 w-8 text-red-400" />
+                <div className="flex-1">
+                  <p className="text-white font-medium">
+                    Are you sure you want to delete {deletingBusiness.businessName}?
+                  </p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    <strong className="text-white">{deletingBusiness.ownerName}</strong>
+                    <span className="block text-xs text-muted-foreground mt-1">
+                      Email: {deletingBusiness.email} • Status: {deletingBusiness.status}
+                    </span>
+                  </p>
+                </div>
+              </div>
+              <p className="text-sm text-red-400">
+                Warning: This will permanently delete the business account and all associated data.
+              </p>
+            </div>
+          )}
+          <DialogFooter className="gap-3">
+            <Button
+              variant="outline"
+              onClick={() => setIsDeleteDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleDeleteBusiness}
+              className="bg-red-500 hover:bg-red-600"
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Delete Business
             </Button>
           </DialogFooter>
         </DialogContent>

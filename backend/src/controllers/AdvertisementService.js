@@ -1,4 +1,5 @@
 import AdvertisementService from '../services/AdvertisementService.js';
+import pool from '../config/database.js';
 export const submitAdvertisement = async (req, res) => {
     try {
         const vendorId = req.user.id;

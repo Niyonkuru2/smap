@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Badge } from '../ui/badge';
 import { useLanguage } from '../../contexts/LanguageContext';
-import { Search, Plus, Pencil, Trash2, Store, Mail, Phone, MapPin, CheckCircle, XCircle, Loader2, RefreshCw, Calendar, Filter } from 'lucide-react';
+import { Search, Plus, Pencil, Trash2, Store, Mail, Phone, MapPin, CheckCircle, XCircle, Loader2, RefreshCw, Calendar, Filter, AlertTriangle } from 'lucide-react';
 import { getVendors, createVendor, updateVendor, deleteVendor, type Vendor as APIVendor } from '../../services/vendorService';
 import { getAllCategories, type Category } from '../../services/categoryService';
 import { toast } from 'sonner';
@@ -32,7 +32,9 @@ export default function VendorManagement() {
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [editingVendor, setEditingVendor] = useState<Vendor | null>(null);
+  const [deletingVendor, setDeletingVendor] = useState<Vendor | null>(null);
   const [formData, setFormData] = useState<Partial<Vendor>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -125,16 +127,23 @@ export default function VendorManagement() {
     setIsDialogOpen(true);
   };
 
-  const handleDeleteVendor = async (vendorId: string) => {
-    if (window.confirm(t('confirmDeleteVendor') || 'Are you sure you want to delete this vendor?')) {
-      try {
-        await deleteVendor(vendorId);
-        toast.success('Vendor deleted successfully');
-        await fetchVendors();
-      } catch (error: any) {
-        console.error('Error deleting vendor:', error);
-        toast.error(error.response?.data?.message || 'Failed to delete vendor');
-      }
+  const handleDeleteClick = (vendor: Vendor) => {
+    setDeletingVendor(vendor);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const handleDeleteVendor = async () => {
+    if (!deletingVendor) return;
+
+    try {
+      await deleteVendor(deletingVendor.id);
+      toast.success('Vendor deleted successfully');
+      setIsDeleteDialogOpen(false);
+      setDeletingVendor(null);
+      await fetchVendors();
+    } catch (error: any) {
+      console.error('Error deleting vendor:', error);
+      toast.error(error.response?.data?.message || 'Failed to delete vendor');
     }
   };
 
@@ -397,7 +406,7 @@ export default function VendorManagement() {
                         <Button 
                           variant="ghost" 
                           size="sm" 
-                          onClick={() => handleDeleteVendor(vendor.id)}
+                          onClick={() => handleDeleteClick(vendor)}
                           className="hover:bg-red-500/10 h-8 w-8 p-0"
                           title="Delete vendor"
                         >
@@ -545,6 +554,57 @@ export default function VendorManagement() {
               ) : (
                 editingVendor ? 'Update Vendor' : 'Add Vendor'
               )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent className="dark-glass border-white/10 sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle className="gradient-text flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-red-400" />
+              Delete Vendor
+            </DialogTitle>
+            <DialogDescription className="text-muted-foreground">
+              This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          {deletingVendor && (
+            <div className="py-4">
+              <div className="flex items-center gap-3 p-4 rounded-xl bg-red-500/10 border border-red-500/30 mb-4">
+                <AlertTriangle className="h-8 w-8 text-red-400" />
+                <div className="flex-1">
+                  <p className="text-white font-medium">
+                    Are you sure you want to delete {deletingVendor.name}?
+                  </p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    <strong className="text-white">{deletingVendor.email}</strong>
+                    <span className="block text-xs text-muted-foreground mt-1">
+                      Status: {deletingVendor.status} • ID: {deletingVendor.id}
+                    </span>
+                  </p>
+                </div>
+              </div>
+              <p className="text-sm text-red-400">
+                Warning: This will permanently delete the vendor account and all associated data.
+              </p>
+            </div>
+          )}
+          <DialogFooter className="gap-3">
+            <Button
+              variant="outline"
+              onClick={() => setIsDeleteDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleDeleteVendor}
+              className="bg-red-500 hover:bg-red-600"
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Delete Vendor
             </Button>
           </DialogFooter>
         </DialogContent>

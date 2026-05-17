@@ -16,6 +16,7 @@ import {
   Users,
   MoreVertical,
   X,
+  Megaphone,
 } from 'lucide-react';
 
 import type { User } from '../../App';
@@ -28,6 +29,7 @@ import Notifications from './Notifications';
 import PriceAlerts from './PriceAlerts';
 import MultiMarketComparison from './MultiMarketComparison';
 import PriceForecast from './PriceForecast';
+import ConsumerAds from './ConsumerAds';
 
 import UserProfile from '../shared/UserProfile';
 import { VendorProfiles } from '../shared/VendorProfiles';
@@ -108,6 +110,11 @@ export default function ConsumerDashboard({
       id: 'favorites',
       label: t('favorites'),
       icon: <Heart className="h-5 w-5" />,
+    },
+    {
+      id: 'ads',
+      label: 'Sponsored Ads',
+      icon: <Megaphone className="h-5 w-5" />,
     },
   ];
 
@@ -315,6 +322,11 @@ export default function ConsumerDashboard({
               {t('favorites')}
             </TabsTrigger>
 
+            <TabsTrigger value="ads" className="tab-trigger-premium">
+              <Megaphone className="h-4 w-4 mr-2" />
+              Sponsored Ads
+            </TabsTrigger>
+
             <TabsTrigger value="notifications" className="tab-trigger-premium relative">
               <Bell className="h-4 w-4 mr-2" />
               {t('notifications')}
@@ -382,6 +394,10 @@ export default function ConsumerDashboard({
 
           <TabsContent value="favorites" className="animate-fadeIn">
             <Favorites userId={user.id} />
+          </TabsContent>
+
+          <TabsContent value="ads" className="animate-fadeIn">
+            <ConsumerAds />
           </TabsContent>
 
           <TabsContent value="notifications" className="animate-fadeIn">

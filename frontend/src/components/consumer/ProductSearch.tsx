@@ -3,14 +3,15 @@ import { Card } from '../ui/card';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import { Search, MapPin, Heart, TrendingUp, TrendingDown, Minus, RefreshCw, Loader2, Volume2 } from 'lucide-react';
+import { Search, MapPin, Heart, TrendingUp, TrendingDown, Minus, RefreshCw, Loader2, Volume2, Mic } from 'lucide-react';
 import { getProvinceColor, allProvinces } from '../../utils/provinceUtils';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { getLivePrices } from '../../lib/api';
 import { addFavorite, removeFavorite, getFavorites } from '../../services/favoriteService';
 import { toast } from 'sonner';
-import { AdBanner} from '../shared/AdDisplay';
+import { AdBanner } from '../shared/AdDisplay';
 import { VoiceSearch, SpeakPriceButton } from '../VoiceSearch';
+import { Input } from '../ui/input';
 
 interface LivePrice {
   product_id: number;
@@ -180,12 +181,12 @@ export default function ProductSearch() {
       <AdBanner placement="home_top" />
 
       {/* Enhanced Header */}
-      <div className="dark-glass border border-white/10 rounded-xl p-3">
+      <Card className="p-4 rounded-xl dark-glass border-white/10 shadow-lg">
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div>
-            <h2 className="text-sm font-bold flex items-center gap-2">
-              <span className="text-lg">🇷🇼</span>
-              <span className="gradient-text">{t('rwandaMarketPrices')}</span>
+            <h2 className="text-lg font-bold flex items-center gap-2 gradient-text">
+              <span className="text-xl">🇷🇼</span>
+              {t('rwandaMarketPrices')}
             </h2>
             <p className="text-xs text-muted-foreground mt-1">
               <span className="inline-flex items-center gap-1">
@@ -200,13 +201,13 @@ export default function ProductSearch() {
             variant="outline" 
             size="sm" 
             disabled={loading} 
-            className="btn-outline-premium h-8 px-3 text-xs"
+            className="btn-outline-premium"
           >
-            <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${loading ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
             {t('refresh')}
           </Button>
         </div>
-      </div>
+      </Card>
 
       {/* Province Overview Cards */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
@@ -234,23 +235,37 @@ export default function ProductSearch() {
       </div>
 
       {/* Search and Filters */}
-      <Card className="p-3 rounded-xl dark-glass border-white/10">
-        <div className="space-y-3">
-          {/* Voice Search Component */}
-          <VoiceSearch
-            onSearch={(query) => setSearchTerm(query)}
-            onCommand={(command) => {
-              if (command.market) {
-                const matchedMarket = uniqueMarkets.find(m => 
-                  m.toLowerCase().includes(command.market!.toLowerCase())
-                );
-                if (matchedMarket) {
-                  setSelectedMarket(matchedMarket);
-                }
-              }
-            }}
-            placeholder={t('searchForProducts')}
-          />
+      <Card className="p-4 rounded-xl dark-glass border-white/10 shadow-lg">
+        <div className="space-y-4">
+          {/* Search Input with Voice Search */}
+          <div className="relative">
+            <div className="absolute left-3 top-1/2 transform -translate-y-1/2">
+              <Search className="h-4 w-4 text-muted-foreground" />
+            </div>
+            <Input
+              type="text"
+              placeholder={t('searchForProducts') || 'Search products...'}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-9 pr-12 bg-white/5 border-white/10 text-white placeholder:text-muted-foreground focus:border-primary/50"
+            />
+            <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
+              <VoiceSearch
+                onSearch={(query) => setSearchTerm(query)}
+                onCommand={(command) => {
+                  if (command.market) {
+                    const matchedMarket = uniqueMarkets.find(m => 
+                      m.toLowerCase().includes(command.market!.toLowerCase())
+                    );
+                    if (matchedMarket) {
+                      setSelectedMarket(matchedMarket);
+                    }
+                  }
+                }}
+                placeholder=""
+              />
+            </div>
+          </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
@@ -308,12 +323,10 @@ export default function ProductSearch() {
       </Card>
 
       {/* Results Header */}
-      <div className="rounded-xl dark-glass border-white/10 p-3">
+      <Card className="rounded-xl dark-glass border-white/10 shadow-lg p-3">
         <div className="flex items-center justify-between gap-2 flex-wrap">
           <div className="flex items-center gap-2">
-            <div className="icon-container-small">
-              <Search className="h-3.5 w-3.5 text-primary" />
-            </div>
+            <Search className="h-4 w-4 text-primary" />
             <span className="text-xs font-medium text-muted-foreground">{t('productsFound')}</span>
           </div>
           <Badge className="h-6 rounded-full bg-primary/20 text-primary border-primary/30 px-2.5 text-[11px] font-semibold">
@@ -321,10 +334,10 @@ export default function ProductSearch() {
           </Badge>
         </div>
         <p className="mt-1.5 text-[10px] text-muted-foreground">{t('pricesInRWF')}</p>
-      </div>
+      </Card>
 
       {/* Products Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {filteredProducts.map(product => {
           const productPrices = getProductPrices(product.id);
           const avgPrice = productPrices.length > 0
@@ -340,12 +353,12 @@ export default function ProductSearch() {
           const isFavLoading = favoriteLoading[favoriteKey];
 
           return (
-            <Card key={product.id} className="relative overflow-hidden rounded-xl dark-glass border-white/10 p-3 transition-all duration-300 hover:-translate-y-0.5 hover:border-white/20 group">
+            <Card key={product.id} className="relative overflow-hidden rounded-xl dark-glass border-white/10 shadow-lg p-4 transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/50 group">
               <div className="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-primary via-purple-500 to-primary opacity-60 group-hover:opacity-100 transition-opacity" />
               
-              <div className="flex items-start justify-between mb-2">
+              <div className="flex items-start justify-between mb-3">
                 <div className="flex-1">
-                  <h3 className="font-semibold text-sm text-white leading-tight">{product.name}</h3>
+                  <h3 className="font-semibold text-white text-base">{product.name}</h3>
                   <Badge variant="secondary" className="mt-1.5 text-[10px] bg-white/10 text-muted-foreground border-white/10">
                     {t('per')} {unit}
                   </Badge>
@@ -355,7 +368,7 @@ export default function ProductSearch() {
                   size="sm"
                   onClick={() => cheapestMarket && toggleFavorite(product.id, cheapestMarket.market_id, product.name)}
                   disabled={isFavLoading}
-                  className="p-1.5 hover:bg-white/10 rounded-md"
+                  className="p-1.5 hover:bg-white/10 rounded-md h-8 w-8"
                 >
                   {isFavLoading ? (
                     <Loader2 className="h-4 w-4 animate-spin text-primary" />
@@ -364,7 +377,7 @@ export default function ProductSearch() {
                       className={`h-4 w-4 transition-colors ${
                         isFav
                           ? 'fill-rose-500 text-rose-500'
-                          : 'text-gray-400 group-hover:text-rose-400'
+                          : 'text-muted-foreground group-hover:text-rose-400'
                       }`}
                     />
                   )}
@@ -372,8 +385,8 @@ export default function ProductSearch() {
               </div>
 
               {productPrices.length > 0 ? (
-                <div className="space-y-2">
-                  <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-3">
                     <div className="bg-white/5 border border-white/10 p-2 rounded-lg">
                       <p className="text-[10px] text-muted-foreground">{t('lowest')}</p>
                       <p className="text-sm font-bold text-emerald-400">
@@ -392,13 +405,13 @@ export default function ProductSearch() {
                     <div className="flex items-center gap-2 text-[11px] bg-white/5 border border-white/10 p-2 rounded-lg">
                       <MapPin className="h-3 w-3 text-emerald-400 flex-shrink-0" />
                       <span className="text-muted-foreground">{t('cheapestAt')}</span>
-                      <span className="font-medium text-emerald-400 truncate">{cheapestMarket.market_name}</span>
+                      <span className="font-medium text-emerald-400 truncate flex-1">{cheapestMarket.market_name}</span>
                       <SpeakPriceButton
                         product={product.name}
                         price={lowestPrice}
                         unit={cheapestMarket.unit || 'kg'}
                         market={cheapestMarket.market_name}
-                        className="ml-auto flex-shrink-0"
+                        className="flex-shrink-0"
                       />
                     </div>
                   )}
@@ -427,14 +440,36 @@ export default function ProductSearch() {
       </div>
 
       {filteredProducts.length === 0 && (
-        <Card className="p-8 text-center dark-glass border-white/10">
-          <Search className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
-          <h3 className="font-medium text-base text-white mb-1">{t('noProductsFound')}</h3>
+        <Card className="p-12 text-center dark-glass border-white/10 shadow-lg rounded-xl">
+          <Search className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+          <h3 className="font-medium text-lg text-white mb-2">{t('noProductsFound')}</h3>
           <p className="text-sm text-muted-foreground">
             {t('tryDifferentSearch')}
           </p>
         </Card>
       )}
+
+      <style>{`
+        .btn-outline-premium {
+          background: rgba(255, 255, 255, 0.05);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          color: hsl(var(--foreground));
+          transition: all 0.2s ease;
+        }
+
+        .btn-outline-premium:hover {
+          background: rgba(255, 255, 255, 0.1);
+          border-color: rgba(255, 255, 255, 0.2);
+          transform: translateY(-1px);
+        }
+
+        .gradient-text {
+          background: linear-gradient(135deg, #fff 0%, #d1fae5 45%, #6ee7b7 100%);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
+        }
+      `}</style>
     </div>
   );
 }

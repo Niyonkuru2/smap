@@ -68,7 +68,7 @@ export const translations = {
     admin: 'System Admin',
 
     // Dashboards
-    consumerDashboard: 'SMPMPS Dashboard',
+    consumerDashboard: 'SMPPMPS Dashboard',
     vendorPortal: 'Vendor Portal',
     adminDashboard: 'Admin Dashboard',
     businessPortal: 'Business Owner Portal',
@@ -196,7 +196,7 @@ export const translations = {
     // NEW: PWA & Offline
     installApp: 'Install App',
     install: 'Install',
-    addToHomeScreen: 'Add SMPMPS to your home screen for quick access and offline use!',
+    addToHomeScreen: 'Add SMPPMPS to your home screen for quick access and offline use!',
     howToInstall: 'How to install:',
     tapShareButton: 'Tap the share button',
     selectAddToHome: 'Select "Add to Home Screen"',
@@ -574,7 +574,7 @@ export const translations = {
     activeUsers: 'Active Users',
     marketsTracked: 'Markets Tracked',
     realTimeUpdates: 'Real-Time Updates',
-    whyChooseSMPMPS: 'Why Choose SMPMPS?',
+    whyChooseSMPMPS: 'Why Choose SMPPMPS?',
     realTimePricesTitle: 'Real-Time Prices',
     realTimePricesDesc: 'Track market prices updated instantly across all locations',
     multiLocationTitle: 'Multi-Location Tracking',

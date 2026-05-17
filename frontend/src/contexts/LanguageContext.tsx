@@ -11,9 +11,7 @@ const LanguageContext = createContext<LanguageContextType | undefined>(undefined
 
 const LANGUAGE_KEY = 'app_language';
 
-// ✅ YELLOW/GOLD THEME - Render Build v3 - 2026-04-20 13:45 UTC
-// Single unified color - applies to ALL languages and dashboards
-const UNIFIED_COLOR = '45 95% 50%'; // Bright Yellow Gold - NOT dark green!
+const UNIFIED_COLOR = '45 95% 50%'; 
 
 // Helper to get initial language
 function getInitialLanguage(): Language {

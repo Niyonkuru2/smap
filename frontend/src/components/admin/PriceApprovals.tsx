@@ -14,14 +14,17 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Label } from '../ui/label';
 import { toast } from 'sonner';
 import { getAllSubmissions, approveSubmission, rejectSubmission } from '../../lib/api';
-import { useLanguage } from '../../contexts/LanguageContext';
 
 interface Submission {
   id: number;
   productId: string;
   product_id?: string;
+  product_name?: string;
+  productName?: string;
   marketId: string;
   market_id?: string;
+  market_name?: string;
+  marketName?: string;
   vendorId: string;
   vendor_id?: string;
   vendorName: string;
@@ -90,8 +93,12 @@ export default function PriceApprovals() {
         id: s.id,
         productId: s.productId || s.product_id?.toString(),
         product_id: s.product_id,
+        product_name: s.product_name, // Add direct product name from API
+        productName: s.productName || s.product_name,
         marketId: s.marketId || s.market_id,
         market_id: s.market_id,
+        market_name: s.market_name, // Add direct market name from API
+        marketName: s.marketName || s.market_name,
         vendorId: s.vendorId || s.vendor_id?.toString(),
         vendor_id: s.vendor_id,
         vendorName: s.vendorName || s.vendor_name || 'Unknown Vendor',
@@ -133,14 +140,36 @@ export default function PriceApprovals() {
     }
   };
 
-  const getProduct = (productId: string) => {
-    if (!productId) return null;
-    return products.find(p => p.id === productId || p.id === parseInt(productId));
+  // Helper function to get display name for product
+  const getProductDisplayName = (submission: Submission): string => {
+    // First try direct product name from submission
+    if (submission.product_name) return submission.product_name;
+    if (submission.productName) return submission.productName;
+    
+    // Fall back to looking up in products array
+    const productId = submission.productId || submission.product_id?.toString() || '';
+    if (productId) {
+      const product = products.find(p => p.id === productId || p.id === parseInt(productId));
+      if (product?.name) return product.name;
+    }
+    
+    return 'Unknown Product';
   };
-  
-  const getMarket = (marketId: string) => {
-    if (!marketId) return null;
-    return markets.find(m => m.id === marketId);
+
+  // Helper function to get display name for market
+  const getMarketDisplayName = (submission: Submission): string => {
+    // First try direct market name from submission
+    if (submission.market_name) return submission.market_name;
+    if (submission.marketName) return submission.marketName;
+    
+    // Fall back to looking up in markets array
+    const marketId = submission.marketId || submission.market_id || '';
+    if (marketId) {
+      const market = markets.find(m => m.id === marketId);
+      if (market?.name) return market.name;
+    }
+    
+    return submission.marketId || submission.market_id || 'Unknown Market';
   };
 
   const getTimeAgo = (dateString: string) => {
@@ -263,11 +292,11 @@ export default function PriceApprovals() {
     })
     .filter(s => {
       if (!searchTerm) return true;
-      const product = getProduct(s.productId || s.product_id?.toString() || '');
-      const market = getMarket(s.marketId || s.market_id || '');
+      const productName = getProductDisplayName(s);
+      const marketName = getMarketDisplayName(s);
       return (
-        product?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        market?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        productName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        marketName.toLowerCase().includes(searchTerm.toLowerCase()) ||
         s.vendorName?.toLowerCase().includes(searchTerm.toLowerCase())
       );
     })
@@ -448,8 +477,8 @@ export default function PriceApprovals() {
       {/* Submissions List */}
       <div className="space-y-4">
         {filteredSubmissions.map((submission) => {
-          const product = getProduct(submission.productId || submission.product_id?.toString() || '');
-          const market = getMarket(submission.marketId || submission.market_id || '');
+          const productName = getProductDisplayName(submission);
+          const marketName = getMarketDisplayName(submission);
           const isFlaggedItem = isFlagged(submission);
           const isExpanded = expandedId === submission.id;
           
@@ -465,14 +494,14 @@ export default function PriceApprovals() {
                 <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
                   <div className="flex-1 space-y-2">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="font-semibold text-lg text-white">{product?.name || 'Unknown Product'}</h3>
+                      <h3 className="font-semibold text-lg text-white">{productName}</h3>
                       {getStatusBadge(submission.status, isFlaggedItem)}
                     </div>
                     
                     <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
                       <span className="flex items-center gap-1 text-muted-foreground">
                         <MapPin className="h-3 w-3" />
-                        {market?.name || submission.marketId || submission.market_id || 'Unknown Market'}
+                        {marketName}
                       </span>
                       <span className="flex items-center gap-1 text-muted-foreground">
                         <User className="h-3 w-3" />
@@ -606,12 +635,12 @@ export default function PriceApprovals() {
                         <span className="text-white font-mono">{submission.id}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-muted-foreground">Product ID:</span>
-                        <span className="text-white">{submission.productId || submission.product_id}</span>
+                        <span className="text-muted-foreground">Product:</span>
+                        <span className="text-white">{productName}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-muted-foreground">Market ID:</span>
-                        <span className="text-white">{submission.marketId || submission.market_id}</span>
+                        <span className="text-muted-foreground">Market:</span>
+                        <span className="text-white">{marketName}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Vendor ID:</span>
@@ -676,13 +705,13 @@ export default function PriceApprovals() {
             <div className="space-y-4 mt-4">
               <div className="p-4 bg-white/5 rounded-lg border border-white/10">
                 <div className="font-semibold text-white text-lg">
-                  {getProduct(selectedSubmission.productId || selectedSubmission.product_id?.toString() || '')?.name || 'Unknown Product'}
+                  {getProductDisplayName(selectedSubmission)}
                 </div>
                 <div className="text-2xl font-bold text-primary mt-1">
                   {selectedSubmission.price.toLocaleString()} RWF
                 </div>
                 <div className="text-sm text-muted-foreground mt-1">
-                  at {getMarket(selectedSubmission.marketId || selectedSubmission.market_id || '')?.name || 'Unknown Market'} • per {selectedSubmission.unit}
+                  at {getMarketDisplayName(selectedSubmission)} • per {selectedSubmission.unit}
                 </div>
                 <div className="text-xs text-muted-foreground mt-2">
                   Vendor: {selectedSubmission.vendorName || selectedSubmission.vendor_name}
@@ -736,13 +765,13 @@ export default function PriceApprovals() {
             <div className="space-y-4 mt-4">
               <div className="p-4 bg-white/5 rounded-lg border border-white/10">
                 <div className="font-semibold text-white text-lg">
-                  {getProduct(selectedSubmission.productId || selectedSubmission.product_id?.toString() || '')?.name || 'Unknown Product'}
+                  {getProductDisplayName(selectedSubmission)}
                 </div>
                 <div className="text-2xl font-bold text-primary mt-1">
                   {selectedSubmission.price.toLocaleString()} RWF
                 </div>
                 <div className="text-sm text-muted-foreground mt-1">
-                  at {getMarket(selectedSubmission.marketId || selectedSubmission.market_id || '')?.name || 'Unknown Market'} • per {selectedSubmission.unit}
+                  at {getMarketDisplayName(selectedSubmission)} • per {selectedSubmission.unit}
                 </div>
                 <div className="text-xs text-muted-foreground mt-2">
                   Vendor: {selectedSubmission.vendorName || selectedSubmission.vendor_name}

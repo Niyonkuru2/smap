@@ -3,8 +3,7 @@ import { Card } from '../ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
-import { MapPin, TrendingUp, TrendingDown, Star, Clock, AlertTriangle, ThumbsUp, Plus, Bell, Lightbulb, Loader2 } from 'lucide-react';
-import { useProducts, useMarkets } from '../../hooks/useAppData';
+import { MapPin, TrendingUp, TrendingDown, Star, Clock, AlertTriangle, ThumbsUp, Plus, Bell, Lightbulb, Loader2, RefreshCw } from 'lucide-react';
 import PriceCardSkeleton from '../utils/PriceCardSkeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
 import { Textarea } from '../ui/textarea';
@@ -38,13 +37,22 @@ interface PriceWithDetails {
   unit: string;
   vendor_notes?: string;
   last_updated: Date;
-  trend: 'up' | 'down' | 'stable';
+}
+
+interface UniqueProduct {
+  id: number;
+  name: string;
+  unit: string;
+}
+
+interface UniqueMarket {
+  id: string;
+  name: string;
+  province: string;
+  district: string;
 }
 
 export default function PriceComparison() {
-  const { products, loading: productsLoading } = useProducts();
-  const { markets, loading: marketsLoading } = useMarkets();
-  
   const [selectedProduct, setSelectedProduct] = useState('');
   const [selectedProvince, setSelectedProvince] = useState('all');
   const [isLoading, setIsLoading] = useState(false);
@@ -54,19 +62,45 @@ export default function PriceComparison() {
   const [reviewComment, setReviewComment] = useState('');
   const [livePrices, setLivePrices] = useState<LivePrice[]>([]);
   const [loadingPrices, setLoadingPrices] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [products, setProducts] = useState<UniqueProduct[]>([]);
+  const [markets, setMarkets] = useState<UniqueMarket[]>([]);
   const { t } = useLanguage();
 
   // Fetch live prices from API
-  useEffect(() => {
-    fetchLivePrices();
-  }, []);
-
   const fetchLivePrices = async () => {
-    setLoadingPrices(true);
     try {
+      setRefreshing(true);
       const response = await getLivePrices();
       if (response.success && response.prices && response.prices.length > 0) {
         setLivePrices(response.prices);
+        
+        // Extract unique products
+        const uniqueProductsMap = new Map<number, UniqueProduct>();
+        response.prices.forEach((price: LivePrice) => {
+          if (!uniqueProductsMap.has(price.product_id)) {
+            uniqueProductsMap.set(price.product_id, {
+              id: price.product_id,
+              name: price.product_name,
+              unit: price.product_unit || price.unit
+            });
+          }
+        });
+        setProducts(Array.from(uniqueProductsMap.values()));
+        
+        // Extract unique markets
+        const uniqueMarketsMap = new Map<string, UniqueMarket>();
+        response.prices.forEach((price: LivePrice) => {
+          if (!uniqueMarketsMap.has(price.market_id)) {
+            uniqueMarketsMap.set(price.market_id, {
+              id: price.market_id,
+              name: price.market_name,
+              province: price.province,
+              district: price.district
+            });
+          }
+        });
+        setMarkets(Array.from(uniqueMarketsMap.values()));
       } else {
         setLivePrices([]);
       }
@@ -76,8 +110,16 @@ export default function PriceComparison() {
       setLivePrices([]);
     } finally {
       setLoadingPrices(false);
+      setRefreshing(false);
     }
   };
+
+  useEffect(() => {
+    fetchLivePrices();
+    // Refresh every 5 minutes
+    const interval = setInterval(fetchLivePrices, 5 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Set default product when products load
   useEffect(() => {
@@ -113,7 +155,6 @@ export default function PriceComparison() {
       unit: p.product_unit || p.unit,
       vendor_notes: p.vendor_notes,
       last_updated: new Date(p.created_at),
-      trend: 'stable' as const,
     }));
 
   const product = selectedProductData;
@@ -149,7 +190,7 @@ export default function PriceComparison() {
     toast.success(`Price alert set for ${product?.name}. You'll be notified when new prices are added!`);
   };
 
-  const isLoadingState = productsLoading || marketsLoading || loadingPrices;
+  const isLoadingState = loadingPrices;
 
   if (isLoadingState) {
     return (
@@ -173,7 +214,7 @@ export default function PriceComparison() {
     );
   }
 
-  // Get unique provinces from markets data (not from live prices)
+  // Get unique provinces from markets data
   const availableProvinces = markets && markets.length > 0 
     ? ['all', ...new Set(markets.map(m => m.province).filter(Boolean))]
     : ['all'];
@@ -190,7 +231,9 @@ export default function PriceComparison() {
       <Card className="p-4 rounded-xl dark-glass border-white/10">
         <div className="flex flex-col sm:flex-row gap-4">
           <div className="flex-1">
-            <label className="text-xs font-medium mb-1.5 block text-muted-foreground">{t('selectProduct') || 'Select Product'}</label>
+            <label className="text-xs font-medium mb-1.5 block text-muted-foreground">
+              {t('selectProduct') || 'Select Product'}
+            </label>
             <Select value={selectedProduct} onValueChange={setSelectedProduct}>
               <SelectTrigger className="h-10 bg-white/5 border-white/10 text-white hover:bg-white/10 transition-colors">
                 <SelectValue placeholder={t('selectProduct') || 'Select a product'} />
@@ -198,14 +241,16 @@ export default function PriceComparison() {
               <SelectContent className="bg-card border-white/10 backdrop-blur-xl">
                 {products.map(product => (
                   <SelectItem key={product.id} value={String(product.id)} className="text-white">
-                    {product.name}
+                    {product.name} ({product.unit})
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
           <div className="flex-1">
-            <label className="text-xs font-medium mb-1.5 block text-muted-foreground">{t('province') || 'Province'}</label>
+            <label className="text-xs font-medium mb-1.5 block text-muted-foreground">
+              {t('province') || 'Province'}
+            </label>
             <Select value={selectedProvince} onValueChange={setSelectedProvince}>
               <SelectTrigger className="h-10 bg-white/5 border-white/10 text-white hover:bg-white/10 transition-colors">
                 <SelectValue placeholder={t('allProvinces') || 'All Provinces'} />
@@ -221,6 +266,18 @@ export default function PriceComparison() {
             </Select>
           </div>
         </div>
+        <div className="mt-4 flex justify-end">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={fetchLivePrices}
+            disabled={refreshing}
+            className="text-xs"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${refreshing ? 'animate-spin' : ''}`} />
+            Refresh Prices
+          </Button>
+        </div>
       </Card>
 
       {/* Results Card */}
@@ -228,7 +285,9 @@ export default function PriceComparison() {
         <div className="absolute inset-0 pointer-events-none bg-gradient-to-br from-primary/5 via-transparent to-purple-500/5" />
         
         <div className="relative">
-          <h2 className="text-lg font-bold gradient-text mb-1">{product?.name} - {t('marketComparison') || 'Market Comparison'}</h2>
+          <h2 className="text-lg font-bold gradient-text mb-1">
+            {product?.name} - {t('marketComparison') || 'Market Comparison'}
+          </h2>
           <p className="text-sm text-muted-foreground mb-4">
             {t('averagePrice') || 'Average price'}: {averagePrice.toLocaleString()} RWF per {product?.unit || 'unit'}
           </p>
@@ -321,7 +380,7 @@ export default function PriceComparison() {
                       <Button 
                         variant="outline" 
                         size="sm" 
-                        className="w-full mt-3 btn-outline-premium"
+                        className="w-full mt-3"
                         onClick={() => {
                           setSelectedPriceForReview(priceKey);
                           setShowReviewDialog(true);
@@ -404,7 +463,9 @@ export default function PriceComparison() {
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <label className="text-sm font-medium text-muted-foreground mb-2 block">{t('yourRating') || 'Your Rating'}</label>
+              <label className="text-sm font-medium text-muted-foreground mb-2 block">
+                {t('yourRating') || 'Your Rating'}
+              </label>
               <div className="flex gap-1">
                 {[1, 2, 3, 4, 5].map((star) => (
                   <button
@@ -426,7 +487,9 @@ export default function PriceComparison() {
               </div>
             </div>
             <div>
-              <label className="text-sm font-medium text-muted-foreground mb-2 block">{t('commentOptional') || 'Comment (Optional)'}</label>
+              <label className="text-sm font-medium text-muted-foreground mb-2 block">
+                {t('commentOptional') || 'Comment (Optional)'}
+              </label>
               <Textarea
                 value={reviewComment}
                 onChange={(e) => setReviewComment(e.target.value)}
@@ -436,7 +499,7 @@ export default function PriceComparison() {
               />
             </div>
             <div className="flex gap-2">
-              <Button onClick={handleSubmitReview} className="btn-premium flex-1">
+              <Button onClick={handleSubmitReview} className="flex-1 bg-primary hover:bg-primary/90">
                 {t('submitReview') || 'Submit Review'}
               </Button>
               <Button 
@@ -446,7 +509,6 @@ export default function PriceComparison() {
                   setReviewRating(0);
                   setReviewComment('');
                 }}
-                className="btn-outline-premium"
               >
                 {t('cancel') || 'Cancel'}
               </Button>

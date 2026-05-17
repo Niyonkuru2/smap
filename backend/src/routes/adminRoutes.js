@@ -8,14 +8,14 @@ router.use(authenticateToken, adminOnly);
 
 // User management
 router.get('/users', adminController.getUsers);
-router.put('/users/:id/role', adminController.updateUserRole);  // PUT instead of POST
+router.put('/users/:id/role', adminController.updateUserRole);
 router.delete('/users/:id', adminController.deleteUser);
 
 // Submission management
 router.get('/submissions', adminController.getAllSubmissions);
 router.get('/submissions/pending', adminController.getPendingSubmissions);
-router.put('/submissions/:id/approve', adminController.approveSubmission);  // PUT instead of POST
-router.put('/submissions/:id/reject', adminController.rejectSubmission);    // PUT instead of POST
+router.put('/submissions/:id/approve', adminController.approveSubmission);
+router.put('/submissions/:id/reject', adminController.rejectSubmission);
 
 // Stats & monitoring
 router.get('/stats', adminController.getAdminStats);

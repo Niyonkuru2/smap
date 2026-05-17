@@ -4,7 +4,7 @@ import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Badge } from '../ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import { Search, Users, Edit2, Trash2, Filter, Calendar, Loader2 } from 'lucide-react';
+import { Search, Users, Edit2, Trash2, Filter, Calendar, Loader2, AlertTriangle } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../ui/dialog';
 import { Label } from '../ui/label';
 import { toast } from 'sonner';
@@ -409,25 +409,32 @@ export default function UserManagement() {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirmation Dialog */}
+      {/* Delete Confirmation Dialog - Updated to match CategoryManagement style */}
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <DialogContent className="dark-glass border-white/10 sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle className="gradient-text">Delete User</DialogTitle>
+            <DialogTitle className="gradient-text flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-red-400" />
+              Delete User
+            </DialogTitle>
             <DialogDescription className="text-muted-foreground">
-              Are you sure you want to delete this user? This action cannot be undone.
+              This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
           {selectedUser && (
-            <div className="py-4 space-y-3">
-              <div className="flex items-center gap-3 p-3 rounded-lg bg-white/5 border border-white/10">
-                <div className={`w-10 h-10 rounded-full ${getUserInitialColor(selectedUser.role)} flex items-center justify-center text-white font-semibold`}>
-                  {selectedUser.name.charAt(0).toUpperCase()}
-                </div>
-                <div>
-                  <p className="font-medium text-white">{selectedUser.name}</p>
-                  <p className="text-sm text-muted-foreground">{selectedUser.email}</p>
-                  <p className="text-xs text-muted-foreground">Role: {selectedUser.role}</p>
+            <div className="py-4">
+              <div className="flex items-center gap-3 p-4 rounded-xl bg-red-500/10 border border-red-500/30 mb-4">
+                <AlertTriangle className="h-8 w-8 text-red-400" />
+                <div className="flex-1">
+                  <p className="text-white font-medium">
+                    Are you sure you want to delete {selectedUser.name}?
+                  </p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    <strong className="text-white">{selectedUser.email}</strong>
+                    <span className="block text-xs text-muted-foreground mt-1">
+                      Role: {selectedUser.role} • ID: {selectedUser.id}
+                    </span>
+                  </p>
                 </div>
               </div>
               <p className="text-sm text-red-400">
@@ -435,11 +442,18 @@ export default function UserManagement() {
               </p>
             </div>
           )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)} className="btn-outline-premium">
+          <DialogFooter className="gap-3">
+            <Button
+              variant="outline"
+              onClick={() => setDeleteDialogOpen(false)}
+            >
               Cancel
             </Button>
-            <Button onClick={handleDeleteUser} className="bg-red-500 hover:bg-red-600">
+            <Button
+              onClick={handleDeleteUser}
+              className="bg-red-500 hover:bg-red-600"
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
               Delete User
             </Button>
           </DialogFooter>
