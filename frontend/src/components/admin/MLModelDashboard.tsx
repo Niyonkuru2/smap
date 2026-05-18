@@ -1,8 +1,6 @@
-﻿import { useState } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { Card } from '../ui/card';
 import { Button } from '../ui/button';
-import { Label } from '../ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { 
   Brain, 
   TrendingUp, 
@@ -22,7 +20,7 @@ import {
   RotateCcw
 } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
-import { getModelMetrics } from '../../lib/mlPriceEngine';
+import { trainModels, getModelMetrics, type TrainModelsResult, type ModelMetrics } from '../../services/priceForecastService';
 
 interface ModelConfig {
   id: string;
@@ -33,74 +31,178 @@ interface ModelConfig {
   lastTrained: string;
   accuracy: number;
   status: 'active' | 'training' | 'idle' | 'error';
+  mape?: number;
+  rmse?: number;
 }
 
 export function MLModelDashboard() {
   const { t } = useLanguage();
   const [isTraining, setIsTraining] = useState(false);
-  const [selectedModel, setSelectedModel] = useState('ensemble');
   const [trainingProgress, setTrainingProgress] = useState(0);
-  
-  const metrics = getModelMetrics();
+  const [trainingResult, setTrainingResult] = useState<TrainModelsResult | null>(null);
+  const [metrics, setMetrics] = useState<ModelMetrics | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   
   const [models, setModels] = useState<ModelConfig[]>([
-    { id: '1', name: 'Linear Regression', type: 'Statistical', enabled: true, weight: 0.15, lastTrained: '2 hours ago', accuracy: 78.5, status: 'active' },
-    { id: '2', name: 'Random Forest', type: 'ML Ensemble', enabled: true, weight: 0.25, lastTrained: '1 hour ago', accuracy: 84.2, status: 'active' },
-    { id: '3', name: 'LSTM Neural Network', type: 'Deep Learning', enabled: true, weight: 0.30, lastTrained: '30 min ago', accuracy: 87.8, status: 'active' },
-    { id: '4', name: 'ARIMA', type: 'Time Series', enabled: true, weight: 0.15, lastTrained: '1 hour ago', accuracy: 81.3, status: 'active' },
-    { id: '5', name: 'XGBoost', type: 'Gradient Boosting', enabled: false, weight: 0.15, lastTrained: '3 hours ago', accuracy: 83.1, status: 'idle' },
+    { id: 'linearRegression', name: 'Linear Regression', type: 'Statistical', enabled: true, weight: 0.25, lastTrained: 'Not trained', accuracy: 0, status: 'idle', mape: 0, rmse: 0 },
+    { id: 'exponentialSmoothing', name: 'Exponential Smoothing', type: 'Time Series', enabled: true, weight: 0.25, lastTrained: 'Not trained', accuracy: 0, status: 'idle', mape: 0, rmse: 0 },
+    { id: 'seasonalTrend', name: 'Seasonal Decomposition', type: 'Statistical', enabled: true, weight: 0.25, lastTrained: 'Not trained', accuracy: 0, status: 'idle', mape: 0, rmse: 0 },
+    { id: 'ensemble', name: 'Ensemble Model', type: 'ML Ensemble', enabled: true, weight: 0.25, lastTrained: 'Not trained', accuracy: 0, status: 'idle', mape: 0, rmse: 0 },
   ]);
 
   const [trainingData, setTrainingData] = useState({
-    totalRecords: 125847,
-    lastUpdated: '10 min ago',
-    categories: ['Vegetables', 'Fruits', 'Grains', 'Meat', 'Dairy', 'Spices'],
-    markets: 48,
-    products: 324,
-    dateRange: 'Jan 2024 - Feb 2026',
+    totalRecords: 0,
+    lastUpdated: 'Not available',
+    categories: [] as string[],
+    markets: 0,
+    products: 0,
+    dateRange: 'No data',
   });
 
-  const handleTrainAll = () => {
+  // Fetch metrics on component mount
+  useEffect(() => {
+    fetchMetrics();
+  }, []);
+
+  const fetchMetrics = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await getModelMetrics();
+      if (data) {
+        setMetrics(data);
+        
+        // Update training data from metrics
+        setTrainingData({
+          totalRecords: data.total_predictions,
+          lastUpdated: new Date(data.last_trained).toLocaleString(),
+          categories: ['Vegetables', 'Fruits', 'Grains', 'Meat', 'Dairy'],
+          markets: data.total_markets,
+          products: data.total_products,
+          dateRange: data.data_range.from 
+            ? `${new Date(data.data_range.from).toLocaleDateString()} - ${new Date(data.data_range.to).toLocaleDateString()}`
+            : 'No data',
+        });
+        
+        // Update models with accuracy from API
+        if (data.models && data.models.length > 0) {
+          setModels(prevModels => 
+            prevModels.map(model => {
+              const apiModel = data.models.find(m => 
+                m.name.toLowerCase().includes(model.name.toLowerCase())
+              );
+              if (apiModel) {
+                return {
+                  ...model,
+                  accuracy: apiModel.accuracy,
+                  mape: apiModel.mape,
+                  rmse: apiModel.rmse,
+                  lastTrained: new Date(data.last_trained).toLocaleString(),
+                  status: 'active' as const,
+                };
+              }
+              return model;
+            })
+          );
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching metrics:', err);
+      setError('Failed to load model metrics');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleTrainAll = async () => {
     setIsTraining(true);
     setTrainingProgress(0);
+    setError(null);
     
-    const interval = setInterval(() => {
+    // Simulate progress updates
+    const progressInterval = setInterval(() => {
       setTrainingProgress(prev => {
-        if (prev >= 100) {
-          clearInterval(interval);
-          setIsTraining(false);
-          setModels(models.map(m => ({
-            ...m,
-            lastTrained: 'Just now',
-            accuracy: Math.min(95, m.accuracy + Math.random() * 2),
-            status: 'active' as const,
-          })));
-          return 100;
+        if (prev >= 90) {
+          clearInterval(progressInterval);
+          return 90;
         }
         return prev + Math.random() * 15;
       });
     }, 500);
+    
+    try {
+      // Update model statuses to training
+      setModels(prev => prev.map(m => ({ ...m, status: 'training' as const })));
+      
+      // Call the actual train API
+      const result = await trainModels();
+      
+      if (result && result.success) {
+        setTrainingResult(result);
+        setTrainingProgress(100);
+        
+        // Fetch updated metrics
+        await fetchMetrics();
+        
+        // Update last trained timestamp
+        setModels(prev => prev.map(m => ({ 
+          ...m, 
+          status: 'active' as const,
+          lastTrained: new Date(result.timestamp).toLocaleString()
+        })));
+      } else {
+        throw new Error('Training failed');
+      }
+    } catch (err) {
+      console.error('Error training models:', err);
+      setError('Failed to train models. Please try again.');
+      setModels(prev => prev.map(m => ({ ...m, status: 'error' as const })));
+    } finally {
+      clearInterval(progressInterval);
+      setTimeout(() => {
+        setIsTraining(false);
+        setTrainingProgress(0);
+      }, 1000);
+    }
   };
 
-  const handleTrainModel = (modelId: string) => {
-    setModels(models.map(m => 
+  const handleTrainModel = async (modelId: string) => {
+    // Update specific model to training status
+    setModels(prev => prev.map(m =>
       m.id === modelId ? { ...m, status: 'training' as const } : m
     ));
     
-    setTimeout(() => {
-      setModels(models.map(m => 
-        m.id === modelId ? { 
-          ...m, 
-          status: 'active' as const,
-          lastTrained: 'Just now',
-          accuracy: Math.min(95, m.accuracy + Math.random() * 3),
-        } : m
+    try {
+      // Call the train all API (backend trains all models)
+      const result = await trainModels();
+      
+      if (result && result.success) {
+        // Fetch updated metrics
+        await fetchMetrics();
+        
+        setModels(prev => prev.map(m => 
+          m.id === modelId ? { 
+            ...m, 
+            status: 'active' as const,
+            lastTrained: new Date(result.timestamp).toLocaleString()
+          } : m
+        ));
+      } else {
+        throw new Error('Training failed');
+      }
+    } catch (err) {
+      console.error('Error training model:', err);
+      setModels(prev => prev.map(m => 
+        m.id === modelId ? { ...m, status: 'error' as const } : m
       ));
-    }, 3000);
+      setError(`Failed to train ${models.find(m => m.id === modelId)?.name}`);
+    }
   };
 
-  const toggleModel = (modelId: string) => {
-    setModels(models.map(m => 
+  const toggleModel = async (modelId: string) => {
+    // Note: This is a frontend-only toggle since backend doesn't have individual model enable/disable
+    setModels(prev => prev.map(m => 
       m.id === modelId ? { ...m, enabled: !m.enabled, status: m.enabled ? 'idle' as const : 'active' as const } : m
     ));
   };
@@ -125,6 +227,19 @@ export function MLModelDashboard() {
     }
   };
 
+  const avgAccuracy = metrics?.avg_accuracy || models.reduce((acc, m) => acc + m.accuracy, 0) / models.length;
+
+  if (loading && !metrics) {
+    return (
+      <Card className="p-12 rounded-xl dark-glass border-white/10">
+        <div className="flex flex-col items-center justify-center gap-4">
+          <RefreshCw className="h-8 w-8 text-primary animate-spin" />
+          <p className="text-muted-foreground">Loading model metrics...</p>
+        </div>
+      </Card>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -144,7 +259,7 @@ export function MLModelDashboard() {
           <div className="flex gap-2">
             <Button 
               variant="outline" 
-              onClick={() => window.location.reload()}
+              onClick={fetchMetrics}
               disabled={isTraining}
               className="btn-outline-premium"
             >
@@ -184,6 +299,23 @@ export function MLModelDashboard() {
                 style={{ width: `${trainingProgress}%` }}
               />
             </div>
+            {trainingResult && trainingProgress === 100 && (
+              <div className="mt-3 p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30">
+                <p className="text-sm text-emerald-400">
+                  ✓ {trainingResult.message}
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Error Message */}
+        {error && (
+          <div className="mb-6 p-3 rounded-lg bg-red-500/10 border border-red-500/30">
+            <p className="text-sm text-red-400 flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4" />
+              {error}
+            </p>
           </div>
         )}
 
@@ -194,14 +326,14 @@ export function MLModelDashboard() {
               <Activity className="h-4 w-4 text-primary" />
               <span className="text-xs text-muted-foreground">Overall Accuracy</span>
             </div>
-            <p className="text-2xl font-bold text-white">{metrics.avgAccuracy}%</p>
+            <p className="text-2xl font-bold text-white">{avgAccuracy.toFixed(1)}%</p>
           </div>
           <div className="p-4 rounded-xl bg-white/5 border border-white/10">
             <div className="flex items-center gap-2 mb-2">
               <BarChart3 className="h-4 w-4 text-primary" />
               <span className="text-xs text-muted-foreground">Predictions</span>
             </div>
-            <p className="text-2xl font-bold text-white">{metrics.totalPredictions.toLocaleString()}</p>
+            <p className="text-2xl font-bold text-white">{trainingData.totalRecords.toLocaleString()}</p>
           </div>
           <div className="p-4 rounded-xl bg-white/5 border border-white/10">
             <div className="flex items-center gap-2 mb-2">
@@ -266,14 +398,22 @@ export function MLModelDashboard() {
                 <div className="flex items-center gap-4 flex-wrap">
                   <div className="text-center">
                     <p className="text-xs text-muted-foreground">Accuracy</p>
-                    <p className={`font-bold text-emerald-400`}>
+                    <p className={`font-bold ${model.accuracy >= 80 ? 'text-emerald-400' : 'text-amber-400'}`}>
                       {model.accuracy.toFixed(1)}%
                     </p>
                   </div>
-                  <div className="text-center">
-                    <p className="text-xs text-muted-foreground">Weight</p>
-                    <p className="font-semibold text-white">{(model.weight * 100).toFixed(0)}%</p>
-                  </div>
+                  {model.mape && (
+                    <div className="text-center">
+                      <p className="text-xs text-muted-foreground">MAPE</p>
+                      <p className="text-sm text-muted-foreground">{model.mape}%</p>
+                    </div>
+                  )}
+                  {model.rmse && (
+                    <div className="text-center">
+                      <p className="text-xs text-muted-foreground">RMSE</p>
+                      <p className="text-sm text-muted-foreground">{model.rmse}</p>
+                    </div>
+                  )}
                   <div className="text-center">
                     <p className="text-xs text-muted-foreground">Last Trained</p>
                     <p className="text-sm text-muted-foreground">{model.lastTrained}</p>
@@ -283,7 +423,7 @@ export function MLModelDashboard() {
                       size="sm"
                       variant="outline"
                       onClick={() => handleTrainModel(model.id)}
-                      disabled={model.status === 'training' || !model.enabled}
+                      disabled={model.status === 'training' || !model.enabled || isTraining}
                       className="border-white/10 hover:bg-white/10"
                     >
                       {model.status === 'training' ? (
@@ -345,24 +485,26 @@ export function MLModelDashboard() {
             Model Performance
           </h3>
           <div className="space-y-3">
-            {metrics.models.map((model, i) => (
+            {models.map((model, i) => (
               <div key={i} className="p-3 rounded-lg bg-white/5 border border-white/10">
                 <div className="flex justify-between items-center mb-2">
                   <span className="font-medium text-white">{model.name}</span>
-                  <span className={`text-sm font-bold text-emerald-400`}>
-                    {model.accuracy}%
+                  <span className={`text-sm font-bold ${model.accuracy >= 80 ? 'text-emerald-400' : 'text-amber-400'}`}>
+                    {model.accuracy.toFixed(1)}%
                   </span>
                 </div>
                 <div className="h-2 bg-white/10 rounded-full overflow-hidden">
                   <div 
-                    className={`h-full rounded-full ${model.accuracy >= 85 ? 'bg-emerald-500' : 'bg-primary'}`}
+                    className={`h-full rounded-full ${model.accuracy >= 80 ? 'bg-emerald-500' : 'bg-primary'}`}
                     style={{ width: `${model.accuracy}%` }}
                   />
                 </div>
-                <div className="flex justify-between mt-1 text-xs text-muted-foreground">
-                  <span>MAPE: {model.mape}%</span>
-                  <span>RMSE: {model.rmse}</span>
-                </div>
+                {model.mape && model.rmse && (
+                  <div className="flex justify-between mt-1 text-xs text-muted-foreground">
+                    <span>MAPE: {model.mape}%</span>
+                    <span>RMSE: {model.rmse}</span>
+                  </div>
+                )}
               </div>
             ))}
           </div>

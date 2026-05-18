@@ -185,7 +185,7 @@ class PriceForecastService {
         for (let i = 1; i < priceValues.length; i++) {
             returns.push((priceValues[i] - priceValues[i-1]) / priceValues[i-1]);
         }
-        const volatility = returns.reduce((a, b) => a + Math.abs(b), 0) / returns.length;
+        const volatility = returns.length > 0 ? returns.reduce((a, b) => a + Math.abs(b), 0) / returns.length : 0;
         
         // Linear regression for trend
         const regression = this.linearRegression(priceValues);
@@ -208,9 +208,8 @@ class PriceForecastService {
             const trendComponent = regression.slope * daysAhead;
             
             // Apply seasonal component (weekly)
-            const daysOfWeek = daysAhead % 7;
             let seasonalComponent = 0;
-            if (daysOfWeek > 0 && seasonality.dayOfWeekAverages) {
+            if (seasonality.dayOfWeekAverages) {
                 const futureDayOfWeek = (new Date().getDay() + daysAhead) % 7;
                 seasonalComponent = (seasonality.dayOfWeekAverages[futureDayOfWeek] || currentPrice) - currentPrice;
             }
@@ -252,7 +251,7 @@ class PriceForecastService {
             success: true,
             product_id: parseInt(productId),
             product_name: historicalPrices[0]?.product_name,
-            market_id: marketId,
+            market_id: marketId, // Keep as string or number based on DB
             market_name: historicalPrices[0]?.market_name,
             current_price: currentPrice,
             average_price: averagePrice,
