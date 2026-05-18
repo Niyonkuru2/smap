@@ -55,7 +55,7 @@ export default function PurchasePlanning() {
 
   useEffect(() => {
     fetchRecommendations();
-  }, []);
+  }, [allMarkets]);
 
   const fetchRecommendations = async () => {
     setLoading(true);
@@ -93,14 +93,53 @@ export default function PurchasePlanning() {
           // Get market comparison for best prices
           const marketComparison = await getMarketComparison(product.id);
           
-          // Get 7-day forecast to determine trend
-          const forecast = await getPriceForecast(product.id, marketComparison?.best_market?.market_id || allMarkets[0]?.id, 7);
+          // Get first available market ID as fallback
+          const defaultMarketId = allMarkets && allMarkets.length > 0 ? allMarkets[0].id : null;
+          
+          // Use best market from comparison or fallback to first market
+          let marketIdForForecast = defaultMarketId;
+          let bestMarketName = 'Unknown Market';
+          let bestPrice = 0;
+          
+          if (marketComparison?.success && marketComparison.best_market) {
+            marketIdForForecast = marketComparison.best_market.market_id;
+            bestMarketName = marketComparison.best_market.market_name;
+            bestPrice = marketComparison.best_market.average_price;
+          } else if (defaultMarketId) {
+            // Find market name
+            const defaultMarket = allMarkets.find(m => m.id === defaultMarketId);
+            bestMarketName = defaultMarket?.name || 'Default Market';
+          }
+          
+          // Skip if no market available
+          if (!marketIdForForecast) {
+            console.warn(`No market available for product ${product.id}`);
+            continue;
+          }
+          
+          // Get 7-day forecast
+          let forecast = null;
+          try {
+            forecast = await getPriceForecast(product.id, marketIdForForecast, 7);
+          } catch (forecastErr) {
+            console.warn(`Could not fetch forecast for product ${product.id}:`, forecastErr);
+          }
 
-          if (bestTimeData?.success && marketComparison?.success && forecast?.success) {
-            const currentPrice = forecast.current_price;
-            const bestPrice = marketComparison.best_market.average_price;
+          // Only proceed if we have best time data
+          if (bestTimeData?.success) {
+            // Get current price from live prices or forecast
+            let currentPrice = 0;
+            const currentPriceEntry = livePricesResponse.prices.find((p: any) => p.product_id === product.id);
+            if (currentPriceEntry) {
+              currentPrice = currentPriceEntry.price;
+            } else if (forecast?.success) {
+              currentPrice = forecast.current_price;
+            } else {
+              currentPrice = bestPrice || 1000; // Fallback price
+            }
+            
             const potentialSavings = currentPrice - bestPrice;
-            const savingsPercentage = (potentialSavings / currentPrice) * 100;
+            const savingsPercentage = bestPrice > 0 ? (potentialSavings / currentPrice) * 100 : 0;
             
             // Determine urgency and action
             let urgency: 'high' | 'medium' | 'low' = 'medium';
@@ -108,40 +147,47 @@ export default function PurchasePlanning() {
             let recommendationText = '';
             let factors: string[] = [];
 
-            const forecastData = forecast.predictions[0];
+            const forecastData = forecast?.success ? forecast.predictions[0] : null;
             const isPriceIncreasing = forecastData?.trend === 'up' && forecastData.percentChange > 3;
             const isPriceDecreasing = forecastData?.trend === 'down' && forecastData.percentChange < -3;
             const isBestDayToday = bestTimeData.best_day_index === new Date().getDay();
+            const hasValidSavings = savingsPercentage > 0;
 
-            if (isPriceIncreasing && isBestDayToday) {
+            if (isPriceIncreasing && isBestDayToday && hasValidSavings) {
               urgency = 'high';
               action = 'buy_now';
               recommendationText = `⚠️ Prices expected to increase by ${Math.abs(forecastData.percentChange).toFixed(1)}% soon. Today is the best day to buy. Purchase immediately to maximize savings.`;
-              factors = [`Price trend: +${forecastData.percentChange}% in 7 days`, `Today is ${bestTimeData.best_day} - lowest prices`, `Save ${savingsPercentage.toFixed(1)}% at ${marketComparison.best_market.market_name}`];
+              factors = [`Price trend: +${forecastData.percentChange}% in 7 days`, `Today is ${bestTimeData.best_day} - lowest prices`, `Save ${savingsPercentage.toFixed(1)}% at ${bestMarketName}`];
             } 
-            else if (isPriceIncreasing) {
+            else if (isPriceIncreasing && hasValidSavings) {
               urgency = 'high';
               action = 'buy_now';
-              recommendationText = `📈 Prices are rising! Buy now at ${marketComparison.best_market.market_name} to save ${savingsPercentage.toFixed(1)}% before prices increase further.`;
-              factors = [`Upward trend: +${forecastData.percentChange}% forecast`, `Best market: ${marketComparison.best_market.market_name}`, `Save ${potentialSavings.toLocaleString()} RWF per ${product.unit}`];
+              recommendationText = `📈 Prices are rising! Buy now at ${bestMarketName} to save ${savingsPercentage.toFixed(1)}% before prices increase further.`;
+              factors = [`Upward trend: +${forecastData.percentChange}% forecast`, `Best market: ${bestMarketName}`, `Save ${potentialSavings.toLocaleString()} RWF per ${product.unit}`];
             }
-            else if (isPriceDecreasing && !isBestDayToday) {
+            else if (isPriceDecreasing && !isBestDayToday && hasValidSavings) {
               urgency = 'low';
               action = 'wait';
-              recommendationText = `📉 Prices dropping. Wait ${bestTimeData.best_day} for best prices at ${marketComparison.best_market.market_name}. Expected savings: ${savingsPercentage.toFixed(1)}%.`;
+              recommendationText = `📉 Prices dropping. Wait ${bestTimeData.best_day} for best prices at ${bestMarketName}. Expected savings: ${savingsPercentage.toFixed(1)}%.`;
               factors = [`Downward trend: ${forecastData.percentChange}% forecast`, `Best day: ${bestTimeData.best_day}`, `Prices ${Math.abs(forecastData.percentChange)}% lower in 7 days`];
             }
-            else if (isBestDayToday && savingsPercentage > 5) {
+            else if (isBestDayToday && savingsPercentage > 5 && hasValidSavings) {
               urgency = 'high';
               action = 'buy_now';
-              recommendationText = `🎯 Today is ${bestTimeData.best_day} - best day to buy! Get ${product.name} at ${bestPrice.toLocaleString()} RWF/${product.unit} from ${marketComparison.best_market.market_name}.`;
-              factors = [`Best day of week: ${bestTimeData.best_day}`, `${savingsPercentage.toFixed(1)}% below average`, `High confidence: ${forecastData.confidence}%`];
+              recommendationText = `🎯 Today is ${bestTimeData.best_day} - best day to buy! Get ${product.name} at ${bestPrice.toLocaleString()} RWF/${product.unit} from ${bestMarketName}.`;
+              factors = [`Best day of week: ${bestTimeData.best_day}`, `${savingsPercentage.toFixed(1)}% below average`, `Confidence: ${bestTimeData.confidence}%`];
             }
-            else {
+            else if (hasValidSavings) {
               urgency = 'medium';
               action = 'monitor';
-              recommendationText = `Monitor prices at ${marketComparison.best_market.market_name}. Best to buy on ${bestTimeData.best_day}s. Current savings potential: ${savingsPercentage.toFixed(1)}%.`;
-              factors = [`Best market: ${marketComparison.best_market.market_name}`, `Best day: ${bestTimeData.best_day}`, `Confidence: ${bestTimeData.confidence}%`];
+              recommendationText = `Monitor prices at ${bestMarketName}. Best to buy on ${bestTimeData.best_day}s. Current savings potential: ${savingsPercentage.toFixed(1)}%.`;
+              factors = [`Best market: ${bestMarketName}`, `Best day: ${bestTimeData.best_day}`, `Confidence: ${bestTimeData.confidence}%`];
+            }
+            else {
+              urgency = 'low';
+              action = 'monitor';
+              recommendationText = `No significant savings found for ${product.name}. Monitor prices at ${bestMarketName} for future opportunities.`;
+              factors = [`Best market: ${bestMarketName}`, `Best day: ${bestTimeData.best_day}`, `Prices are currently competitive`];
             }
 
             recommendationsList.push({
@@ -150,11 +196,11 @@ export default function PurchasePlanning() {
               category: product.category || 'General',
               currentPrice: currentPrice,
               unit: product.unit,
-              bestMarketId: marketComparison.best_market.market_id,
-              bestMarketName: marketComparison.best_market.market_name,
-              bestPrice: bestPrice,
-              potentialSavings: potentialSavings,
-              savingsPercentage: savingsPercentage,
+              bestMarketId: marketIdForForecast,
+              bestMarketName: bestMarketName,
+              bestPrice: bestPrice > 0 ? bestPrice : currentPrice,
+              potentialSavings: Math.max(0, potentialSavings),
+              savingsPercentage: Math.max(0, savingsPercentage),
               bestDay: bestTimeData.best_day,
               bestDayIndex: bestTimeData.best_day_index,
               bestTimeToBuy: `${bestTimeData.best_day}s`,
@@ -279,134 +325,133 @@ export default function PurchasePlanning() {
       </div>
 
       {/* Recommendations Grid */}
-      <div className="grid gap-4">
-        {recommendations.map((rec, index) => {
-          const actionBtn = getActionButton(rec.action);
-          
-          return (
-            <Card 
-              key={index} 
-              className="rounded-xl dark-glass border-white/10 shadow-lg overflow-hidden hover:border-white/20 transition-all duration-300"
-            >
-              <CardContent className="p-0">
-                {/* Urgency Banner */}
-                <div className={`px-4 py-2 ${getUrgencyColor(rec.urgency)} flex items-center justify-between`}>
-                  <div className="flex items-center gap-2">
-                    {rec.urgency === 'high' && <AlertTriangle className="h-4 w-4" />}
-                    {rec.urgency === 'medium' && <Clock className="h-4 w-4" />}
-                    {rec.urgency === 'low' && <CheckCircle2 className="h-4 w-4" />}
-                    <span className="text-sm font-medium capitalize">
-                      {rec.urgency === 'high' ? 'Urgent - Act Now' : rec.urgency === 'medium' ? 'Monitor Closely' : 'Good Opportunity'}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <TrendingUp className={`h-4 w-4 ${rec.forecastTrend === 'up' ? 'text-red-400' : rec.forecastTrend === 'down' ? 'text-emerald-400' : 'text-gray-400'}`} />
-                    <span className={`text-sm font-medium ${rec.forecastTrend === 'up' ? 'text-red-400' : rec.forecastTrend === 'down' ? 'text-emerald-400' : 'text-gray-400'}`}>
-                      {rec.forecastChange > 0 ? '+' : ''}{rec.forecastChange}% forecast
-                    </span>
-                  </div>
-                </div>
-
-                <div className="p-6">
-                  {/* Product Header */}
-                  <div className="flex items-start justify-between mb-4 flex-wrap gap-3">
-                    <div className="flex items-center gap-3">
-                      <div className="p-3 rounded-xl bg-primary/20">
-                        <ShoppingCart className="h-6 w-6 text-primary" />
-                      </div>
-                      <div>
-                        <h3 className="font-bold text-white text-lg">{rec.productName}</h3>
-                        <p className="text-xs text-muted-foreground">per {rec.unit}</p>
-                      </div>
+      {recommendations.length > 0 ? (
+        <div className="grid gap-4">
+          {recommendations.map((rec, index) => {
+            const actionBtn = getActionButton(rec.action);
+            
+            return (
+              <Card 
+                key={index} 
+                className="rounded-xl dark-glass border-white/10 shadow-lg overflow-hidden hover:border-white/20 transition-all duration-300"
+              >
+                <CardContent className="p-0">
+                  {/* Urgency Banner */}
+                  <div className={`px-4 py-2 ${getUrgencyColor(rec.urgency)} flex items-center justify-between`}>
+                    <div className="flex items-center gap-2">
+                      {rec.urgency === 'high' && <AlertTriangle className="h-4 w-4" />}
+                      {rec.urgency === 'medium' && <Clock className="h-4 w-4" />}
+                      {rec.urgency === 'low' && <CheckCircle2 className="h-4 w-4" />}
+                      <span className="text-sm font-medium capitalize">
+                        {rec.urgency === 'high' ? 'Urgent - Act Now' : rec.urgency === 'medium' ? 'Monitor Closely' : 'Good Opportunity'}
+                      </span>
                     </div>
-                    <div className="flex gap-2">
-                      <div className="px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-center">
-                        <p className="text-xs text-muted-foreground">Current</p>
-                        <p className="font-semibold text-white">{rec.currentPrice.toLocaleString()} RWF</p>
-                      </div>
-                      <div className="px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-center">
-                        <p className="text-xs text-emerald-400">Best Price</p>
-                        <p className="font-semibold text-emerald-400">{rec.bestPrice.toLocaleString()} RWF</p>
-                      </div>
+                    <div className="flex items-center gap-1">
+                      {rec.forecastTrend === 'up' && <TrendingUp className="h-4 w-4 text-red-400" />}
+                      {rec.forecastTrend === 'down' && <TrendingDown className="h-4 w-4 text-emerald-400" />}
+                      <span className={`text-sm font-medium ${rec.forecastTrend === 'up' ? 'text-red-400' : rec.forecastTrend === 'down' ? 'text-emerald-400' : 'text-gray-400'}`}>
+                        {rec.forecastChange > 0 ? '+' : ''}{rec.forecastChange}% forecast
+                      </span>
                     </div>
                   </div>
 
-                  {/* Savings and Details */}
-                  <div className="grid md:grid-cols-3 gap-4 mb-4">
-                    <div className="p-3 rounded-lg bg-white/5 border border-white/10">
-                      <div className="flex items-center gap-2 mb-1">
-                        <DollarSign className="h-4 w-4 text-emerald-400" />
-                        <p className="text-xs text-muted-foreground">Potential Savings</p>
+                  <div className="p-6">
+                    {/* Product Header */}
+                    <div className="flex items-start justify-between mb-4 flex-wrap gap-3">
+                      <div className="flex items-center gap-3">
+                        <div className="p-3 rounded-xl bg-primary/20">
+                          <ShoppingCart className="h-6 w-6 text-primary" />
+                        </div>
+                        <div>
+                          <h3 className="font-bold text-white text-lg">{rec.productName}</h3>
+                          <p className="text-xs text-muted-foreground">per {rec.unit}</p>
+                        </div>
                       </div>
-                      <p className="text-lg font-bold text-emerald-400">
-                        {rec.potentialSavings.toLocaleString()} RWF/{rec.unit}
-                      </p>
-                      <p className="text-xs text-muted-foreground">({rec.savingsPercentage.toFixed(1)}% below current)</p>
+                      <div className="flex gap-2">
+                        <div className="px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-center">
+                          <p className="text-xs text-muted-foreground">Current</p>
+                          <p className="font-semibold text-white">{rec.currentPrice.toLocaleString()} RWF</p>
+                        </div>
+                        <div className="px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-center">
+                          <p className="text-xs text-emerald-400">Best Price</p>
+                          <p className="font-semibold text-emerald-400">{rec.bestPrice.toLocaleString()} RWF</p>
+                        </div>
+                      </div>
                     </div>
 
-                    <div className="p-3 rounded-lg bg-white/5 border border-white/10">
-                      <div className="flex items-center gap-2 mb-1">
-                        <MapPin className="h-4 w-4 text-primary" />
-                        <p className="text-xs text-muted-foreground">Best Market</p>
+                    {/* Savings and Details */}
+                    <div className="grid md:grid-cols-3 gap-4 mb-4">
+                      <div className="p-3 rounded-lg bg-white/5 border border-white/10">
+                        <div className="flex items-center gap-2 mb-1">
+                          <DollarSign className="h-4 w-4 text-emerald-400" />
+                          <p className="text-xs text-muted-foreground">Potential Savings</p>
+                        </div>
+                        <p className="text-lg font-bold text-emerald-400">
+                          {rec.potentialSavings.toLocaleString()} RWF/{rec.unit}
+                        </p>
+                        <p className="text-xs text-muted-foreground">({rec.savingsPercentage.toFixed(1)}% below current)</p>
                       </div>
-                      <p className="font-semibold text-white">{rec.bestMarketName}</p>
-                      <p className="text-xs text-muted-foreground mt-1">Confidence: {rec.confidence}%</p>
+
+                      <div className="p-3 rounded-lg bg-white/5 border border-white/10">
+                        <div className="flex items-center gap-2 mb-1">
+                          <MapPin className="h-4 w-4 text-primary" />
+                          <p className="text-xs text-muted-foreground">Best Market</p>
+                        </div>
+                        <p className="font-semibold text-white">{rec.bestMarketName}</p>
+                        <p className="text-xs text-muted-foreground mt-1">Confidence: {rec.confidence}%</p>
+                      </div>
+
+                      <div className="p-3 rounded-lg bg-white/5 border border-white/10">
+                        <div className="flex items-center gap-2 mb-1">
+                          <Calendar className="h-4 w-4 text-primary" />
+                          <p className="text-xs text-muted-foreground">Best Day to Buy</p>
+                        </div>
+                        <p className="font-semibold text-white">{rec.bestDay}s</p>
+                        <p className="text-xs text-muted-foreground mt-1">{rec.bestTimeToBuy}</p>
+                      </div>
                     </div>
 
-                    <div className="p-3 rounded-lg bg-white/5 border border-white/10">
-                      <div className="flex items-center gap-2 mb-1">
-                        <Calendar className="h-4 w-4 text-primary" />
-                        <p className="text-xs text-muted-foreground">Best Day to Buy</p>
+                    {/* Recommendation */}
+                    <div className="p-4 rounded-xl bg-gradient-to-r from-primary/10 to-purple-500/10 border border-primary/30 mb-4">
+                      <div className="flex items-start gap-3">
+                        <Lightbulb className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
+                        <div>
+                          <p className="text-sm font-medium text-primary mb-1">AI Recommendation</p>
+                          <p className="text-sm text-white">{rec.recommendationText}</p>
+                        </div>
                       </div>
-                      <p className="font-semibold text-white">{rec.bestDay}s</p>
-                      <p className="text-xs text-muted-foreground mt-1">{rec.bestTimeToBuy}</p>
                     </div>
+
+                    {/* Factors */}
+                    <div className="mb-4">
+                      <p className="text-xs font-medium text-muted-foreground mb-2">Key Factors:</p>
+                      <div className="flex flex-wrap gap-2">
+                        {rec.factors.map((factor, i) => (
+                          <span key={i} className="px-2 py-1 text-xs rounded-lg bg-white/5 border border-white/10 text-muted-foreground">
+                            {factor}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Action Button */}
+                    <button 
+                      className={`w-full py-3 rounded-lg font-medium transition-all flex items-center justify-center gap-2 ${actionBtn.color}`}
+                      onClick={() => {
+                        window.location.href = `/consumer/market-comparison?product=${rec.productId}&market=${rec.bestMarketId}`;
+                      }}
+                    >
+                      {actionBtn.icon}
+                      {actionBtn.text}
+                      <ArrowRight className="h-4 w-4" />
+                    </button>
                   </div>
-
-                  {/* Recommendation */}
-                  <div className="p-4 rounded-xl bg-gradient-to-r from-primary/10 to-purple-500/10 border border-primary/30 mb-4">
-                    <div className="flex items-start gap-3">
-                      <Lightbulb className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
-                      <div>
-                        <p className="text-sm font-medium text-primary mb-1">AI Recommendation</p>
-                        <p className="text-sm text-white">{rec.recommendationText}</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Factors */}
-                  <div className="mb-4">
-                    <p className="text-xs font-medium text-muted-foreground mb-2">Key Factors:</p>
-                    <div className="flex flex-wrap gap-2">
-                      {rec.factors.map((factor, i) => (
-                        <span key={i} className="px-2 py-1 text-xs rounded-lg bg-white/5 border border-white/10 text-muted-foreground">
-                          {factor}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Action Button */}
-                  <button 
-                    className={`w-full py-3 rounded-lg font-medium transition-all flex items-center justify-center gap-2 ${actionBtn.color}`}
-                    onClick={() => {
-                      // Open market details or navigate to market comparison
-                      window.location.href = `/consumer/market-comparison?product=${rec.productId}&market=${rec.bestMarketId}`;
-                    }}
-                  >
-                    {actionBtn.icon}
-                    {actionBtn.text}
-                    <ArrowRight className="h-4 w-4" />
-                  </button>
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
-
-      {/* Empty State */}
-      {recommendations.length === 0 && !loading && (
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      ) : (
         <Card className="rounded-xl dark-glass border-white/10 shadow-lg">
           <CardContent className="p-12 text-center">
             <Zap className="h-12 w-12 text-muted-foreground mx-auto mb-3 opacity-30" />
