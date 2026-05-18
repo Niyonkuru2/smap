@@ -24,7 +24,7 @@ import advertisementRoutes from './advertisementRoutes.js';
 import anomalyRoutes from './anomalyRoutes.js';
 import analyticsRoutes from './analyticsRoutes.js';
 import priceAlertRoutes from './priceAlertRoutes.js';
-
+import forecastRoutes from './forecastRoutes.js';
 const router = express.Router();
 
 // Mount all route modules
@@ -55,7 +55,7 @@ router.use('/analytics', analyticsRoutes);
 // Also handle legacy paths
 router.use('/import', exportRoutes);
 router.use('/ussd', smsRoutes);
-router.use('/forecast', predictionRoutes);
+router.use('/forecast', forecastRoutes);
 router.use('/trends', historyRoutes);
 router.use('/seasonal', historyRoutes);
 router.use('/compare', priceRoutes);
