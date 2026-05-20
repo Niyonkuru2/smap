@@ -1,7 +1,7 @@
 // src/services/email/templates.js
 
 /**
- * Email templates for SMPMPS application
+ * Email templates for SMPPMS application
  */
 
 // ============================================
@@ -9,19 +9,19 @@
 // ============================================
 export const getVerificationTemplate = (userName, verificationCode, language = 'en') => {
     const subjects = {
-        en: 'Verify Your Email - SMPMPS',
-        fr: 'Vérifiez votre email - SMPMPS',
-        rw: 'Emera Imeli Yawe - SMPMPS'
+        en: 'Verify Your Email - SMPPMS',
+        fr: 'Vérifiez votre email - SMPPMS',
+        rw: 'Emera Imeli Yawe - SMPPMS'
     };
 
     const templates = {
         en: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
                 <div style="background-color: #4CAF50; padding: 20px; text-align: center; border-radius: 5px 5px 0 0;">
-                    <h1 style="color: white; margin: 0;">SMPMPS</h1>
+                    <h1 style="color: white; margin: 0;">SMPPMS</h1>
                 </div>
                 <div style="padding: 20px; border: 1px solid #e0e0e0; border-top: none; border-radius: 0 0 5px 5px;">
-                    <h2>Welcome to SMPMPS!</h2>
+                    <h2>Welcome to SMPPMS!</h2>
                     <p>Hi ${userName},</p>
                     <p>Thank you for signing up! Please verify your email address using the code below:</p>
                     <div style="background-color: #f4f4f4; padding: 15px; text-align: center; font-size: 28px; font-weight: bold; letter-spacing: 5px; border-radius: 5px;">
@@ -30,17 +30,17 @@ export const getVerificationTemplate = (userName, verificationCode, language = '
                     <p style="margin-top: 20px;">This code will expire in <strong>10 minutes</strong>.</p>
                     <p>If you didn't request this, please ignore this email.</p>
                     <hr style="margin: 20px 0;">
-                    <p style="color: #666; font-size: 12px;">SMPMPS - Smart Market Price Monitoring System</p>
+                    <p style="color: #666; font-size: 12px;">SMPPMS - Smart Market Price Monitoring System</p>
                 </div>
             </div>
         `,
         fr: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
                 <div style="background-color: #4CAF50; padding: 20px; text-align: center; border-radius: 5px 5px 0 0;">
-                    <h1 style="color: white; margin: 0;">SMPMPS</h1>
+                    <h1 style="color: white; margin: 0;">SMPPMS</h1>
                 </div>
                 <div style="padding: 20px; border: 1px solid #e0e0e0; border-top: none; border-radius: 0 0 5px 5px;">
-                    <h2>Bienvenue sur SMPMPS!</h2>
+                    <h2>Bienvenue sur SMPPMS!</h2>
                     <p>Bonjour ${userName},</p>
                     <p>Merci de vous être inscrit! Veuillez vérifier votre adresse email avec le code ci-dessous:</p>
                     <div style="background-color: #f4f4f4; padding: 15px; text-align: center; font-size: 28px; font-weight: bold; letter-spacing: 5px; border-radius: 5px;">
@@ -49,17 +49,17 @@ export const getVerificationTemplate = (userName, verificationCode, language = '
                     <p style="margin-top: 20px;">Ce code expirera dans <strong>10 minutes</strong>.</p>
                     <p>Si vous n'avez pas demandé cela, ignorez cet email.</p>
                     <hr style="margin: 20px 0;">
-                    <p style="color: #666; font-size: 12px;">SMPMPS - Système de Surveillance des Prix du Marché</p>
+                    <p style="color: #666; font-size: 12px;">SMPPMS - Système de Surveillance des Prix du Marché</p>
                 </div>
             </div>
         `,
         rw: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
                 <div style="background-color: #4CAF50; padding: 20px; text-align: center; border-radius: 5px 5px 0 0;">
-                    <h1 style="color: white; margin: 0;">SMPMPS</h1>
+                    <h1 style="color: white; margin: 0;">SMPPMS</h1>
                 </div>
                 <div style="padding: 20px; border: 1px solid #e0e0e0; border-top: none; border-radius: 0 0 5px 5px;">
-                    <h2>Murakaza Neza kuri SMPMPS!</h2>
+                    <h2>Murakaza Neza kuri SMPPMS!</h2>
                     <p>Mwaramutse ${userName},</p>
                     <p>Urakoze kwiyandikisha! Nyamuneka emera imeli yawe ukoreshe kodi ikurikira:</p>
                     <div style="background-color: #f4f4f4; padding: 15px; text-align: center; font-size: 28px; font-weight: bold; letter-spacing: 5px; border-radius: 5px;">
@@ -68,7 +68,7 @@ export const getVerificationTemplate = (userName, verificationCode, language = '
                     <p style="margin-top: 20px;">Iyi kodi izashira mu <strong>minota 10</strong>.</p>
                     <p>Niba utabikoze, wirengagize iyi imeli.</p>
                     <hr style="margin: 20px 0;">
-                    <p style="color: #666; font-size: 12px;">SMPMPS - Sisitemu yo Gukurikirana Ibiciro ku Isoko</p>
+                    <p style="color: #666; font-size: 12px;">SMPPMS - Sisitemu yo Gukurikirana Ibiciro ku Isoko</p>
                 </div>
             </div>
         `
@@ -84,20 +84,20 @@ export const getVerificationTemplate = (userName, verificationCode, language = '
 // PASSWORD RESET EMAIL
 // ============================================
 export const getPasswordResetTemplate = (userName, resetToken, resetCode, language = 'en') => {
-    const frontendUrl = process.env.FRONTEND_URL || 'https://smpmps-test.onrender.com';
+    const frontendUrl = process.env.FRONTEND_URL || 'https://smppms-test.onrender.com';
     const resetLink = `${frontendUrl}/reset-password?token=${resetToken}`;
 
     const subjects = {
-        en: 'Reset Your Password - SMPMPS',
-        fr: 'Réinitialisez votre mot de passe - SMPMPS',
-        rw: 'Subiza Ijambo ryibanga - SMPMPS'
+        en: 'Reset Your Password - SMPPMS',
+        fr: 'Réinitialisez votre mot de passe - SMPPMS',
+        rw: 'Subiza Ijambo ryibanga - SMPPMS'
     };
 
     const templates = {
         en: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
                 <div style="background-color: #ff9800; padding: 20px; text-align: center; border-radius: 5px 5px 0 0;">
-                    <h1 style="color: white; margin: 0;">SMPMPS</h1>
+                    <h1 style="color: white; margin: 0;">SMPPMS</h1>
                 </div>
                 <div style="padding: 20px; border: 1px solid #e0e0e0; border-top: none; border-radius: 0 0 5px 5px;">
                     <h2>Password Reset Request</h2>
@@ -110,14 +110,14 @@ export const getPasswordResetTemplate = (userName, resetToken, resetCode, langua
                     <p>This link will expire in <strong>1 hour</strong>.</p>
                     <p>If you didn't request this, please ignore this email.</p>
                     <hr style="margin: 20px 0;">
-                    <p style="color: #666; font-size: 12px;">SMPMPS - Smart Market Price Monitoring System</p>
+                    <p style="color: #666; font-size: 12px;">SMPPMS - Smart Market Price Monitoring System</p>
                 </div>
             </div>
         `,
         fr: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
                 <div style="background-color: #ff9800; padding: 20px; text-align: center; border-radius: 5px 5px 0 0;">
-                    <h1 style="color: white; margin: 0;">SMPMPS</h1>
+                    <h1 style="color: white; margin: 0;">SMPPMS</h1>
                 </div>
                 <div style="padding: 20px; border: 1px solid #e0e0e0; border-top: none; border-radius: 0 0 5px 5px;">
                     <h2>Demande de réinitialisation du mot de passe</h2>
@@ -130,14 +130,14 @@ export const getPasswordResetTemplate = (userName, resetToken, resetCode, langua
                     <p>Ce lien expirera dans <strong>1 heure</strong>.</p>
                     <p>Si vous n'avez pas demandé cela, ignorez cet email.</p>
                     <hr style="margin: 20px 0;">
-                    <p style="color: #666; font-size: 12px;">SMPMPS - Système de Surveillance des Prix du Marché</p>
+                    <p style="color: #666; font-size: 12px;">SMPPMS - Système de Surveillance des Prix du Marché</p>
                 </div>
             </div>
         `,
         rw: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
                 <div style="background-color: #ff9800; padding: 20px; text-align: center; border-radius: 5px 5px 0 0;">
-                    <h1 style="color: white; margin: 0;">SMPMPS</h1>
+                    <h1 style="color: white; margin: 0;">SMPPMS</h1>
                 </div>
                 <div style="padding: 20px; border: 1px solid #e0e0e0; border-top: none; border-radius: 0 0 5px 5px;">
                     <h2>Gusaba Gusubiza Ijambo ryibanga</h2>
@@ -150,7 +150,7 @@ export const getPasswordResetTemplate = (userName, resetToken, resetCode, langua
                     <p>Iyi linki izashira mu <strong>saha 1</strong>.</p>
                     <p>Niba utabikoze, wirengagize iyi imeli.</p>
                     <hr style="margin: 20px 0;">
-                    <p style="color: #666; font-size: 12px;">SMPMPS - Sisitemu yo Gukurikirana Ibiciro ku Isoko</p>
+                    <p style="color: #666; font-size: 12px;">SMPPMS - Sisitemu yo Gukurikirana Ibiciro ku Isoko</p>
                 </div>
             </div>
         `
@@ -176,7 +176,7 @@ export const getPriceAlertTemplate = (userName, alertData) => {
     const html = `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
             <div style="background-color: #2196F3; padding: 20px; text-align: center; border-radius: 5px 5px 0 0;">
-                <h1 style="color: white; margin: 0;">SMPMPS Price Alert</h1>
+                <h1 style="color: white; margin: 0;">SMPPMS Price Alert</h1>
             </div>
             <div style="padding: 20px; border: 1px solid #e0e0e0; border-top: none; border-radius: 0 0 5px 5px;">
                 <h2>${emoji} Price Alert Triggered!</h2>
@@ -209,16 +209,16 @@ export const getPriceAlertTemplate = (userName, alertData) => {
 // ============================================
 export const getWelcomeTemplate = (userName, language = 'en') => {
     const subjects = {
-        en: 'Welcome to SMPMPS! Account Verified',
-        fr: 'Bienvenue sur SMPMPS! Compte vérifié',
-        rw: 'Murakaza Neza kuri SMPMPS! Konti Yawe Yemejwe'
+        en: 'Welcome to SMPPMS! Account Verified',
+        fr: 'Bienvenue sur SMPPMS! Compte vérifié',
+        rw: 'Murakaza Neza kuri SMPPMS! Konti Yawe Yemejwe'
     };
 
     const templates = {
         en: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
                 <div style="background-color: #4CAF50; padding: 20px; text-align: center; border-radius: 5px 5px 0 0;">
-                    <h1 style="color: white; margin: 0;">Welcome to SMPMPS!</h1>
+                    <h1 style="color: white; margin: 0;">Welcome to SMPPMS!</h1>
                 </div>
                 <div style="padding: 20px; border: 1px solid #e0e0e0; border-top: none; border-radius: 0 0 5px 5px;">
                     <h2>Account Verified Successfully!</h2>
@@ -232,20 +232,20 @@ export const getWelcomeTemplate = (userName, language = 'en') => {
                         <li>Receive real-time price notifications</li>
                     </ul>
                     <p style="margin-top: 20px;">
-                        <a href="${process.env.FRONTEND_URL || 'https://smpmps-test.onrender.com'}/dashboard" 
+                        <a href="${process.env.FRONTEND_URL || 'https://smppms-test.onrender.com'}/dashboard" 
                            style="background-color: #4CAF50; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block;">
                             Go to Dashboard
                         </a>
                     </p>
                     <hr style="margin: 20px 0;">
-                    <p style="color: #666; font-size: 12px;">SMPMPS - Smart Market Price Monitoring System</p>
+                    <p style="color: #666; font-size: 12px;">SMPPMS - Smart Market Price Monitoring System</p>
                 </div>
             </div>
         `,
         fr: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
                 <div style="background-color: #4CAF50; padding: 20px; text-align: center; border-radius: 5px 5px 0 0;">
-                    <h1 style="color: white; margin: 0;">Bienvenue sur SMPMPS!</h1>
+                    <h1 style="color: white; margin: 0;">Bienvenue sur SMPPMS!</h1>
                 </div>
                 <div style="padding: 20px; border: 1px solid #e0e0e0; border-top: none; border-radius: 0 0 5px 5px;">
                     <h2>Compte vérifié avec succès!</h2>
@@ -259,20 +259,20 @@ export const getWelcomeTemplate = (userName, language = 'en') => {
                         <li>Recevoir des notifications de prix en temps réel</li>
                     </ul>
                     <p style="margin-top: 20px;">
-                        <a href="${process.env.FRONTEND_URL || 'https://smpmps-test.onrender.com'}/dashboard" 
+                        <a href="${process.env.FRONTEND_URL || 'https://smppms-test.onrender.com'}/dashboard" 
                            style="background-color: #4CAF50; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block;">
                             Aller au tableau de bord
                         </a>
                     </p>
                     <hr style="margin: 20px 0;">
-                    <p style="color: #666; font-size: 12px;">SMPMPS - Système de Surveillance des Prix du Marché</p>
+                    <p style="color: #666; font-size: 12px;">SMPPMS - Système de Surveillance des Prix du Marché</p>
                 </div>
             </div>
         `,
         rw: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
                 <div style="background-color: #4CAF50; padding: 20px; text-align: center; border-radius: 5px 5px 0 0;">
-                    <h1 style="color: white; margin: 0;">Murakaza Neza kuri SMPMPS!</h1>
+                    <h1 style="color: white; margin: 0;">Murakaza Neza kuri SMPPMS!</h1>
                 </div>
                 <div style="padding: 20px; border: 1px solid #e0e0e0; border-top: none; border-radius: 0 0 5px 5px;">
                     <h2>Konti Yawe Yemejwe Neza!</h2>
@@ -286,13 +286,13 @@ export const getWelcomeTemplate = (userName, language = 'en') => {
                         <li>Kwakira amakuru ku biciro ako kanya</li>
                     </ul>
                     <p style="margin-top: 20px;">
-                        <a href="${process.env.FRONTEND_URL || 'https://smpmps-test.onrender.com'}/dashboard" 
+                        <a href="${process.env.FRONTEND_URL || 'https://smppms-test.onrender.com'}/dashboard" 
                            style="background-color: #4CAF50; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block;">
                             Jya kuri Dashboard
                         </a>
                     </p>
                     <hr style="margin: 20px 0;">
-                    <p style="color: #666; font-size: 12px;">SMPMPS - Sisitemu yo Gukurikirana Ibiciro ku Isoko</p>
+                    <p style="color: #666; font-size: 12px;">SMPPMS - Sisitemu yo Gukurikirana Ibiciro ku Isoko</p>
                 </div>
             </div>
         `
@@ -309,16 +309,16 @@ export const getWelcomeTemplate = (userName, language = 'en') => {
 // ============================================
 export const getVendorCredentialsTemplate = (vendorName, email, password, language = 'en') => {
     const subjects = {
-        en: 'Your Vendor Account Credentials - SMPMPS',
-        fr: 'Vos identifiants de fournisseur - SMPMPS',
-        rw: 'Amakuru ya Konti ya Vendor - SMPMPS'
+        en: 'Your Vendor Account Credentials - SMPPMS',
+        fr: 'Vos identifiants de fournisseur - SMPPMS',
+        rw: 'Amakuru ya Konti ya Vendor - SMPPMS'
     };
 
     const templates = {
         en: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto;">
                 <div style="background-color: #4CAF50; padding: 20px; text-align: center; border-radius: 5px 5px 0 0;">
-                    <h1 style="color: white; margin: 0;">SMPMPS</h1>
+                    <h1 style="color: white; margin: 0;">SMPPMS</h1>
                 </div>
                 <div style="padding: 20px;">
                     <h2>Welcome ${vendorName} 👋</h2>
@@ -330,14 +330,14 @@ export const getVendorCredentialsTemplate = (vendorName, email, password, langua
                     </div>
                     <p style="color: #ff9800;"><strong>⚠️ Please login and change your password immediately.</strong></p>
                     <hr style="margin: 20px 0;">
-                    <p style="color: #666; font-size: 12px;">SMPMPS - Smart Market Price Monitoring System</p>
+                    <p style="color: #666; font-size: 12px;">SMPPMS - Smart Market Price Monitoring System</p>
                 </div>
             </div>
         `,
         fr: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto;">
                 <div style="background-color: #4CAF50; padding: 20px; text-align: center; border-radius: 5px 5px 0 0;">
-                    <h1 style="color: white; margin: 0;">SMPMPS</h1>
+                    <h1 style="color: white; margin: 0;">SMPPMS</h1>
                 </div>
                 <div style="padding: 20px;">
                     <h2>Bienvenue ${vendorName} 👋</h2>
@@ -349,14 +349,14 @@ export const getVendorCredentialsTemplate = (vendorName, email, password, langua
                     </div>
                     <p style="color: #ff9800;"><strong>⚠️ Veuillez vous connecter et changer votre mot de passe immédiatement.</strong></p>
                     <hr style="margin: 20px 0;">
-                    <p style="color: #666; font-size: 12px;">SMPMPS - Système de Surveillance des Prix du Marché</p>
+                    <p style="color: #666; font-size: 12px;">SMPPMS - Système de Surveillance des Prix du Marché</p>
                 </div>
             </div>
         `,
         rw: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto;">
                 <div style="background-color: #4CAF50; padding: 20px; text-align: center; border-radius: 5px 5px 0 0;">
-                    <h1 style="color: white; margin: 0;">SMPMPS</h1>
+                    <h1 style="color: white; margin: 0;">SMPPMS</h1>
                 </div>
                 <div style="padding: 20px;">
                     <h2>Murakaza neza ${vendorName} 👋</h2>
@@ -368,7 +368,7 @@ export const getVendorCredentialsTemplate = (vendorName, email, password, langua
                     </div>
                     <p style="color: #ff9800;"><strong>⚠️ Nyamuneka injira uhite uhindura ijambo ryibanga.</strong></p>
                     <hr style="margin: 20px 0;">
-                    <p style="color: #666; font-size: 12px;">SMPMPS - Sisitemu yo Gukurikirana Ibiciro ku Isoko</p>
+                    <p style="color: #666; font-size: 12px;">SMPPMS - Sisitemu yo Gukurikirana Ibiciro ku Isoko</p>
                 </div>
             </div>
         `
@@ -385,16 +385,16 @@ export const getVendorCredentialsTemplate = (vendorName, email, password, langua
 // ============================================
 export const getBusinessCredentialsTemplate = (businessName, ownerName, email, password, language = 'en') => {
     const subjects = {
-        en: 'Your Business Account Credentials - SMPMPS',
-        fr: 'Vos identifiants professionnels - SMPMPS',
-        rw: 'Amakuru ya Konti y\'Ubucuruzi - SMPMPS'
+        en: 'Your Business Account Credentials - SMPPMS',
+        fr: 'Vos identifiants professionnels - SMPPMS',
+        rw: 'Amakuru ya Konti y\'Ubucuruzi - SMPPMS'
     };
 
     const templates = {
         en: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto;">
                 <div style="background-color: #2196F3; padding: 20px; text-align: center; border-radius: 5px 5px 0 0;">
-                    <h1 style="color: white; margin: 0;">SMPMPS Business</h1>
+                    <h1 style="color: white; margin: 0;">SMPPMS Business</h1>
                 </div>
                 <div style="padding: 20px;">
                     <h2>Welcome ${ownerName} 👋</h2>
@@ -406,14 +406,14 @@ export const getBusinessCredentialsTemplate = (businessName, ownerName, email, p
                     </div>
                     <p style="color: #ff9800;"><strong>⚠️ Please login and change your password immediately.</strong></p>
                     <hr style="margin: 20px 0;">
-                    <p style="color: #666; font-size: 12px;">SMPMPS - Smart Market Price Monitoring System</p>
+                    <p style="color: #666; font-size: 12px;">SMPPMS - Smart Market Price Monitoring System</p>
                 </div>
             </div>
         `,
         fr: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto;">
                 <div style="background-color: #2196F3; padding: 20px; text-align: center; border-radius: 5px 5px 0 0;">
-                    <h1 style="color: white; margin: 0;">SMPMPS Business</h1>
+                    <h1 style="color: white; margin: 0;">SMPPMS Business</h1>
                 </div>
                 <div style="padding: 20px;">
                     <h2>Bienvenue ${ownerName} 👋</h2>
@@ -425,14 +425,14 @@ export const getBusinessCredentialsTemplate = (businessName, ownerName, email, p
                     </div>
                     <p style="color: #ff9800;"><strong>⚠️ Veuillez vous connecter et changer votre mot de passe immédiatement.</strong></p>
                     <hr style="margin: 20px 0;">
-                    <p style="color: #666; font-size: 12px;">SMPMPS - Système de Surveillance des Prix du Marché</p>
+                    <p style="color: #666; font-size: 12px;">SMPPMS - Système de Surveillance des Prix du Marché</p>
                 </div>
             </div>
         `,
         rw: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto;">
                 <div style="background-color: #2196F3; padding: 20px; text-align: center; border-radius: 5px 5px 0 0;">
-                    <h1 style="color: white; margin: 0;">SMPMPS Business</h1>
+                    <h1 style="color: white; margin: 0;">SMPPMS Business</h1>
                 </div>
                 <div style="padding: 20px;">
                     <h2>Murakaza neza ${ownerName} 👋</h2>
@@ -444,7 +444,7 @@ export const getBusinessCredentialsTemplate = (businessName, ownerName, email, p
                     </div>
                     <p style="color: #ff9800;"><strong>⚠️ Nyamuneka injira uhite uhindura ijambo ryibanga.</strong></p>
                     <hr style="margin: 20px 0;">
-                    <p style="color: #666; font-size: 12px;">SMPMPS - Sisitemu yo Gukurikirana Ibiciro ku Isoko</p>
+                    <p style="color: #666; font-size: 12px;">SMPPMS - Sisitemu yo Gukurikirana Ibiciro ku Isoko</p>
                 </div>
             </div>
         `
@@ -520,14 +520,14 @@ export const getSubscriptionNotificationTemplate = (name, planName, action, endD
     const html = `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
             <div style="background-color: ${action === 'approved' ? '#4CAF50' : action === 'rejected' ? '#f44336' : '#2196F3'}; padding: 20px; text-align: center; border-radius: 5px 5px 0 0;">
-                <h1 style="color: white; margin: 0;">SMPMPS</h1>
+                <h1 style="color: white; margin: 0;">SMPPMS</h1>
             </div>
             <div style="padding: 20px; border: 1px solid #e0e0e0; border-top: none; border-radius: 0 0 5px 5px;">
                 <h2>${actionTitles[language]?.[action] || actionTitles.en[action]}</h2>
                 <p>Dear ${name},</p>
                 ${getMessage()}
                 <hr style="margin: 20px 0;">
-                <p style="color: #666; font-size: 12px;">SMPMPS - Smart Market Price Monitoring System</p>
+                <p style="color: #666; font-size: 12px;">SMPPMS - Smart Market Price Monitoring System</p>
             </div>
         </div>
     `;
