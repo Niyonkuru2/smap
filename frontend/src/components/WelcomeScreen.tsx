@@ -78,7 +78,7 @@ export default function WelcomeScreen({ onEnterApp }: WelcomeScreenProps) {
               </div>
               <div>
                 <h1 className="text-xl font-bold text-slate-900 dark:text-white">
-                  SMPMPS
+                  SMPPMS
                 </h1>
                 <p className="text-xs text-slate-500 dark:text-slate-400">
                   Market Price Monitoring System

@@ -748,7 +748,7 @@ export default function LoginPage() {
           <div className="icon-container">
             <ShoppingCart className="h-6 w-6 text-primary" />
           </div>
-          <h1 className="text-xl font-bold gradient-text">SMPMPS</h1>
+          <h1 className="text-xl font-bold gradient-text">SMPPMS</h1>
           <span className="text-sm text-muted-foreground hidden sm:inline">
             Market Price Monitoring System
           </span>

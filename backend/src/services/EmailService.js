@@ -108,7 +108,7 @@ export const sendEmail = async ({ to, subject, html, text }) => {
     try {
         const from = process.env.EMAIL_FROM || process.env.EMAIL_USER || 'noreply@smpmps.com';
         const info = await sendWithRetry({
-            from: `"SMPMPS" <${from}>`,
+            from: `"SMPPMS" <${from}>`,
             to,
             subject,
             html,

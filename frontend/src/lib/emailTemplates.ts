@@ -1,5 +1,5 @@
 // Enhanced Email Templates with Multi-Language Support
-// Smart Market Price Monitoring and Prediction System (SMPMPS)
+// Smart Market Price Monitoring and Prediction System (SMPPMS)
 
 export type EmailLanguage = 'en' | 'rw' | 'fr';
 
@@ -26,14 +26,14 @@ interface EmailTranslations {
 
 export const emailTranslations: Record<EmailLanguage, EmailTranslations> = {
   en: {
-    subject: '🔐 Verify Your Email - SMPMPS',
+    subject: '🔐 Verify Your Email - SMPPMS',
     greeting: 'Hello',
     welcomeMessage: 'Welcome to Smart Market Price Monitoring and Prediction System! To complete your registration and start comparing prices across Rwanda\'s markets, please verify your email address.',
     codeLabel: 'Your Verification Code',
     expiryWarning: 'Important: This code will expire in',
     howToVerifyTitle: '📋 How to Verify:',
     howToVerifySteps: [
-      'Return to the SMPMPS app',
+      'Return to the SMPPMS app',
       'Enter the 6-digit code shown above',
       'Click the "Verify Email" button',
       'Start exploring market prices!'
@@ -43,7 +43,7 @@ export const emailTranslations: Record<EmailLanguage, EmailTranslations> = {
     supportTitle: 'Having trouble? Contact our support team:',
     supportEmail: 'support@rwandaprices.com',
     supportPhone: '+250 788 000 000',
-    footer: 'SMPMPS. All rights reserved.',
+    footer: 'SMPPMS. All rights reserved.',
     privacyPolicy: 'Privacy Policy',
     termsOfService: 'Terms of Service',
     allRightsReserved: 'All rights reserved',
@@ -57,14 +57,14 @@ export const emailTranslations: Record<EmailLanguage, EmailTranslations> = {
     ]
   },
   rw: {
-    subject: '🔐 Emeza Email Yawe - SMPMPS',
+    subject: '🔐 Emeza Email Yawe - SMPPMS',
     greeting: 'Muraho',
-    welcomeMessage: 'Murakaza neza kuri SMPMPS! Kugirango urangize kwiyandikisha no gutangira kugereranya ibiciro mu masoko ya Rwanda, nyamuneka emeza email yawe.',
+    welcomeMessage: 'Murakaza neza kuri SMPPMS! Kugirango urangize kwiyandikisha no gutangira kugereranya ibiciro mu masoko ya Rwanda, nyamuneka emeza email yawe.',
     codeLabel: 'Kode Yawe yo Kwemeza',
     expiryWarning: 'Ngombwa: Iyi kode izarangira mu',
     howToVerifyTitle: '📋 Uburyo bwo Kwemeza:',
     howToVerifySteps: [
-      'Subira kuri porogaramu ya SMPMPS',
+      'Subira kuri porogaramu ya SMPPMS',
       'Injiza kode y\'imibare 6 yerekanwe hejuru',
       'Kanda buto itwa "Emeza Email"',
       'Tangira gushakisha ibiciro by\'isoko!'
@@ -74,7 +74,7 @@ export const emailTranslations: Record<EmailLanguage, EmailTranslations> = {
     supportTitle: 'Ufite ibibazo? Hamagara itsinda ryacu ry\'ubufasha:',
     supportEmail: 'support@rwandaprices.com',
     supportPhone: '+250 788 000 000',
-    footer: 'SMPMPS. Uburenganzira bwose burabungabungwa.',
+    footer: 'SMPPMS. Uburenganzira bwose burabungabungwa.',
     privacyPolicy: 'Politiki y\'Ibanga',
     termsOfService: 'Amabwiriza y\'Ikoranabuhanga',
     allRightsReserved: 'Uburenganzira bwose burabungabungwa',
@@ -88,14 +88,14 @@ export const emailTranslations: Record<EmailLanguage, EmailTranslations> = {
     ]
   },
   fr: {
-    subject: '🔐 Vérifiez Votre Email - SMPMPS',
+    subject: '🔐 Vérifiez Votre Email - SMPPMS',
     greeting: 'Bonjour',
     welcomeMessage: 'Bienvenue au Système de Suivi et Prédiction des Prix du Marché! Pour compléter votre inscription et commencer à comparer les prix sur les marchés du Rwanda, veuillez vérifier votre adresse email.',
     codeLabel: 'Votre Code de Vérification',
     expiryWarning: 'Important: Ce code expirera dans',
     howToVerifyTitle: '📋 Comment Vérifier:',
     howToVerifySteps: [
-      'Retournez à l\'application SMPMPS',
+      'Retournez à l\'application SMPPMS',
       'Entrez le code à 6 chiffres affiché ci-dessus',
       'Cliquez sur le bouton "Vérifier l\'Email"',
       'Commencez à explorer les prix du marché!'
@@ -105,7 +105,7 @@ export const emailTranslations: Record<EmailLanguage, EmailTranslations> = {
     supportTitle: 'Besoin d\'aide? Contactez notre équipe d\'assistance:',
     supportEmail: 'support@rwandaprices.com',
     supportPhone: '+250 788 000 000',
-    footer: 'SMPMPS. Tous droits réservés.',
+    footer: 'SMPPMS. Tous droits réservés.',
     privacyPolicy: 'Politique de Confidentialité',
     termsOfService: 'Conditions d\'Utilisation',
     allRightsReserved: 'Tous droits réservés',
@@ -446,7 +446,7 @@ export function generateVerificationEmailHTML(
       <div class="header">
         <div class="header-content">
           <div class="logo">🛒</div>
-          <h1>SMPMPS</h1>
+          <h1>SMPPMS</h1>
           <p>${t.subject.split(' - ')[0]}</p>
         </div>
       </div>
@@ -524,9 +524,9 @@ export function generateWelcomeEmailHTML(
   language: EmailLanguage = 'en'
 ): string {
   const t = emailTranslations[language];
-  const welcomeSubject = language === 'en' ? '🎉 Welcome to SMPMPS!' :
-                        language === 'rw' ? '🎉 Murakaza Neza kuri SMPMPS!' :
-                        '🎉 Bienvenue au SMPMPS!';
+  const welcomeSubject = language === 'en' ? '🎉 Welcome to SMPPMS!' :
+                        language === 'rw' ? '🎉 Murakaza Neza kuri SMPPMS!' :
+                        '🎉 Bienvenue au SMPPMS!';
   
   const welcomeTitle = language === 'en' ? 'Welcome!' :
                        language === 'rw' ? 'Murakaza Neza!' :
@@ -661,7 +661,7 @@ export function generateWelcomeEmailHTML(
 <body>
   <div class="container">
     <div class="header">
-      <h1>🛒 SMPMPS</h1>
+      <h1>🛒 SMPPMS</h1>
     </div>
     
     <div class="content">
@@ -752,7 +752,7 @@ export function generate2FAEmailHTML(
       </div>
     </div>
     <div class="footer">
-      <p>© 2024 SMPMPS</p>
+      <p>© 2024 SMPPMS</p>
     </div>
   </div>
 </body>
@@ -771,10 +771,10 @@ export function generatePasswordResetEmailHTML(
   expiryMinutes: number = 60
 ): string {
   const subject = language === 'en'
-    ? 'Reset Your Password - SMPMPS'
+    ? 'Reset Your Password - SMPPMS'
     : language === 'rw'
-    ? 'Hindura Ijambo ry\'Ibanga - SMPMPS'
-    : 'Reinitialisez Votre Mot de Passe - SMPMPS';
+    ? 'Hindura Ijambo ry\'Ibanga - SMPPMS'
+    : 'Reinitialisez Votre Mot de Passe - SMPPMS';
 
   const heading = language === 'en'
     ? 'Password Reset Request'
