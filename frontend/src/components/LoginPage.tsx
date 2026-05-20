@@ -127,7 +127,6 @@ export default function LoginPage() {
     }
   };
 
-  // Navigation helper based on user role
   const navigateToDashboard = (role: string) => {
     switch (role) {
       case 'admin':
