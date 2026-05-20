@@ -98,34 +98,32 @@ export default function LoginPage() {
   }, [codeExpireTime]);
 
   // ============= LOGIN HANDLERS =============
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const cleanEmail = sanitizeEmail(email);
+ const handleLogin = async (e: React.FormEvent) => {
+  e.preventDefault();
+  const cleanEmail = sanitizeEmail(email);
 
-    if (!isValidEmail(cleanEmail)) {
-      toast.error('Please enter a valid email');
-      return;
-    }
-    if (!password) {
-      toast.error('Please enter a password');
-      return;
-    }
+  if (!isValidEmail(cleanEmail)) {
+    toast.error('Please enter a valid email');
+    return;
+  }
+  if (!password) {
+    toast.error('Please enter a password');
+    return;
+  }
 
-    setLoading(true);
-    try {
-      const user = await login(cleanEmail, password);
-      toast.success(`Welcome back, ${user.name}!`);
-      // Navigation happens automatically via the ProtectedRoute redirect
-      // Force a small delay to ensure state is updated
-      setTimeout(() => {
-        navigateToDashboard(user.role);
-      }, 100);
-    } catch (error: any) {
-      toast.error(error.message || 'Login failed');
-    } finally {
-      setLoading(false);
-    }
-  };
+  setLoading(true);
+  try {
+    const user = await login(cleanEmail, password);
+    toast.success(`Welcome back, ${user.name}!`);
+    setTimeout(() => {
+      navigateToDashboard(user.role);
+    }, 50);
+  } catch (error: any) {
+    toast.error(error.message || 'Login failed');
+  } finally {
+    setLoading(false);
+  }
+};
 
   const navigateToDashboard = (role: string) => {
     switch (role) {

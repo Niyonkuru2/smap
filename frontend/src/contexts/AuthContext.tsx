@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { getSession, register as apiRegister, logout as apiLogout, signIn } from '../lib/api';
 import type { UserType, UserRole } from '../types';
+
 interface AuthContextType {
   user: UserType | null;
   loading: boolean;
@@ -42,21 +43,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         const token = localStorage.getItem('authToken');
 
         if (storedUser && token) {
-          setUser(JSON.parse(storedUser));
-        } else {
-          // Optional API fallback
-          const session = await getSession();
-          if (session?.user) {
-            const userData: UserType = {
-              id: session.user.id.toString(),
-              name: session.user.name,
-              email: session.user.email,
-              role: session.user.role,
-            };
-
-            setUser(userData);
-            localStorage.setItem('user', JSON.stringify(userData));
-          }
+          const parsedUser = JSON.parse(storedUser);
+          setUser({
+            id: parsedUser.id.toString(),
+            name: parsedUser.name,
+            email: parsedUser.email,
+            role: parsedUser.role,
+          });
         }
       } catch (error) {
         console.error('Auth init failed:', error);
@@ -72,24 +65,39 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const login = async (email: string, password: string): Promise<UserType> => {
     setLoading(true);
     try {
+      // signIn already stores to localStorage and returns LoginResponse
       const response = await signIn(email, password);
-
+      
+      // Check if login was successful
+      if (!response.success) {
+        throw new Error(response.message || 'Login failed');
+      }
+      
+      // Get user from response (api.ts already stored it, but we need it for return)
       const userData: UserType = {
         id: response.user.id.toString(),
         name: response.user.name,
         email: response.user.email,
         role: response.user.role,
       };
-
-      if (response.token) {
-        localStorage.setItem('authToken', response.token);
+      
+      // Update state from what's already in localStorage (to avoid race conditions)
+      const storedUser = localStorage.getItem('user');
+      if (storedUser) {
+        const parsedUser = JSON.parse(storedUser);
+        setUser({
+          id: parsedUser.id.toString(),
+          name: parsedUser.name,
+          email: parsedUser.email,
+          role: parsedUser.role,
+        });
+      } else {
+        setUser(userData);
       }
-
-      localStorage.setItem('user', JSON.stringify(userData));
-      setUser(userData);
-
+      
       return userData;
     } catch (error) {
+      console.error('Login error:', error);
       throw error;
     } finally {
       setLoading(false);
@@ -100,22 +108,34 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const register = async (data: RegisterData): Promise<UserType> => {
     setLoading(true);
     try {
+      // apiRegister already stores to localStorage
       const response = await apiRegister(data);
-
+      
+      if (!response.success) {
+        throw new Error(response.message || 'Registration failed');
+      }
+      
       const newUser: UserType = {
         id: response.user.id.toString(),
         name: response.user.name,
         email: response.user.email,
         role: response.user.role,
       };
-
-      if (response.token) {
-        localStorage.setItem('authToken', response.token);
+      
+      // Update state from localStorage
+      const storedUser = localStorage.getItem('user');
+      if (storedUser) {
+        const parsedUser = JSON.parse(storedUser);
+        setUser({
+          id: parsedUser.id.toString(),
+          name: parsedUser.name,
+          email: parsedUser.email,
+          role: parsedUser.role,
+        });
+      } else {
+        setUser(newUser);
       }
-
-      localStorage.setItem('user', JSON.stringify(newUser));
-      setUser(newUser);
-
+      
       return newUser;
     } catch (error) {
       throw error;
@@ -132,9 +152,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     } catch (error) {
       console.warn('Logout API failed, clearing locally anyway');
     } finally {
+      // apiLogout already clears storage, but do it again to be safe
       localStorage.removeItem('authToken');
       localStorage.removeItem('user');
-
+      localStorage.removeItem('auth_session');
+      
       setUser(null);
       setViewingAsRole(null);
       setLoading(false);
