@@ -7,7 +7,8 @@ export const corsOptions = {
             'http://localhost:3000',
             'http://127.0.0.1:5173',
             'http://127.0.0.1:3000',
-            'https://smap-kappa.vercel.app'
+            'https://smap-kappa.vercel.app',
+            'https://smap-hed5.vercel.app',
         ];
         
         if (!origin || allowedOrigins.includes(origin)) {
