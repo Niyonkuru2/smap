@@ -25,8 +25,10 @@ import anomalyRoutes from './anomalyRoutes.js';
 import analyticsRoutes from './analyticsRoutes.js';
 import priceAlertRoutes from './priceAlertRoutes.js';
 import forecastRoutes from './forecastRoutes.js';
-const router = express.Router();
+import ussdRoutes from './ussdRoutes.js';
 
+const router = express.Router();
+priceRoutes
 // Mount all route modules
 router.use('/auth', authRoutes);
 router.use('/vendor', vendorRoutes);
@@ -54,7 +56,7 @@ router.use('/analytics', analyticsRoutes);
 
 // Also handle legacy paths
 router.use('/import', exportRoutes);
-router.use('/ussd', smsRoutes);
+router.use('/ussd', ussdRoutes);;
 router.use('/forecast', forecastRoutes);
 router.use('/trends', historyRoutes);
 router.use('/seasonal', historyRoutes);

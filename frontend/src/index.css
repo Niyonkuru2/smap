@@ -478,21 +478,24 @@ body {
    PREMIUM TAB STYLES
    ======================================== */
 
+/* ========================================
+   PREMIUM TAB STYLES
+   ======================================== */
+
 .tab-trigger-premium {
   display: inline-flex;
   align-items: center;
   justify-content: center;
 
-  height: 52px;
+  min-height: 48px;
 
-  padding: 0.75rem 1.2rem;
+  padding: 0.65rem 1rem;
 
   border-radius: 16px;
 
   white-space: nowrap;
-  flex-shrink: 0;
 
-  font-size: 0.9rem;
+  font-size: 0.88rem;
   font-weight: 600;
 
   color: hsl(var(--muted-foreground));
@@ -502,7 +505,9 @@ body {
   background: transparent;
 
   position: relative;
-  overflow: hidden;
+
+  /* IMPORTANT */
+  overflow: visible;
 
   transition:
     background 0.25s ease,
@@ -527,13 +532,12 @@ body {
 .tab-trigger-premium[data-state='active'] {
   color: white !important;
 
-  background:
-    linear-gradient(
-      135deg,
-      rgba(5, 150, 105, 1) 0%,
-      rgba(16, 185, 129, 1) 55%,
-      rgba(4, 120, 87, 1) 100%
-    );
+  background: linear-gradient(
+    135deg,
+    rgba(5, 150, 105, 1) 0%,
+    rgba(16, 185, 129, 1) 55%,
+    rgba(4, 120, 87, 1) 100%
+  );
 
   border-color: rgba(16, 185, 129, 0.35);
 
@@ -554,21 +558,50 @@ body {
   position: absolute;
   inset: 0;
 
-  background:
-    linear-gradient(
-      120deg,
-      transparent 20%,
-      rgba(255, 255, 255, 0.12) 50%,
-      transparent 80%
-    );
+  border-radius: inherit;
+
+  background: linear-gradient(
+    120deg,
+    transparent 20%,
+    rgba(255, 255, 255, 0.12) 50%,
+    transparent 80%
+  );
 
   transform: translateX(-100%);
   animation: premiumTabShine 2.8s linear infinite;
+
+  pointer-events: none;
 }
 
+/* Badge support */
+.tab-trigger-premium .badge,
+.tab-trigger-premium [data-badge='true'] {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  z-index: 20;
+}
+
+/* Animation */
 @keyframes premiumTabShine {
   to {
     transform: translateX(100%);
+  }
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+  .tab-trigger-premium {
+    padding: 0.6rem 0.9rem;
+    min-height: 46px;
+    font-size: 0.85rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .tab-trigger-premium {
+    width: 100%;
+    justify-content: flex-start;
   }
 }
 /* Fresh Badge - For new/fresh items */

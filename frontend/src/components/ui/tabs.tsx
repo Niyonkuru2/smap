@@ -21,31 +21,32 @@ function TabsList({
   ...props
 }: React.ComponentProps<typeof TabsPrimitive.List>) {
   return (
-    <div className="w-full overflow-x-auto scrollbar-hide">
-      <TabsPrimitive.List
-        data-slot="tabs-list"
-        className={cn(
-          `
-          flex
-          w-max
-          min-w-max
-          items-center
-          gap-2
+    <TabsPrimitive.List
+      data-slot="tabs-list"
+      className={cn(
+        `
+        flex
+        flex-wrap
+        items-center
+        gap-3
 
-          rounded-2xl
-          p-2
+        w-full
 
-          dark-glass
-          border
-          border-white/10
-          bg-transparent
-          shadow-sm
-          `,
-          className
-        )}
-        {...props}
-      />
-    </div>
+        rounded-2xl
+        p-2
+
+        dark-glass
+        border
+        border-white/10
+        bg-transparent
+        shadow-sm
+
+        overflow-visible
+        `,
+        className
+      )}
+      {...props}
+    />
   );
 }
 

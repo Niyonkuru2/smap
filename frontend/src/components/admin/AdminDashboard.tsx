@@ -392,126 +392,167 @@ export default function AdminDashboard({
       {/* Main */}
       <main className="relative z-10 flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 py-5 sm:py-6 pb-24 md:pb-6">
         <Tabs
-          value={activeTab}
-          onValueChange={setActiveTab}
-          className="flex flex-col"
+  value={activeTab}
+  onValueChange={setActiveTab}
+  className="flex flex-col"
+>
+  {/* =========================
+      DESKTOP TABS
+  ========================== */}
+  <div className="hidden md:block mb-6">
+    <TabsList
+      className="
+        flex
+        flex-wrap
+        items-center
+        gap-3
+
+        h-auto
+        w-full
+
+        bg-transparent
+        p-0
+
+        overflow-visible
+      "
+    >
+      {navItems.map((item) => (
+        <TabsTrigger
+          key={item.id}
+          value={item.id}
+          className="tab-trigger-premium"
         >
-          {/* Desktop Tabs */}
-          <div className="hidden md:block mb-6">
-            <TabsList
-              className="
-                scrollbar-thin
-                scrollbar-thumb-emerald-500/30
-                scrollbar-track-transparent
-              "
-            >
-              {navItems.map((item) => (
-                <TabsTrigger
-                  key={item.id}
-                  value={item.id}
-                  className="tab-trigger-premium relative"
-                >
-                  <span className="flex items-center gap-2">
-                    {item.icon}
+          {/* Content */}
+          <div className="flex items-center gap-2 relative">
+            {/* Icon */}
+            <span className="shrink-0">
+              {item.icon}
+            </span>
 
-                    <span className="text-sm font-medium whitespace-nowrap">
-                      {item.label}
-                    </span>
+            {/* Label */}
+            <span className="text-sm font-medium whitespace-nowrap">
+              {item.label}
+            </span>
 
-                    {item.badge !== undefined && item.badge > 0 && (
-                      <Badge
-                        className={`
-                          absolute
-                          -top-2
-                          -right-2
-                          px-1.5
-                          py-0.5
-                          min-w-[20px]
-                          h-5
-                          text-[10px]
-                          font-bold
-                          ${item.id === 'anomalies' 
-                            ? 'bg-red-500 text-white animate-pulse' 
-                            : 'bg-red-500 text-white'
-                          }
-                          border-none
-                          rounded-full
-                          shadow-lg
-                        `}
-                      >
-                        {item.badge > 99 ? '99+' : item.badge}
-                      </Badge>
-                    )}
-                  </span>
-                </TabsTrigger>
-              ))}
-            </TabsList>
+            {/* Badge */}
+            {item.badge !== undefined && item.badge > 0 && (
+              <Badge
+                className={`
+                  absolute
+                  -top-2
+                  -right-3
+                  z-50
+
+                  min-w-[20px]
+                  h-5
+
+                  px-1.5
+                  py-0
+
+                  flex
+                  items-center
+                  justify-center
+
+                  text-[10px]
+                  font-bold
+
+                  rounded-full
+                  border-none
+                  shadow-lg
+
+                  ${
+                    item.id === 'anomalies'
+                      ? 'bg-red-500 text-white animate-pulse'
+                      : 'bg-red-500 text-white'
+                  }
+                `}
+              >
+                {item.badge > 99 ? '99+' : item.badge}
+              </Badge>
+            )}
           </div>
+        </TabsTrigger>
+      ))}
+    </TabsList>
+  </div>
 
-          {/* Mobile Tab Carousel */}
-          <div className="md:hidden mb-4">
-            <TabCarousel
-              items={navItems.map(item => ({
-                ...item,
-                badge: item.id === 'anomalies' ? anomalyCount : 
-                       item.id === 'approvals' ? notificationCount :
-                       item.id === 'notifications' ? notificationCount : 
-                       item.badge
-              }))}
-              activeTab={activeTab}
-              onTabChange={setActiveTab}
-            />
-          </div>
+  {/* =========================
+      MOBILE TABS
+  ========================== */}
+  <div className="md:hidden mb-4">
+    <TabCarousel
+      items={navItems.map((item) => ({
+        ...item,
+        badge:
+          item.id === 'anomalies'
+            ? anomalyCount
+            : item.id === 'approvals'
+            ? notificationCount
+            : item.id === 'notifications'
+            ? notificationCount
+            : item.badge,
+      }))}
+      activeTab={activeTab}
+      onTabChange={setActiveTab}
+    />
+  </div>
 
-          {/* Tab Contents */}
-          <TabsContent value="approvals" className="animate-fadeIn mt-4">
-            <PriceApprovals onNotificationRead={fetchNotificationCount} />
-          </TabsContent>
+  {/* =========================
+      TAB CONTENTS
+  ========================== */}
 
-          <TabsContent value="anomalies" className="animate-fadeIn">
-            <AnomalyAlertsDashboard />
-          </TabsContent>
+  <TabsContent value="approvals" className="animate-fadeIn mt-4">
+    <PriceApprovals
+      onNotificationRead={fetchNotificationCount}
+    />
+  </TabsContent>
 
-          <TabsContent value="analytics" className="animate-fadeIn">
-            <Analytics />
-          </TabsContent>
+  <TabsContent value="anomalies" className="animate-fadeIn">
+    <AnomalyAlertsDashboard />
+  </TabsContent>
 
-          <TabsContent value="categories" className="animate-fadeIn">
-            <CategoryManagement />
-          </TabsContent>
+  <TabsContent value="analytics" className="animate-fadeIn">
+    <Analytics />
+  </TabsContent>
 
-          <TabsContent value="users" className="animate-fadeIn">
-            <UserManagement />
-          </TabsContent>
+  <TabsContent value="categories" className="animate-fadeIn">
+    <CategoryManagement />
+  </TabsContent>
 
-          <TabsContent value="vendors" className="animate-fadeIn">
-            <VendorManagement />
-          </TabsContent>
+  <TabsContent value="users" className="animate-fadeIn">
+    <UserManagement />
+  </TabsContent>
 
-          <TabsContent value="businesses" className="animate-fadeIn">
-            <BusinessUserManagement />
-          </TabsContent>
+  <TabsContent value="vendors" className="animate-fadeIn">
+    <VendorManagement />
+  </TabsContent>
 
-          <TabsContent value="subscriptions" className="animate-fadeIn">
-            <SubscriptionManagement />
-          </TabsContent>
+  <TabsContent value="businesses" className="animate-fadeIn">
+    <BusinessUserManagement />
+  </TabsContent>
 
-          <TabsContent value="notifications" className="animate-fadeIn">
-            <NotificationManagement onNotificationUpdate={fetchNotificationCount} />
-          </TabsContent>
+  <TabsContent value="subscriptions" className="animate-fadeIn">
+    <SubscriptionManagement />
+  </TabsContent>
 
-          <TabsContent value="import" className="animate-fadeIn">
-            <BulkPriceImport />
-          </TabsContent>
+  <TabsContent value="notifications" className="animate-fadeIn">
+    <NotificationManagement
+      onNotificationUpdate={fetchNotificationCount}
+    />
+  </TabsContent>
 
-          <TabsContent value="ml" className="animate-fadeIn">
-            <MLModelDashboard />
-          </TabsContent>
+  <TabsContent value="import" className="animate-fadeIn">
+    <BulkPriceImport />
+  </TabsContent>
 
-          <TabsContent value="ads" className="animate-fadeIn">
-            <AdAnalyticsDashboard />
-          </TabsContent>
-        </Tabs>
+  <TabsContent value="ml" className="animate-fadeIn">
+    <MLModelDashboard />
+  </TabsContent>
+
+  <TabsContent value="ads" className="animate-fadeIn">
+    <AdAnalyticsDashboard />
+  </TabsContent>
+</Tabs>
       </main>
 
       {/* Styles */}

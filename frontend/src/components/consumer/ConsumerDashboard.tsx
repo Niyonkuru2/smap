@@ -289,133 +289,275 @@ export default function ConsumerDashboard({
           </div>
         )}
 
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          {/* Desktop Tabs */}
-          <TabsList className="hidden md:flex mb-7 h-auto flex-wrap gap-2 rounded-2xl border border-white/10 bg-white/5 backdrop-blur-2xl p-2 shadow-2xl">
-            <TabsTrigger value="search" className="tab-trigger-premium">
-              <Search className="h-4 w-4 mr-2" />
-              {t('searchProducts')}
-            </TabsTrigger>
+        <Tabs
+  value={activeTab}
+  onValueChange={setActiveTab}
+  className="flex flex-col"
+>
+  {/* =========================
+      DESKTOP TABS
+  ========================== */}
+  <div className="hidden md:block mb-6">
+    <TabsList
+      className="
+        flex
+        flex-wrap
+        items-center
+        gap-3
 
-            <TabsTrigger value="compare" className="tab-trigger-premium">
-              <TrendingUp className="h-4 w-4 mr-2" />
-              {t('comparePrices')}
-            </TabsTrigger>
+        h-auto
+        w-full
 
-            <TabsTrigger value="markets" className="tab-trigger-premium">
-              <Map className="h-4 w-4 mr-2" />
-              {t('multiMarket')}
-            </TabsTrigger>
+        bg-transparent
+        p-0
 
-            <TabsTrigger value="forecast" className="tab-trigger-premium">
-              <Brain className="h-4 w-4 mr-2" />
-              {t('aiForecast')}
-            </TabsTrigger>
+        overflow-visible
+      "
+    >
+      {/* Search */}
+      <TabsTrigger
+        value="search"
+        className="tab-trigger-premium"
+      >
+        <div className="flex items-center gap-2 relative">
+          <Search className="h-4 w-4 shrink-0" />
 
-            <TabsTrigger value="trends" className="tab-trigger-premium">
-              <TrendingUp className="h-4 w-4 mr-2" />
-              {t('priceTrends')}
-            </TabsTrigger>
+          <span className="text-sm font-medium whitespace-nowrap">
+            {t('searchProducts')}
+          </span>
+        </div>
+      </TabsTrigger>
 
-            <TabsTrigger value="favorites" className="tab-trigger-premium">
-              <Heart className="h-4 w-4 mr-2" />
-              {t('favorites')}
-            </TabsTrigger>
+      {/* Compare */}
+      <TabsTrigger
+        value="compare"
+        className="tab-trigger-premium"
+      >
+        <div className="flex items-center gap-2 relative">
+          <TrendingUp className="h-4 w-4 shrink-0" />
 
-            <TabsTrigger value="ads" className="tab-trigger-premium">
-              <Megaphone className="h-4 w-4 mr-2" />
-              Sponsored Ads
-            </TabsTrigger>
+          <span className="text-sm font-medium whitespace-nowrap">
+            {t('comparePrices')}
+          </span>
+        </div>
+      </TabsTrigger>
 
-            <TabsTrigger value="notifications" className="tab-trigger-premium relative">
-              <Bell className="h-4 w-4 mr-2" />
-              {t('notifications')}
-              {unreadNotificationCount > 0 && (
-                <Badge 
-                  className="
-                    absolute 
-                    -top-2 
-                    -right-2 
-                    px-1.5 
-                    py-0.5 
-                    min-w-[20px] 
-                    h-5 
-                    text-[10px] 
-                    font-bold 
-                    bg-red-500 
-                    text-white 
-                    border-none 
-                    rounded-full 
-                    animate-pulse
-                    shadow-lg
-                  "
-                >
-                  {unreadNotificationCount > 99 ? '99+' : unreadNotificationCount}
-                </Badge>
-              )}
-            </TabsTrigger>
+      {/* Markets */}
+      <TabsTrigger
+        value="markets"
+        className="tab-trigger-premium"
+      >
+        <div className="flex items-center gap-2 relative">
+          <Map className="h-4 w-4 shrink-0" />
 
-            <TabsTrigger value="alerts" className="tab-trigger-premium">
-              <AlertCircle className="h-4 w-4 mr-2" />
-              {t('priceAlerts')}
-            </TabsTrigger>
+          <span className="text-sm font-medium whitespace-nowrap">
+            {t('multiMarket')}
+          </span>
+        </div>
+      </TabsTrigger>
 
-            <TabsTrigger value="vendors" className="tab-trigger-premium">
-              <Users className="h-4 w-4 mr-2" />
-              {t('vendors') || 'Vendors'}
-            </TabsTrigger>
+      {/* Forecast */}
+      <TabsTrigger
+        value="forecast"
+        className="tab-trigger-premium"
+      >
+        <div className="flex items-center gap-2 relative">
+          <Brain className="h-4 w-4 shrink-0" />
 
-            <TabsTrigger value="profile" className="tab-trigger-premium">
-              <UserIcon className="h-4 w-4 mr-2" />
-              {t('profile')}
-            </TabsTrigger>
-          </TabsList>
+          <span className="text-sm font-medium whitespace-nowrap">
+            {t('aiForecast')}
+          </span>
+        </div>
+      </TabsTrigger>
 
-          {/* Content */}
-          <TabsContent value="search" className="animate-fadeIn mt-4">
-            <ProductSearch />
-          </TabsContent>
+      {/* Trends */}
+      <TabsTrigger
+        value="trends"
+        className="tab-trigger-premium"
+      >
+        <div className="flex items-center gap-2 relative">
+          <TrendingUp className="h-4 w-4 shrink-0" />
 
-          <TabsContent value="compare" className="animate-fadeIn">
-            <PriceComparison />
-          </TabsContent>
+          <span className="text-sm font-medium whitespace-nowrap">
+            {t('priceTrends')}
+          </span>
+        </div>
+      </TabsTrigger>
 
-          <TabsContent value="markets" className="animate-fadeIn">
-            <MultiMarketComparison />
-          </TabsContent>
+      {/* Favorites */}
+      <TabsTrigger
+        value="favorites"
+        className="tab-trigger-premium"
+      >
+        <div className="flex items-center gap-2 relative">
+          <Heart className="h-4 w-4 shrink-0" />
 
-          <TabsContent value="forecast" className="animate-fadeIn">
-            <PriceForecast />
-          </TabsContent>
+          <span className="text-sm font-medium whitespace-nowrap">
+            {t('favorites')}
+          </span>
+        </div>
+      </TabsTrigger>
 
-          <TabsContent value="trends" className="animate-fadeIn">
-            <PriceTrends />
-          </TabsContent>
+      {/* Ads */}
+      <TabsTrigger
+        value="ads"
+        className="tab-trigger-premium"
+      >
+        <div className="flex items-center gap-2 relative">
+          <Megaphone className="h-4 w-4 shrink-0" />
 
-          <TabsContent value="favorites" className="animate-fadeIn">
-            <Favorites userId={user.id} />
-          </TabsContent>
+          <span className="text-sm font-medium whitespace-nowrap">
+            Sponsored Ads
+          </span>
+        </div>
+      </TabsTrigger>
 
-          <TabsContent value="ads" className="animate-fadeIn">
-            <ConsumerAds />
-          </TabsContent>
+      {/* Notifications */}
+      <TabsTrigger
+        value="notifications"
+        className="tab-trigger-premium"
+      >
+        <div className="flex items-center gap-2 relative">
+          <Bell className="h-4 w-4 shrink-0" />
 
-          <TabsContent value="notifications" className="animate-fadeIn">
-            <Notifications userId={user.id} onNotificationRead={fetchUnreadCount} />
-          </TabsContent>
+          <span className="text-sm font-medium whitespace-nowrap">
+            {t('notifications')}
+          </span>
 
-          <TabsContent value="alerts" className="animate-fadeIn">
-            <PriceAlerts userId={user.id} />
-          </TabsContent>
+          {unreadNotificationCount > 0 && (
+            <Badge
+              className="
+                absolute
+                -top-2
+                -right-3
+                z-50
 
-          <TabsContent value="vendors" className="animate-fadeIn">
-            <VendorProfiles />
-          </TabsContent>
+                min-w-[20px]
+                h-5
 
-          <TabsContent value="profile" className="animate-fadeIn">
-            <UserProfile user={user} />
-          </TabsContent>
-        </Tabs>
+                px-1.5
+                py-0
+
+                flex
+                items-center
+                justify-center
+
+                text-[10px]
+                font-bold
+
+                rounded-full
+                border-none
+
+                bg-red-500
+                text-white
+
+                animate-pulse
+                shadow-lg
+              "
+            >
+              {unreadNotificationCount > 99
+                ? '99+'
+                : unreadNotificationCount}
+            </Badge>
+          )}
+        </div>
+      </TabsTrigger>
+
+      {/* Alerts */}
+      <TabsTrigger
+        value="alerts"
+        className="tab-trigger-premium"
+      >
+        <div className="flex items-center gap-2 relative">
+          <AlertCircle className="h-4 w-4 shrink-0" />
+
+          <span className="text-sm font-medium whitespace-nowrap">
+            {t('priceAlerts')}
+          </span>
+        </div>
+      </TabsTrigger>
+
+      {/* Vendors */}
+      <TabsTrigger
+        value="vendors"
+        className="tab-trigger-premium"
+      >
+        <div className="flex items-center gap-2 relative">
+          <Users className="h-4 w-4 shrink-0" />
+
+          <span className="text-sm font-medium whitespace-nowrap">
+            {t('vendors') || 'Vendors'}
+          </span>
+        </div>
+      </TabsTrigger>
+
+      {/* Profile */}
+      <TabsTrigger
+        value="profile"
+        className="tab-trigger-premium"
+      >
+        <div className="flex items-center gap-2 relative">
+          <UserIcon className="h-4 w-4 shrink-0" />
+
+          <span className="text-sm font-medium whitespace-nowrap">
+            {t('profile')}
+          </span>
+        </div>
+      </TabsTrigger>
+    </TabsList>
+  </div>
+
+  {/* =========================
+      TAB CONTENT
+  ========================== */}
+
+  <TabsContent value="search" className="animate-fadeIn mt-4">
+    <ProductSearch />
+  </TabsContent>
+
+  <TabsContent value="compare" className="animate-fadeIn">
+    <PriceComparison />
+  </TabsContent>
+
+  <TabsContent value="markets" className="animate-fadeIn">
+    <MultiMarketComparison />
+  </TabsContent>
+
+  <TabsContent value="forecast" className="animate-fadeIn">
+    <PriceForecast />
+  </TabsContent>
+
+  <TabsContent value="trends" className="animate-fadeIn">
+    <PriceTrends />
+  </TabsContent>
+
+  <TabsContent value="favorites" className="animate-fadeIn">
+    <Favorites userId={user.id} />
+  </TabsContent>
+
+  <TabsContent value="ads" className="animate-fadeIn">
+    <ConsumerAds />
+  </TabsContent>
+
+  <TabsContent value="notifications" className="animate-fadeIn">
+    <Notifications
+      userId={user.id}
+      onNotificationRead={fetchUnreadCount}
+    />
+  </TabsContent>
+
+  <TabsContent value="alerts" className="animate-fadeIn">
+    <PriceAlerts userId={user.id} />
+  </TabsContent>
+
+  <TabsContent value="vendors" className="animate-fadeIn">
+    <VendorProfiles />
+  </TabsContent>
+
+  <TabsContent value="profile" className="animate-fadeIn">
+    <UserProfile user={user} />
+  </TabsContent>
+</Tabs>
 
         {/* Mobile Carousel */}
         <div className="md:hidden">

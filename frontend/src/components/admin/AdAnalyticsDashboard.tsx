@@ -47,7 +47,6 @@ type TabType = 'analytics' | 'pending' | 'all';
 export function AdAnalyticsDashboard() {
   const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState<TabType>('pending');
-  const [timeRange, setTimeRange] = useState('7d');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [ads, setAds] = useState<Advertisement[]>([]);
@@ -265,11 +264,11 @@ export function AdAnalyticsDashboard() {
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <Button variant="outline" onClick={handleRefresh} disabled={isRefreshing} className="btn-outline-premium">
+            <Button variant="outline" onClick={handleRefresh} disabled={isRefreshing}>
               <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
               Refresh
             </Button>
-            <Button variant="outline" onClick={handleExport} className="btn-outline-premium">
+            <Button variant="outline" onClick={handleExport}>
               <Download className="h-4 w-4 mr-2" />
               Export
             </Button>

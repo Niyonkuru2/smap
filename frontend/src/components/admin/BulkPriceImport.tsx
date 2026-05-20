@@ -247,7 +247,6 @@ p13,m3,5200`;
                 variant="outline"
                 size="sm"
                 onClick={downloadTemplate}
-                className="btn-outline-premium"
               >
                 <Download className="h-4 w-4 mr-2" />
                 {t('downloadTemplate')}

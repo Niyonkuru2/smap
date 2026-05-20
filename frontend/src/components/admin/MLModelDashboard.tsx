@@ -261,7 +261,6 @@ export function MLModelDashboard() {
               variant="outline" 
               onClick={fetchMetrics}
               disabled={isTraining}
-              className="btn-outline-premium"
             >
               <RefreshCw className="h-4 w-4 mr-2" />
               Refresh
