@@ -82,6 +82,7 @@ app.use(rateLimitMiddleware);
 
 // 4. Body parsing
 app.use(express.json({ limit: '10kb' }));
+app.use(express.urlencoded({ extended: true }));
 
 // 5. Audit logs
 app.use(auditMiddleware({ logAllRequests: false }));
