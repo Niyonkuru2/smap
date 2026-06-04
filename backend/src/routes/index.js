@@ -56,7 +56,7 @@ router.use('/analytics', analyticsRoutes);
 
 // Also handle legacy paths
 router.use('/import', exportRoutes);
-router.use('/ussd', ussdRoutes);;
+router.use('/ussd', ussdRoutes);
 router.use('/forecast', forecastRoutes);
 router.use('/trends', historyRoutes);
 router.use('/seasonal', historyRoutes);

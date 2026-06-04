@@ -2,6 +2,7 @@ import USSDService from '../services/ussdService.js';
 
 /**
  * Handle USSD callback from African Talking
+ * Returns plain text starting with CON (continue) or END (terminate)
  */
 export const handleUSSDCallback = async (req, res) => {
     try {
@@ -13,7 +14,7 @@ export const handleUSSDCallback = async (req, res) => {
             serviceCode
         } = req.body;
 
-        // Log incoming request
+        // Log for debugging (will show actual values now)
         console.log('USSD Request:', {
             sessionId,
             phoneNumber,
@@ -22,62 +23,41 @@ export const handleUSSDCallback = async (req, res) => {
             serviceCode
         });
 
-        // Process USSD request
+        // Process the request – all logic is inside USSDService (stateless)
         const response = await USSDService.handleUSSDRequest(
             sessionId,
             phoneNumber,
-            text
+            text || ''   // ensure string
         );
 
-        // Format response for African Talking
-        const responseBody = {
-            sessionId: sessionId,
-            serviceCode: serviceCode,
-            phoneNumber: phoneNumber,
-            text: response.message
-        };
+        // African Talking expects plain text with CON or END prefix
+        const prefix = response.type === 'end' ? 'END' : 'CON';
+        const reply = `${prefix} ${response.message}`;
 
-        if (response.type === 'end') {
-            return res.status(200).send(responseBody);
-        }
-
-        return res.status(200).send(responseBody);
-        
+        res.set('Content-Type', 'text/plain');
+        res.status(200).send(reply);
     } catch (error) {
         console.error('USSD Callback Error:', error);
-        
-        // Send error response
-        return res.status(200).json({
-            sessionId: req.body.sessionId,
-            serviceCode: req.body.serviceCode,
-            phoneNumber: req.body.phoneNumber,
-            text: 'Sorry, an error occurred. Please try again later.'
-        });
+        // Always return a plain text END message on error
+        res.set('Content-Type', 'text/plain');
+        res.status(200).send('END Sorry, an error occurred. Please try again later.');
     }
 };
 
 /**
- * Test USSD endpoint (for development)
+ * Test endpoint for development (still returns JSON)
  */
 export const testUSSD = async (req, res) => {
     const { phoneNumber, text } = req.body;
-    
     try {
         const response = await USSDService.handleUSSDRequest(
             `test_${Date.now()}`,
             phoneNumber || '250788123456',
             text || ''
         );
-        
-        res.json({
-            success: true,
-            response
-        });
+        res.json({ success: true, response });
     } catch (error) {
         console.error('Test USSD Error:', error);
-        res.status(500).json({
-            success: false,
-            error: error.message
-        });
+        res.status(500).json({ success: false, error: error.message });
     }
 };
