@@ -204,7 +204,7 @@ Tips:
     // -------------------------------------------------------------------------
     async handleLevel3(user, choice, input) {
         // Determine action from the consumer's original choice (input[2])
-        const consumerChoice = input[2]; // "1", "2", or "3"
+        const consumerChoice = input[2];
         let action;
         switch (consumerChoice) {
             case '1': action = 'price'; break;
