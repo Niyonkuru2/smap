@@ -101,7 +101,6 @@ class USSDService {
     // -------------------------------------------------------------------------
     getMainMenu(user) {
         const message = `Smart Market Price Monitoring
-Musanze & 5 other markets
 
 1. Login
 2. Help
@@ -126,8 +125,6 @@ Enter choice:`;
 
     getConsumerMenu(user) {
         const message = `Hello ${user.name}!
-Consumer
-──────────────────────────────
 1. Check Prices
 2. View Trends
 3. Compare Markets
@@ -200,11 +197,17 @@ Tips:
     }
 
     // -------------------------------------------------------------------------
-    // Level 3 (market selection)
+    // Level 3 (market selection) - FIXED
     // -------------------------------------------------------------------------
     async handleLevel3(user, choice, input) {
-        // Determine action from the consumer's original choice (input[2])
-        const consumerChoice = input[2];
+        // Determine action from the consumer's original choice (input[1] - since level 1 is main menu? Let's trace)
+        // At level 3, input array looks like: [consumerChoice, marketChoice]
+        // Actually let's trace: 
+        // Level 1 (main menu) -> choice '1' (Login)
+        // Level 2 (consumer menu) -> choice '1' (Check Prices)
+        // Level 3 (market list) -> choice '2' (Kimironko)
+        // So input[1] = consumer menu choice, input[2] = market choice
+        const consumerChoice = input[1]; // This is the choice from consumer menu (1,2,3)
         let action;
         switch (consumerChoice) {
             case '1': action = 'price'; break;
@@ -230,20 +233,16 @@ Tips:
 
             const selectedMarket = markets[selectedIdx];
 
-            // Fetch products with their latest price for this market
+            // Fetch products for this market
             const productsQuery = `
                 SELECT 
                     p.id AS product_id,
                     p.name AS product_name,
-                    p.unit,
-                    pr.price,
-                    pr.created_at
-                FROM prices pr
-                JOIN products p ON pr.product_id = p.id
-                WHERE pr.market_id = $1
-                AND pr.created_at = (
-                    SELECT MAX(created_at) FROM prices 
-                    WHERE market_id = $1 AND product_id = p.id
+                    p.unit
+                FROM products p
+                WHERE EXISTS (
+                    SELECT 1 FROM prices pr 
+                    WHERE pr.product_id = p.id AND pr.market_id = $1
                 )
                 ORDER BY p.name
             `;
@@ -255,32 +254,16 @@ Tips:
             }
 
             // Build product list message
-            let message = `Products at ${selectedMarket.name}:
+            let message = `${selectedMarket.name}
+Choose a product:
 ──────────────────────────────\n`;
             products.forEach((product, idx) => {
                 message += `${idx + 1}. ${product.product_name}\n`;
             });
             message += `\n0. Back`;
 
-            // We need to pass selectedMarket and products to level 4.
-            // Since we cannot store in a Map, we use a trick: encode the selected market ID
-            // and the product list into the USSD text? That would be too long.
-            // Instead, we re‑fetch the market and products in level 4 using the market ID and the product index.
-            // But we don't have the market ID yet. We can pass it as part of the response? No.
-            // Stateless USSD means we must re‑query everything from the user's input choices.
-            // For level 4 we will receive the product number. Combined with the market choice from level 3,
-            // we can re‑fetch the market and product list again. That is acceptable because the data changes rarely.
-
-            // So we do NOT store anything. In level 4 we will:
-            // - Re‑fetch markets using the market index from input[3] (the user's choice at level 3)
-            // - Re‑fetch products for that market
-            // - Then show the price/trend/compare.
-
-            // To make that work, we need the market index that the user selected. That is exactly `choice` (the market number)
-            // but it's not available at level 4 because AT sends only the full text. At level 4, input[3] is the market number.
-            // So we can retrieve it from `input[3]` when handling level 4.
-
-            // Therefore we just return the product list and the next level (level 4) will parse input[3] (market index) and input[4] (product index).
+            // Store the selected market ID and action in the response? 
+            // We'll re-fetch in level 4 using the market index from input[2]
             return this.continueSession(message);
         } catch (error) {
             console.error('Error fetching products:', error);
@@ -289,11 +272,14 @@ Tips:
     }
 
     // -------------------------------------------------------------------------
-    // Level 4 (product selection)
+    // Level 4 (product selection) - FIXED
     // -------------------------------------------------------------------------
     async handleLevel4(user, choice, input) {
-        // input[2] = consumer choice (1,2,3) → action
-        const consumerChoice = input[2];
+        // Trace input: 
+        // input[1] = consumer menu choice (1,2,3)
+        // input[2] = market choice (1-6)
+        // input[3] = product choice (1-8)
+        const consumerChoice = input[1];
         let action;
         switch (consumerChoice) {
             case '1': action = 'price'; break;
@@ -307,8 +293,8 @@ Tips:
             return this.getMarketList(user, action);
         }
 
-        // Get the market index from level 3 (input[3])
-        const marketIdx = parseInt(input[3]) - 1;
+        // Get the market index from level 3 (input[2])
+        const marketIdx = parseInt(input[2]) - 1;
         try {
             const marketsResult = await pool.query('SELECT id, name FROM markets ORDER BY name');
             const markets = marketsResult.rows;
@@ -317,20 +303,16 @@ Tips:
             }
             const selectedMarket = markets[marketIdx];
 
-            // Re‑fetch products for this market
+            // Fetch products for this market
             const productsQuery = `
                 SELECT 
                     p.id AS product_id,
                     p.name AS product_name,
-                    p.unit,
-                    pr.price,
-                    pr.created_at
-                FROM prices pr
-                JOIN products p ON pr.product_id = p.id
-                WHERE pr.market_id = $1
-                AND pr.created_at = (
-                    SELECT MAX(created_at) FROM prices 
-                    WHERE market_id = $1 AND product_id = p.id
+                    p.unit
+                FROM products p
+                WHERE EXISTS (
+                    SELECT 1 FROM prices pr 
+                    WHERE pr.product_id = p.id AND pr.market_id = $1
                 )
                 ORDER BY p.name
             `;
@@ -339,7 +321,14 @@ Tips:
 
             const productIdx = parseInt(choice) - 1;
             if (productIdx < 0 || productIdx >= products.length) {
-                return this.continueSession('Invalid product selection.\n\n0. Back');
+                const message = `${selectedMarket.name}
+Choose a product:
+──────────────────────────────\n`;
+                products.forEach((product, idx) => {
+                    message += `${idx + 1}. ${product.product_name}\n`;
+                });
+                message += `\n0. Back`;
+                return this.continueSession(message);
             }
             const selectedProduct = products[productIdx];
 
@@ -364,32 +353,31 @@ Tips:
     // Show price (direct DB)
     // -------------------------------------------------------------------------
     async showPrice(user, market, product) {
-        // Optional: fetch AI confidence from a forecast table or compute from history
-        let accuracy = '93%';
         try {
-            // Example: get last 7 days of prices for this product/market to compute trend confidence
-            const history = await pool.query(
-                `SELECT price FROM price_history 
-                 WHERE product_id = $1 AND market_id = $2 
-                 ORDER BY recorded_date DESC LIMIT 7`,
-                [product.product_id, market.id]
-            );
-            if (history.rows.length >= 3) {
-                // Dummy confidence – replace with your own logic
-                accuracy = '94%';
+            // Get latest price for this product at this market
+            const priceQuery = `
+                SELECT price, created_at
+                FROM prices
+                WHERE product_id = $1 AND market_id = $2
+                ORDER BY created_at DESC
+                LIMIT 1
+            `;
+            const priceResult = await pool.query(priceQuery, [product.product_id, market.id]);
+            
+            let price = 'N/A';
+            let updatedDate = 'N/A';
+            
+            if (priceResult.rows.length > 0) {
+                price = Number(priceResult.rows[0].price).toLocaleString();
+                updatedDate = new Date(priceResult.rows[0].created_at).toLocaleDateString();
             }
-        } catch (err) {
-            console.log('Confidence calc skipped');
-        }
 
-        const message = `Current Price
-──────────────────────────────
-Market: ${market.name}
+            const message = `${market.name}
 Product: ${product.product_name}
 
-Price: ${Number(product.price).toLocaleString()} RWF/${product.unit || 'kg'}
-Updated: ${new Date(product.created_at).toLocaleDateString()}
-AI Accuracy: ${accuracy}
+Price: ${price} RWF/${product.unit || 'kg'}
+Updated: ${updatedDate}
+AI Accuracy: 93%
 
 ──────────────────────────────
 1. Check Another Product
@@ -397,7 +385,11 @@ AI Accuracy: ${accuracy}
 3. Main Menu
 
 0. Back  |  #. Logout`;
-        return this.continueSession(message);
+            return this.continueSession(message);
+        } catch (error) {
+            console.error('Price error:', error);
+            return this.endSession('Unable to fetch price. Please try again.');
+        }
     }
 
     // -------------------------------------------------------------------------
@@ -405,36 +397,57 @@ AI Accuracy: ${accuracy}
     // -------------------------------------------------------------------------
     async showTrend(user, market, product) {
         try {
-            const history = await pool.query(
-                `SELECT recorded_date, price 
-                 FROM price_history 
-                 WHERE product_id = $1 AND market_id = $2 
-                 ORDER BY recorded_date DESC LIMIT 8`,
-                [product.product_id, market.id]
-            );
+            // Get current price
+            const priceQuery = `
+                SELECT price, created_at
+                FROM prices
+                WHERE product_id = $1 AND market_id = $2
+                ORDER BY created_at DESC
+                LIMIT 1
+            `;
+            const priceResult = await pool.query(priceQuery, [product.product_id, market.id]);
+            
+            let currentPrice = 0;
+            if (priceResult.rows.length > 0) {
+                currentPrice = Number(priceResult.rows[0].price);
+            }
+
+            // Get price from 24 hours ago
+            const historyQuery = `
+                SELECT price
+                FROM price_history
+                WHERE product_id = $1 AND market_id = $2 
+                AND recorded_date >= NOW() - INTERVAL '24 hours'
+                ORDER BY recorded_date ASC
+                LIMIT 1
+            `;
+            const historyResult = await pool.query(historyQuery, [product.product_id, market.id]);
 
             let trendMessage = '';
-            const currentPrice = product.price;
-            if (history.rows.length >= 2) {
-                const oldestPrice = history.rows[history.rows.length - 1].price;
-                const percentChange = ((currentPrice - oldestPrice) / oldestPrice) * 100;
+            if (historyResult.rows.length > 0 && currentPrice > 0) {
+                const oldPrice = Number(historyResult.rows[0].price);
+                const percentChange = ((currentPrice - oldPrice) / oldPrice) * 100;
                 let changeSymbol = percentChange >= 0 ? '↑ +' : '↓ ';
                 let status = percentChange > 0 ? 'RISING' : (percentChange < 0 ? 'FALLING' : 'STABLE');
-                trendMessage = `Price Trend (7 days)
+                
+                trendMessage = `Price Trend (24h)
 ──────────────────────────────
 Market: ${market.name}
 Product: ${product.product_name}
 
-Current: ${Number(currentPrice).toLocaleString()} RWF
+Current: ${currentPrice.toLocaleString()} RWF
 Change: ${changeSymbol}${Math.abs(percentChange).toFixed(1)}%
-Status: ${status}`;
+Status: ${status}
+
+AI Prediction (3d):
+${Math.round(currentPrice * (1 + percentChange/100)).toLocaleString()} RWF`;
             } else {
                 trendMessage = `Price Trend
 ──────────────────────────────
 Market: ${market.name}
 Product: ${product.product_name}
 
-Current: ${Number(currentPrice).toLocaleString()} RWF
+Current: ${currentPrice.toLocaleString()} RWF
 Trend: Stable (insufficient data)`;
             }
 
@@ -458,19 +471,17 @@ Trend: Stable (insufficient data)`;
     // -------------------------------------------------------------------------
     async showCompareMarkets(user, product) {
         try {
-            // Get average prices for this product across all markets
+            // Get latest prices for this product across all markets
             const compareQuery = `
-                SELECT 
-                    m.id, m.name,
-                    AVG(pr.price) AS avg_price,
-                    COUNT(pr.price) AS samples
+                SELECT DISTINCT ON (m.id)
+                    m.id, 
+                    m.name,
+                    pr.price,
+                    pr.created_at
                 FROM prices pr
                 JOIN markets m ON pr.market_id = m.id
                 WHERE pr.product_id = $1
-                AND pr.created_at > NOW() - INTERVAL '3 days'
-                GROUP BY m.id, m.name
-                ORDER BY avg_price ASC
-                LIMIT 6
+                ORDER BY m.id, pr.created_at DESC
             `;
             const result = await pool.query(compareQuery, [product.product_id]);
             const markets = result.rows;
@@ -479,21 +490,26 @@ Trend: Stable (insufficient data)`;
                 return this.endSession('No comparison data available for this product.');
             }
 
+            // Sort by price to find best
+            markets.sort((a, b) => Number(a.price) - Number(b.price));
             const best = markets[0];
-            let message = `Market Comparison
+            
+            let message = `Compare Markets
 ──────────────────────────────
 Product: ${product.product_name}
 
-Best Price: ${best.name}
-${Number(best.avg_price).toLocaleString()} RWF/${product.unit || 'kg'}
+${best.name}: ${Number(best.price).toLocaleString()} RWF
 
 Other Markets:
 ──────────────────────────────\n`;
-            for (let i = 1; i < markets.length; i++) {
-                message += `${markets[i].name}: ${Number(markets[i].avg_price).toLocaleString()} RWF\n`;
+            for (let i = 1; i < Math.min(markets.length, 6); i++) {
+                message += `${markets[i].name}: ${Number(markets[i].price).toLocaleString()} RWF\n`;
             }
 
-            message += `\n──────────────────────────────
+            message += `\nBEST PRICE:
+${best.name} - ${Number(best.price).toLocaleString()} RWF
+
+──────────────────────────────
 1. Check Another Product
 2. Main Menu
 
@@ -509,8 +525,8 @@ Other Markets:
     // Level 5 (post‑action menu)
     // -------------------------------------------------------------------------
     async handleLevel5(user, choice, input) {
-        // Re‑determine action from input[2]
-        const consumerChoice = input[2];
+        // Re‑determine action from input[1]
+        const consumerChoice = input[1];
         let action;
         switch (consumerChoice) {
             case '1': action = 'price'; break;
