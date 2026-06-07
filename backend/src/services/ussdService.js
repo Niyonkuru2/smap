@@ -92,7 +92,7 @@ class USSDService {
     // Consumer menu (first screen)
     // -------------------------------------------------------------------------
     getConsumerMenu(user) {
-        const message = `Hello ${user.name}!
+        const message = `Hello!
 Smart Market Price Monitoring
 ──────────────────────────────
 1. Check Prices
