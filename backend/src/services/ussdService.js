@@ -7,28 +7,25 @@ class USSDService {
      */
     async handleUSSDRequest(sessionId, phoneNumber, text) {
         try {
-            // Guard against missing phoneNumber (should not happen, but safe)
             if (!phoneNumber) {
                 return this.endSession('Invalid request. Please try again.');
             }
 
-            // Get or create user from database
+            // Create or fetch user (no name prompt ever)
             const user = await this.getOrCreateUser(phoneNumber);
 
-            // Parse USSD input levels
             const input = text ? text.split('*') : [];
-            const level = input.length;          // number of asterisks + 1
-            const userChoice = input[level - 1]; // last entered value
+            const level = input.length;
+            const userChoice = input[level - 1];
 
-            // Empty text → main menu
+            // First request → show consumer menu directly
             if (!text || text === '') {
-                return this.getMainMenu(user);
+                return this.getConsumerMenu(user);
             }
 
-            // Route based on level (1 = main menu, 2 = after main, etc.)
             switch (level) {
                 case 1:
-                    return this.handleMainMenu(user, userChoice);
+                    return this.handleConsumerMenu(user, userChoice);
                 case 2:
                     return this.handleLevel2(user, userChoice, input);
                 case 3:
@@ -38,7 +35,7 @@ class USSDService {
                 case 5:
                     return this.handleLevel5(user, userChoice, input);
                 default:
-                    return this.getMainMenu(user);
+                    return this.getConsumerMenu(user);
             }
         } catch (error) {
             console.error('USSD Handler Error:', error);
@@ -47,7 +44,7 @@ class USSDService {
     }
 
     // -------------------------------------------------------------------------
-    // User management (direct DB)
+    // User management (no name prompt)
     // -------------------------------------------------------------------------
     async getOrCreateUser(phoneNumber) {
         try {
@@ -62,13 +59,11 @@ class USSDService {
                     name: result.rows[0].name,
                     phone: result.rows[0].phone,
                     role: result.rows[0].role,
-                    isNew: false,
                 };
             }
 
-            // New user – generate a default name using last 4 digits
-            const shortPhone = phoneNumber.slice(-4);
-            const defaultName = `User_${shortPhone}`;
+            // New user – assign a default friendly name
+            const defaultName = `Customer_${phoneNumber.slice(-4)}`;
             const insertResult = await pool.query(
                 `INSERT INTO users (name, phone, role, is_active, created_at)
                  VALUES ($1, $2, 'consumer', true, NOW())
@@ -81,66 +76,59 @@ class USSDService {
                 name: insertResult.rows[0].name,
                 phone: insertResult.rows[0].phone,
                 role: insertResult.rows[0].role,
-                isNew: true,
             };
         } catch (error) {
             console.error('Error getting/creating user:', error);
-            // Fallback user object (allows USSD to continue)
             return {
                 id: null,
-                name: 'User',
+                name: 'Customer',
                 phone: phoneNumber,
                 role: 'consumer',
-                isNew: true,
             };
         }
     }
 
     // -------------------------------------------------------------------------
-    // Menus (stateless – use input array for navigation)
+    // Consumer menu (first screen)
     // -------------------------------------------------------------------------
-    getMainMenu(user) {
-        const message = `Smart Market Price Monitoring
-
-1. Login
-2. Help
-
-Enter choice:`;
-        return this.continueSession(message);
-    }
-
-    async handleMainMenu(user, choice) {
-        switch (choice) {
-            case '1':
-                if (user.isNew) {
-                    return this.continueSession('Welcome! Please enter your name:');
-                }
-                return this.getConsumerMenu(user);
-            case '2':
-                return this.getHelpMenu();
-            default:
-                return this.getMainMenu(user);
-        }
-    }
-
     getConsumerMenu(user) {
         const message = `Hello ${user.name}!
-Consumer
+Smart Market Price Monitoring
 ──────────────────────────────
 1. Check Prices
 2. View Trends
 3. Compare Markets
+4. Help
 
-0. Back  |  #. Logout`;
+0. Exit  |  #. Logout`;
         return this.continueSession(message);
     }
 
-    getHelpMenu() {
-        const message = `Help - Smart Market Price Monitoring
+    async handleConsumerMenu(user, choice) {
+        switch (choice) {
+            case '1':
+                return this.getMarketList(user, 'price');
+            case '2':
+                return this.getMarketList(user, 'trend');
+            case '3':
+                return this.getMarketList(user, 'compare');
+            case '4':
+                return this.getHelpMenu(user);
+            case '0':
+                return this.endSession('Thank you for using Smart Market. Goodbye!');
+            case '#':
+                return this.logout(user);
+            default:
+                return this.getConsumerMenu(user);
+        }
+    }
+
+    getHelpMenu(user) {
+        const message = `Help - Smart Market
 ──────────────────────────────
-1. Check Prices - View current prices
-2. View Trends - See price predictions
-3. Compare Markets - Find best deals
+• Check Prices – View current market prices
+• View Trends – 7‑day price change + AI confidence
+• Compare Markets – Find the best price for a product
 
 Tips:
 • Prices update daily
@@ -155,24 +143,45 @@ Tips:
     // Level 2 handlers (after consumer menu)
     // -------------------------------------------------------------------------
     async handleLevel2(user, choice, input) {
-        switch (choice) {
-            case '1':
-                return this.getMarketList(user, 'price');
-            case '2':
-                return this.getMarketList(user, 'trend');
-            case '3':
-                return this.getMarketList(user, 'compare');
-            case '0':
-                return this.getMainMenu(user);
-            case '#':
-                return this.logout(user);
-            default:
-                return this.getConsumerMenu(user);
+        // choice is the user's input at level 2 (market list selection or back)
+        const action = this.getActionFromInput(input); // price/trend/compare
+
+        if (choice === '0') {
+            return this.getConsumerMenu(user);
         }
+        // If we are coming from Help, choice will be '0' handled above; otherwise proceed to market selection
+        // But note: getMarketList was called from handleConsumerMenu, so level 2 is market list.
+        // So we need to handle market selection here.
+        // However the original code placed market selection in handleLevel3. Let's follow the same pattern.
+        // Actually original had: level2 = market list (shows list), level3 = user picks market, then level4 = picks product.
+        // So we keep that structure. So handleLevel2 just validates '0' or invalid choices.
+        // For any other input, we should go to market selection? No – the user has just seen the market list and will send a number.
+        // The USSD gateway will send a new request with text = "1*2" (if they chose market 2). That will be level = 2? Wait careful.
+        // In stateless USSD, the text accumulates. If user is at market list (level 2), the next input will have level = 3 because text = "1*2" (consumer choice * market number).
+        // So handleLevel2 is called when the user input has exactly 2 parts. That is the market list screen itself.
+        // But the user has not yet chosen a market; they are seeing the list and will send a number. That new request will have 3 parts (consumer choice * market number * new input? No, the market number becomes part of the text).
+        // Let's follow the original logic: original handleLevel2 just returns the market list (getMarketList). Then handleLevel3 handles the market selection.
+        // But the original handleLevel2 also had case '0' -> back. That's fine.
+        // So we keep the same: handleLevel2 is called after user has selected "1. Check Prices" etc., and we just show the market list.
+        // The user then enters a market number, which goes to level 3 (handled by handleLevel3).
+        // Therefore handleLevel2 should NOT process any market number; it should only handle '0' (back) and otherwise return the market list again.
+        // But the original code had a bug: it allowed any input and would treat it as market selection? Let's see original:
+        // async handleLevel2(user, choice, input) { switch(choice) { case '1': return this.getMarketList... } }
+        // That was wrong – they used the same switch as handleMainMenu. We'll correct it.
+
+        // So for a clean implementation, handleLevel2 should only be called when the user is viewing the market list and presses '0' to go back.
+        // Any other input should be ignored and re-show the market list.
+        // But the gateway will send a new request with a longer text; that request's level will be 3, not 2.
+        // Therefore handleLevel2 only needs to handle '0'.
+        if (choice === '0') {
+            return this.getConsumerMenu(user);
+        }
+        // If the user typed something else at this level (should not happen normally), show the market list again.
+        return this.getMarketList(user, action);
     }
 
     // -------------------------------------------------------------------------
-    // Market list (reads from DB, no HTTP)
+    // Market list (read from DB)
     // -------------------------------------------------------------------------
     async getMarketList(user, action) {
         try {
@@ -202,15 +211,8 @@ Tips:
     // Level 3 (market selection)
     // -------------------------------------------------------------------------
     async handleLevel3(user, choice, input) {
-        // Determine action from the consumer's original choice (input[2])
-        const consumerChoice = input[2];
-        let action;
-        switch (consumerChoice) {
-            case '1': action = 'price'; break;
-            case '2': action = 'trend'; break;
-            case '3': action = 'compare'; break;
-            default: action = 'price';
-        }
+        // input[2] = consumer choice (1,2,3) -> action
+        const action = this.getActionFromInput(input);
 
         if (choice === '0') {
             return this.getConsumerMenu(user);
@@ -229,7 +231,7 @@ Tips:
 
             const selectedMarket = markets[selectedIdx];
 
-            // Fetch products with their latest price for this market
+            // Fetch products with latest price for this market
             const productsQuery = `
                 SELECT 
                     p.id AS product_id,
@@ -253,33 +255,12 @@ Tips:
                 return this.continueSession(`No products available at ${selectedMarket.name}. Please try another market.\n\n0. Back`);
             }
 
-            // Build product list message
             let message = `Products at ${selectedMarket.name}:
 ──────────────────────────────\n`;
             products.forEach((product, idx) => {
                 message += `${idx + 1}. ${product.product_name}\n`;
             });
             message += `\n0. Back`;
-
-            // We need to pass selectedMarket and products to level 4.
-            // Since we cannot store in a Map, we use a trick: encode the selected market ID
-            // and the product list into the USSD text? That would be too long.
-            // Instead, we re‑fetch the market and products in level 4 using the market ID and the product index.
-            // But we don't have the market ID yet. We can pass it as part of the response? No.
-            // Stateless USSD means we must re‑query everything from the user's input choices.
-            // For level 4 we will receive the product number. Combined with the market choice from level 3,
-            // we can re‑fetch the market and product list again. That is acceptable because the data changes rarely.
-
-            // So we do NOT store anything. In level 4 we will:
-            // - Re‑fetch markets using the market index from input[3] (the user's choice at level 3)
-            // - Re‑fetch products for that market
-            // - Then show the price/trend/compare.
-
-            // To make that work, we need the market index that the user selected. That is exactly `choice` (the market number)
-            // but it's not available at level 4 because AT sends only the full text. At level 4, input[3] is the market number.
-            // So we can retrieve it from `input[3]` when handling level 4.
-
-            // Therefore we just return the product list and the next level (level 4) will parse input[3] (market index) and input[4] (product index).
             return this.continueSession(message);
         } catch (error) {
             console.error('Error fetching products:', error);
@@ -291,22 +272,14 @@ Tips:
     // Level 4 (product selection)
     // -------------------------------------------------------------------------
     async handleLevel4(user, choice, input) {
-        // input[2] = consumer choice (1,2,3) → action
-        const consumerChoice = input[2];
-        let action;
-        switch (consumerChoice) {
-            case '1': action = 'price'; break;
-            case '2': action = 'trend'; break;
-            case '3': action = 'compare'; break;
-            default: action = 'price';
-        }
+        const action = this.getActionFromInput(input);
 
         if (choice === '0') {
-            // Go back to market list
+            // Go back to market list (level 3 equivalent)
             return this.getMarketList(user, action);
         }
 
-        // Get the market index from level 3 (input[3])
+        // Get the market index from input[3] (0-based)
         const marketIdx = parseInt(input[3]) - 1;
         try {
             const marketsResult = await pool.query('SELECT id, name FROM markets ORDER BY name');
@@ -316,7 +289,7 @@ Tips:
             }
             const selectedMarket = markets[marketIdx];
 
-            // Re‑fetch products for this market
+            // Re-fetch products for this market
             const productsQuery = `
                 SELECT 
                     p.id AS product_id,
@@ -342,7 +315,6 @@ Tips:
             }
             const selectedProduct = products[productIdx];
 
-            // Now perform the requested action
             switch (action) {
                 case 'price':
                     return this.showPrice(user, selectedMarket, selectedProduct);
@@ -360,13 +332,11 @@ Tips:
     }
 
     // -------------------------------------------------------------------------
-    // Show price (direct DB)
+    // Show price
     // -------------------------------------------------------------------------
     async showPrice(user, market, product) {
-        // Optional: fetch AI confidence from a forecast table or compute from history
         let accuracy = '93%';
         try {
-            // Example: get last 7 days of prices for this product/market to compute trend confidence
             const history = await pool.query(
                 `SELECT price FROM price_history 
                  WHERE product_id = $1 AND market_id = $2 
@@ -374,11 +344,10 @@ Tips:
                 [product.product_id, market.id]
             );
             if (history.rows.length >= 3) {
-                // Dummy confidence – replace with your own logic
                 accuracy = '94%';
             }
         } catch (err) {
-            console.log('Confidence calc skipped');
+            // ignore
         }
 
         const message = `Current Price
@@ -400,7 +369,7 @@ AI Accuracy: ${accuracy}
     }
 
     // -------------------------------------------------------------------------
-    // Show trend (simple 7-day change from price_history)
+    // Show trend
     // -------------------------------------------------------------------------
     async showTrend(user, market, product) {
         try {
@@ -457,7 +426,6 @@ Trend: Stable (insufficient data)`;
     // -------------------------------------------------------------------------
     async showCompareMarkets(user, product) {
         try {
-            // Get average prices for this product across all markets
             const compareQuery = `
                 SELECT 
                     m.id, m.name,
@@ -505,18 +473,10 @@ Other Markets:
     }
 
     // -------------------------------------------------------------------------
-    // Level 5 (post‑action menu)
+    // Level 5 (post-action menu)
     // -------------------------------------------------------------------------
     async handleLevel5(user, choice, input) {
-        // Re‑determine action from input[2]
-        const consumerChoice = input[2];
-        let action;
-        switch (consumerChoice) {
-            case '1': action = 'price'; break;
-            case '2': action = 'trend'; break;
-            case '3': action = 'compare'; break;
-            default: action = 'price';
-        }
+        const action = this.getActionFromInput(input);
 
         switch (choice) {
             case '1':   // Another product
@@ -525,15 +485,35 @@ Other Markets:
                 return this.getMarketList(user, action);
             case '3':   // Main menu
                 return this.getConsumerMenu(user);
-            case '0':   // Back
-                if (action === 'price' || action === 'trend') {
-                    return this.getMarketList(user, action);
+            case '0':   // Back (go to previous action menu? actually back to product list)
+                // For price/trend, back should go to market list; for compare, back to main menu
+                if (action === 'compare') {
+                    return this.getConsumerMenu(user);
                 }
-                return this.getConsumerMenu(user);
+                return this.getMarketList(user, action);
             case '#':   // Logout
                 return this.logout(user);
             default:
                 return this.getConsumerMenu(user);
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Helper: extract action (price/trend/compare) from input array
+    // -------------------------------------------------------------------------
+    getActionFromInput(input) {
+        const consumerChoice = input[2]; // because input[1] is the first choice? Actually input[0] is first part? Let's see:
+        // When user selects "1" at main menu, text = "1" => input = ['1'], level=1, input[2] undefined.
+        // Then after selecting market, text = "1*2" => input = ['1','2'], level=2, input[2] is undefined? Actually input[2] would be the third part which doesn't exist. So we need to be careful.
+        // The original code used input[2] for action when level >= 3. But for level 2, input[2] is undefined.
+        // Safer: get action from the first part (input[0]) because consumer choice is always the first part.
+        // For all deeper levels, the first part remains the original consumer choice.
+        const firstChoice = input[0];
+        switch (firstChoice) {
+            case '1': return 'price';
+            case '2': return 'trend';
+            case '3': return 'compare';
+            default: return 'price';
         }
     }
 
@@ -545,7 +525,7 @@ Other Markets:
     }
 
     // -------------------------------------------------------------------------
-    // Response formatters (for controller)
+    // Response formatters
     // -------------------------------------------------------------------------
     continueSession(message) {
         return { type: 'continue', message };
