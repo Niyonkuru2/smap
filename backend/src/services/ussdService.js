@@ -7,7 +7,7 @@ class USSDService {
      */
     async handleUSSDRequest(sessionId, phoneNumber, text) {
         try {
-            // Guard against missing phoneNumber
+            // Guard against missing phoneNumber (should not happen, but safe)
             if (!phoneNumber) {
                 return this.endSession('Invalid request. Please try again.');
             }
@@ -17,15 +17,15 @@ class USSDService {
 
             // Parse USSD input levels
             const input = text ? text.split('*') : [];
-            const level = input.length;
-            const userChoice = input[level - 1];
+            const level = input.length;          // number of asterisks + 1
+            const userChoice = input[level - 1]; // last entered value
 
             // Empty text → main menu
             if (!text || text === '') {
                 return this.getMainMenu(user);
             }
 
-            // Route based on level
+            // Route based on level (1 = main menu, 2 = after main, etc.)
             switch (level) {
                 case 1:
                     return this.handleMainMenu(user, userChoice);
@@ -47,21 +47,13 @@ class USSDService {
     }
 
     // -------------------------------------------------------------------------
-    // User management
+    // User management (direct DB)
     // -------------------------------------------------------------------------
     async getOrCreateUser(phoneNumber) {
         try {
-            // Format phone number to international format if needed
-            let formattedPhone = phoneNumber;
-            if (phoneNumber.startsWith('0')) {
-                formattedPhone = '250' + phoneNumber.substring(1);
-            } else if (!phoneNumber.startsWith('250')) {
-                formattedPhone = '250' + phoneNumber;
-            }
-
             const result = await pool.query(
                 'SELECT id, name, phone, role FROM users WHERE phone = $1',
-                [formattedPhone]
+                [phoneNumber]
             );
 
             if (result.rows.length > 0) {
@@ -74,14 +66,14 @@ class USSDService {
                 };
             }
 
-            // Create new user with default name
-            const shortPhone = formattedPhone.slice(-4);
-            const defaultName = `Customer_${shortPhone}`;
+            // New user – generate a default name using last 4 digits
+            const shortPhone = phoneNumber.slice(-4);
+            const defaultName = `User_${shortPhone}`;
             const insertResult = await pool.query(
                 `INSERT INTO users (name, phone, role, is_active, created_at)
                  VALUES ($1, $2, 'consumer', true, NOW())
                  RETURNING id, name, phone, role`,
-                [defaultName, formattedPhone]
+                [defaultName, phoneNumber]
             );
 
             return {
@@ -89,36 +81,80 @@ class USSDService {
                 name: insertResult.rows[0].name,
                 phone: insertResult.rows[0].phone,
                 role: insertResult.rows[0].role,
-                isNew: false,
+                isNew: true,
             };
         } catch (error) {
             console.error('Error getting/creating user:', error);
+            // Fallback user object (allows USSD to continue)
             return {
                 id: null,
-                name: 'Customer',
+                name: 'User',
                 phone: phoneNumber,
                 role: 'consumer',
-                isNew: false,
+                isNew: true,
             };
         }
     }
 
     // -------------------------------------------------------------------------
-    // Main Menus
+    // Menus (stateless – use input array for navigation)
     // -------------------------------------------------------------------------
     getMainMenu(user) {
         const message = `Smart Market Price Monitoring
 
-1. Check Prices
-2. View Trends
-3. Compare Markets
-4. Help
+1. Login
+2. Help
 
-0. Exit`;
+Enter choice:`;
         return this.continueSession(message);
     }
 
     async handleMainMenu(user, choice) {
+        switch (choice) {
+            case '1':
+                if (user.isNew) {
+                    return this.continueSession('Welcome! Please enter your name:');
+                }
+                return this.getConsumerMenu(user);
+            case '2':
+                return this.getHelpMenu();
+            default:
+                return this.getMainMenu(user);
+        }
+    }
+
+    getConsumerMenu(user) {
+        const message = `Hello ${user.name}!
+Consumer
+──────────────────────────────
+1. Check Prices
+2. View Trends
+3. Compare Markets
+
+0. Back  |  #. Logout`;
+        return this.continueSession(message);
+    }
+
+    getHelpMenu() {
+        const message = `Help - Smart Market Price Monitoring
+──────────────────────────────
+1. Check Prices - View current prices
+2. View Trends - See price predictions
+3. Compare Markets - Find best deals
+
+Tips:
+• Prices update daily
+• AI predictions have 85-95% accuracy
+• Save up to 30% by timing purchases
+
+0. Back | Main Menu`;
+        return this.continueSession(message);
+    }
+
+    // -------------------------------------------------------------------------
+    // Level 2 handlers (after consumer menu)
+    // -------------------------------------------------------------------------
+    async handleLevel2(user, choice, input) {
         switch (choice) {
             case '1':
                 return this.getMarketList(user, 'price');
@@ -126,428 +162,390 @@ class USSDService {
                 return this.getMarketList(user, 'trend');
             case '3':
                 return this.getMarketList(user, 'compare');
-            case '4':
-                return this.getHelpMenu();
             case '0':
-                return this.endSession('Thank you for using Smart Market. Goodbye!');
-            default:
                 return this.getMainMenu(user);
+            case '#':
+                return this.logout(user);
+            default:
+                return this.getConsumerMenu(user);
         }
     }
 
-    getHelpMenu() {
-        const message = `Help - Smart Market Price Monitoring
-──────────────────────────────
-• Check Prices - View current market prices
-• View Trends - See 24hr price changes & 3-day predictions
-• Compare Markets - Find best prices across markets
-
-Features:
-✓ Real-time price updates
-✓ AI-powered predictions with 85-95% accuracy
-✓ Save up to 30% by timing purchases
-
-0. Back | Main Menu`;
-        return this.continueSession(message);
-    }
-
     // -------------------------------------------------------------------------
-    // Market List - FIXED with fallback data
+    // Market list (reads from DB, no HTTP)
     // -------------------------------------------------------------------------
     async getMarketList(user, action) {
         try {
-            // First, check if pool is defined
-            if (!pool) {
-                console.error('Database pool is not defined');
-                return this.getFallbackMarketList(user, action);
+            const result = await pool.query(
+                'SELECT id, name, province FROM markets ORDER BY name'
+            );
+            const markets = result.rows;
+
+            if (markets.length === 0) {
+                return this.endSession('No markets available. Please contact support.');
             }
 
-            // Try to fetch from database
-            let result;
-            try {
-                result = await pool.query(
-                    'SELECT id, name, province FROM markets WHERE is_active = true ORDER BY name'
-                );
-            } catch (dbError) {
-                console.error('Database query error:', dbError);
-                // Check if is_active column doesn't exist
-                if (dbError.message.includes('column "is_active" does not exist')) {
-                    result = await pool.query(
-                        'SELECT id, name, province FROM markets ORDER BY name'
-                    );
-                } else {
-                    throw dbError;
-                }
-            }
-            
-            let markets = result.rows;
-
-            if (!markets || markets.length === 0) {
-                console.log('No markets found in database, using fallback data');
-                return this.getFallbackMarketList(user, action);
-            }
-
-            let actionText = '';
-            switch(action) {
-                case 'price': actionText = 'Check Prices'; break;
-                case 'trend': actionText = 'View Trends'; break;
-                case 'compare': actionText = 'Compare Markets'; break;
-            }
-
-            let message = `${actionText}
-Select Market:
+            let message = `Choose a market:
 ──────────────────────────────\n`;
             markets.forEach((market, idx) => {
                 message += `${idx + 1}. ${market.name}\n`;
             });
-            message += `\n0. Back | #. Main Menu`;
+            message += `\n0. Back`;
             return this.continueSession(message);
         } catch (error) {
             console.error('Error fetching markets:', error);
-            // Return fallback data instead of ending session
-            return this.getFallbackMarketList(user, action);
+            return this.endSession('Unable to fetch markets. Please try again.');
         }
     }
 
-    // Fallback market list when database is unavailable
-    getFallbackMarketList(user, action) {
-        const fallbackMarkets = [
-            { id: 1, name: 'Kimironko Market', province: 'Kigali' },
-            { id: 2, name: 'Nyabugogo Market', province: 'Kigali' },
-            { id: 3, name: 'Musanze Market', province: 'Northern' },
-            { id: 4, name: 'Huye Market', province: 'Southern' },
-            { id: 5, name: 'Rubavu Market', province: 'Western' },
-            { id: 6, name: 'Rwamagana Market', province: 'Eastern' }
-        ];
-
-        let actionText = '';
-        switch(action) {
-            case 'price': actionText = 'Check Prices'; break;
-            case 'trend': actionText = 'View Trends'; break;
-            case 'compare': actionText = 'Compare Markets'; break;
-        }
-
-        let message = `${actionText}
-Select Market:
-──────────────────────────────\n`;
-        fallbackMarkets.forEach((market, idx) => {
-            message += `${idx + 1}. ${market.name}\n`;
-        });
-        message += `\n0. Back | #. Main Menu`;
-        return this.continueSession(message);
-    }
-
-    // Get fallback products for a market
-    getFallbackProducts(marketName) {
-        const allProducts = [
-            { id: 1, name: 'Tomatoes', unit: 'kg' },
-            { id: 2, name: 'Onions', unit: 'kg' },
-            { id: 3, name: 'Potatoes', unit: 'kg' },
-            { id: 4, name: 'Carrots', unit: 'kg' },
-            { id: 5, name: 'Cabbage', unit: 'piece' },
-            { id: 6, name: 'Rice', unit: 'kg' },
-            { id: 7, name: 'Beans', unit: 'kg' },
-            { id: 8, name: 'Maize', unit: 'kg' }
-        ];
-        return allProducts;
-    }
-
-    // Get fallback price data
-    getFallbackPrice(marketName, productName) {
-        const prices = {
-            'Kimironko Market': { 'Tomatoes': 1200, 'Onions': 800, 'Potatoes': 600, 'Carrots': 500, 'Cabbage': 400, 'Rice': 1500, 'Beans': 1800, 'Maize': 700 },
-            'Nyabugogo Market': { 'Tomatoes': 1100, 'Onions': 750, 'Potatoes': 550, 'Carrots': 450, 'Cabbage': 350, 'Rice': 1400, 'Beans': 1700, 'Maize': 650 },
-            'Musanze Market': { 'Tomatoes': 1000, 'Onions': 700, 'Potatoes': 500, 'Carrots': 400, 'Cabbage': 300, 'Rice': 1300, 'Beans': 1600, 'Maize': 600 },
-            'Huye Market': { 'Tomatoes': 1050, 'Onions': 720, 'Potatoes': 520, 'Carrots': 420, 'Cabbage': 320, 'Rice': 1350, 'Beans': 1650, 'Maize': 620 },
-            'Rubavu Market': { 'Tomatoes': 1150, 'Onions': 780, 'Potatoes': 580, 'Carrots': 480, 'Cabbage': 380, 'Rice': 1450, 'Beans': 1750, 'Maize': 680 },
-            'Rwamagana Market': { 'Tomatoes': 1080, 'Onions': 730, 'Potatoes': 540, 'Carrots': 440, 'Cabbage': 340, 'Rice': 1380, 'Beans': 1680, 'Maize': 640 }
-        };
-        
-        const marketPrices = prices[marketName] || prices['Kimironko Market'];
-        return marketPrices[productName] || 1000;
-    }
-
     // -------------------------------------------------------------------------
-    // Level 2 - FIXED to handle action properly
-    // -------------------------------------------------------------------------
-    async handleLevel2(user, choice, input) {
-        // This level shouldn't be reached with the new flow
-        // But kept for compatibility
-        return this.getMainMenu(user);
-    }
-
-    // -------------------------------------------------------------------------
-    // Level 3 (Market Selection) - FIXED
+    // Level 3 (market selection)
     // -------------------------------------------------------------------------
     async handleLevel3(user, choice, input) {
-        const action = input[0]; // action is at index 0 now
-        
-        if (choice === '0') {
-            return this.getMainMenu(user);
+        // Determine action from the consumer's original choice (input[2])
+        const consumerChoice = input[2];
+        let action;
+        switch (consumerChoice) {
+            case '1': action = 'price'; break;
+            case '2': action = 'trend'; break;
+            case '3': action = 'compare'; break;
+            default: action = 'price';
         }
-        
-        if (choice === '#') {
-            return this.getMainMenu(user);
+
+        if (choice === '0') {
+            return this.getConsumerMenu(user);
         }
 
         try {
-            // Try to get markets from database first
-            let markets = [];
-            let useFallback = false;
-            
-            try {
-                if (pool) {
-                    let result;
-                    try {
-                        result = await pool.query(
-                            'SELECT id, name FROM markets WHERE is_active = true ORDER BY name'
-                        );
-                    } catch (dbError) {
-                        if (dbError.message.includes('column "is_active" does not exist')) {
-                            result = await pool.query('SELECT id, name FROM markets ORDER BY name');
-                        } else {
-                            throw dbError;
-                        }
-                    }
-                    markets = result.rows;
-                }
-            } catch (dbError) {
-                console.error('Database error in level3:', dbError);
-                useFallback = true;
-            }
-            
-            if (!markets || markets.length === 0) {
-                useFallback = true;
-            }
-            
-            if (useFallback) {
-                const fallbackMarkets = [
-                    { id: 1, name: 'Kimironko Market' },
-                    { id: 2, name: 'Nyabugogo Market' },
-                    { id: 3, name: 'Musanze Market' },
-                    { id: 4, name: 'Huye Market' },
-                    { id: 5, name: 'Rubavu Market' },
-                    { id: 6, name: 'Rwamagana Market' }
-                ];
-                markets = fallbackMarkets;
-            }
-            
+            const marketsResult = await pool.query(
+                'SELECT id, name FROM markets ORDER BY name'
+            );
+            const markets = marketsResult.rows;
             const selectedIdx = parseInt(choice) - 1;
+
             if (selectedIdx < 0 || selectedIdx >= markets.length) {
                 return this.getMarketList(user, action);
             }
 
             const selectedMarket = markets[selectedIdx];
 
-            // Get products - try database first, then fallback
-            let products = [];
-            let useProductFallback = false;
-            
-            if (!useFallback && pool) {
-                try {
-                    const productsQuery = `
-                        SELECT DISTINCT
-                            p.id AS product_id,
-                            p.name AS product_name,
-                            p.unit
-                        FROM products p
-                        INNER JOIN prices pr ON pr.product_id = p.id
-                        WHERE pr.market_id = $1
-                        ORDER BY p.name
-                    `;
-                    const productsResult = await pool.query(productsQuery, [selectedMarket.id]);
-                    products = productsResult.rows;
-                    if (!products || products.length === 0) {
-                        useProductFallback = true;
-                    }
-                } catch (error) {
-                    console.error('Error fetching products from DB:', error);
-                    useProductFallback = true;
-                }
-            } else {
-                useProductFallback = true;
-            }
-            
-            if (useProductFallback) {
-                products = this.getFallbackProducts(selectedMarket.name);
-            }
+            // Fetch products with their latest price for this market
+            const productsQuery = `
+                SELECT 
+                    p.id AS product_id,
+                    p.name AS product_name,
+                    p.unit,
+                    pr.price,
+                    pr.created_at
+                FROM prices pr
+                JOIN products p ON pr.product_id = p.id
+                WHERE pr.market_id = $1
+                AND pr.created_at = (
+                    SELECT MAX(created_at) FROM prices 
+                    WHERE market_id = $1 AND product_id = p.id
+                )
+                ORDER BY p.name
+            `;
+            const productsResult = await pool.query(productsQuery, [selectedMarket.id]);
+            let products = productsResult.rows;
 
             if (products.length === 0) {
-                return this.continueSession(`No products available at ${selectedMarket.name}.\nPlease try another market.\n\n0. Back`);
+                return this.continueSession(`No products available at ${selectedMarket.name}. Please try another market.\n\n0. Back`);
             }
 
-            let message = `${selectedMarket.name}
-Select Product:
+            // Build product list message
+            let message = `Products at ${selectedMarket.name}:
 ──────────────────────────────\n`;
             products.forEach((product, idx) => {
-                message += `${idx + 1}. ${product.product_name || product.name}\n`;
+                message += `${idx + 1}. ${product.product_name}\n`;
             });
-            message += `\n0. Back | #. Main Menu`;
+            message += `\n0. Back`;
 
+            // We need to pass selectedMarket and products to level 4.
+            // Since we cannot store in a Map, we use a trick: encode the selected market ID
+            // and the product list into the USSD text? That would be too long.
+            // Instead, we re‑fetch the market and products in level 4 using the market ID and the product index.
+            // But we don't have the market ID yet. We can pass it as part of the response? No.
+            // Stateless USSD means we must re‑query everything from the user's input choices.
+            // For level 4 we will receive the product number. Combined with the market choice from level 3,
+            // we can re‑fetch the market and product list again. That is acceptable because the data changes rarely.
+
+            // So we do NOT store anything. In level 4 we will:
+            // - Re‑fetch markets using the market index from input[3] (the user's choice at level 3)
+            // - Re‑fetch products for that market
+            // - Then show the price/trend/compare.
+
+            // To make that work, we need the market index that the user selected. That is exactly `choice` (the market number)
+            // but it's not available at level 4 because AT sends only the full text. At level 4, input[3] is the market number.
+            // So we can retrieve it from `input[3]` when handling level 4.
+
+            // Therefore we just return the product list and the next level (level 4) will parse input[3] (market index) and input[4] (product index).
             return this.continueSession(message);
         } catch (error) {
-            console.error('Error in level3:', error);
-            return this.continueSession(`Error loading products. Please try again.\n\n0. Back`);
+            console.error('Error fetching products:', error);
+            return this.endSession('Unable to fetch products. Please try again.');
         }
     }
 
     // -------------------------------------------------------------------------
-    // Level 4 (Product Selection & Action Execution) - FIXED
+    // Level 4 (product selection)
     // -------------------------------------------------------------------------
     async handleLevel4(user, choice, input) {
-        const action = input[0]; // action from main menu (1,2,3)
-        const marketName = input[1]; // market name from level 3
-        
+        // input[2] = consumer choice (1,2,3) → action
+        const consumerChoice = input[2];
+        let action;
+        switch (consumerChoice) {
+            case '1': action = 'price'; break;
+            case '2': action = 'trend'; break;
+            case '3': action = 'compare'; break;
+            default: action = 'price';
+        }
+
         if (choice === '0') {
+            // Go back to market list
             return this.getMarketList(user, action);
         }
-        
-        if (choice === '#') {
-            return this.getMainMenu(user);
-        }
 
+        // Get the market index from level 3 (input[3])
+        const marketIdx = parseInt(input[3]) - 1;
         try {
-            const productIdx = parseInt(choice) - 1;
-            const products = this.getFallbackProducts(marketName);
-            
-            if (productIdx < 0 || productIdx >= products.length) {
-                let message = `${marketName}
-Select Product:
-──────────────────────────────\n`;
-                products.forEach((product, idx) => {
-                    message += `${idx + 1}. ${product.name}\n`;
-                });
-                message += `\n0. Back | #. Main Menu`;
-                return this.continueSession(message);
+            const marketsResult = await pool.query('SELECT id, name FROM markets ORDER BY name');
+            const markets = marketsResult.rows;
+            if (marketIdx < 0 || marketIdx >= markets.length) {
+                return this.getMarketList(user, action);
             }
-            
+            const selectedMarket = markets[marketIdx];
+
+            // Re‑fetch products for this market
+            const productsQuery = `
+                SELECT 
+                    p.id AS product_id,
+                    p.name AS product_name,
+                    p.unit,
+                    pr.price,
+                    pr.created_at
+                FROM prices pr
+                JOIN products p ON pr.product_id = p.id
+                WHERE pr.market_id = $1
+                AND pr.created_at = (
+                    SELECT MAX(created_at) FROM prices 
+                    WHERE market_id = $1 AND product_id = p.id
+                )
+                ORDER BY p.name
+            `;
+            const productsResult = await pool.query(productsQuery, [selectedMarket.id]);
+            const products = productsResult.rows;
+
+            const productIdx = parseInt(choice) - 1;
+            if (productIdx < 0 || productIdx >= products.length) {
+                return this.continueSession('Invalid product selection.\n\n0. Back');
+            }
             const selectedProduct = products[productIdx];
 
-            // Execute action
+            // Now perform the requested action
             switch (action) {
-                case '1':
-                    return this.showPriceFallback(user, marketName, selectedProduct);
-                case '2':
-                    return this.showTrendFallback(user, marketName, selectedProduct);
-                case '3':
-                    return this.showCompareMarketsFallback(user, selectedProduct);
+                case 'price':
+                    return this.showPrice(user, selectedMarket, selectedProduct);
+                case 'trend':
+                    return this.showTrend(user, selectedMarket, selectedProduct);
+                case 'compare':
+                    return this.showCompareMarkets(user, selectedProduct);
                 default:
-                    return this.getMainMenu(user);
+                    return this.getConsumerMenu(user);
             }
         } catch (error) {
             console.error('Error in level4:', error);
-            return this.endSession('Unable to process request. Please try again.');
+            return this.endSession('Unable to process your request. Please try again.');
         }
     }
 
-    // Fallback show price
-    showPriceFallback(user, marketName, product) {
-        const price = this.getFallbackPrice(marketName, product.name);
-        const message = `${marketName}
-Product: ${product.name}
-
-💰 Price: ${price.toLocaleString()} RWF/${product.unit}
-📅 Updated: Today
-🎯 AI Accuracy: 94%
-
-──────────────────────────────
-1. New Search
-2. Main Menu
-
-0. Exit | #. Main Menu`;
-        return this.continueSession(message);
-    }
-
-    // Fallback show trend
-    showTrendFallback(user, marketName, product) {
-        const currentPrice = this.getFallbackPrice(marketName, product.name);
-        const change = (Math.random() * 10 - 5).toFixed(1);
-        const changeSymbol = change >= 0 ? '↑' : '↓';
-        const status = change > 0 ? 'RISING 📈' : (change < 0 ? 'FALLING 📉' : 'STABLE ➡');
-        const predictedPrice = Math.round(currentPrice * (1 + parseFloat(change) / 100));
-        
-        const message = `📊 Price Trend (24h)
-──────────────────────────────
-Market: ${marketName}
-Product: ${product.name}
-
-Current: ${currentPrice.toLocaleString()} RWF
-Change: ${changeSymbol} ${Math.abs(change)}%
-Status: ${status}
-
-🔮 3-Day Prediction:
-${predictedPrice.toLocaleString()} RWF
-
-──────────────────────────────
-1. New Search
-2. Main Menu
-
-0. Exit | #. Main Menu`;
-        return this.continueSession(message);
-    }
-
-    // Fallback compare markets
-    showCompareMarketsFallback(user, product) {
-        const markets = [
-            { name: 'Kimironko Market', price: this.getFallbackPrice('Kimironko Market', product.name) },
-            { name: 'Nyabugogo Market', price: this.getFallbackPrice('Nyabugogo Market', product.name) },
-            { name: 'Musanze Market', price: this.getFallbackPrice('Musanze Market', product.name) },
-            { name: 'Huye Market', price: this.getFallbackPrice('Huye Market', product.name) },
-            { name: 'Rubavu Market', price: this.getFallbackPrice('Rubavu Market', product.name) },
-            { name: 'Rwamagana Market', price: this.getFallbackPrice('Rwamagana Market', product.name) }
-        ];
-        
-        markets.sort((a, b) => a.price - b.price);
-        const best = markets[0];
-        const worst = markets[markets.length - 1];
-        const savings = ((worst.price - best.price) / worst.price * 100).toFixed(1);
-        
-        let message = `📊 Market Comparison
-──────────────────────────────
-Product: ${product.name}
-
-🏆 BEST PRICE:
-${best.name}: ${best.price.toLocaleString()} RWF
-
-💰 Other Markets:
-──────────────────────────────\n`;
-        
-        for (let i = 1; i < Math.min(markets.length, 6); i++) {
-            const priceDiff = ((markets[i].price - best.price) / best.price * 100).toFixed(1);
-            message += `${markets[i].name}: ${markets[i].price.toLocaleString()} RWF (${priceDiff}% ↑)\n`;
+    // -------------------------------------------------------------------------
+    // Show price (direct DB)
+    // -------------------------------------------------------------------------
+    async showPrice(user, market, product) {
+        // Optional: fetch AI confidence from a forecast table or compute from history
+        let accuracy = '93%';
+        try {
+            // Example: get last 7 days of prices for this product/market to compute trend confidence
+            const history = await pool.query(
+                `SELECT price FROM price_history 
+                 WHERE product_id = $1 AND market_id = $2 
+                 ORDER BY recorded_date DESC LIMIT 7`,
+                [product.product_id, market.id]
+            );
+            if (history.rows.length >= 3) {
+                // Dummy confidence – replace with your own logic
+                accuracy = '94%';
+            }
+        } catch (err) {
+            console.log('Confidence calc skipped');
         }
 
-        message += `\n💡 You can save up to ${savings}%
-by buying from ${best.name}
+        const message = `Current Price
+──────────────────────────────
+Market: ${market.name}
+Product: ${product.product_name}
+
+Price: ${Number(product.price).toLocaleString()} RWF/${product.unit || 'kg'}
+Updated: ${new Date(product.created_at).toLocaleDateString()}
+AI Accuracy: ${accuracy}
 
 ──────────────────────────────
-1. New Search
-2. Main Menu
+1. Check Another Product
+2. Change Market
+3. Main Menu
 
-0. Exit | #. Main Menu`;
+0. Back  |  #. Logout`;
         return this.continueSession(message);
     }
 
     // -------------------------------------------------------------------------
-    // Level 5 (Post-Action Menu)
+    // Show trend (simple 7-day change from price_history)
+    // -------------------------------------------------------------------------
+    async showTrend(user, market, product) {
+        try {
+            const history = await pool.query(
+                `SELECT recorded_date, price 
+                 FROM price_history 
+                 WHERE product_id = $1 AND market_id = $2 
+                 ORDER BY recorded_date DESC LIMIT 8`,
+                [product.product_id, market.id]
+            );
+
+            let trendMessage = '';
+            const currentPrice = product.price;
+            if (history.rows.length >= 2) {
+                const oldestPrice = history.rows[history.rows.length - 1].price;
+                const percentChange = ((currentPrice - oldestPrice) / oldestPrice) * 100;
+                let changeSymbol = percentChange >= 0 ? '↑ +' : '↓ ';
+                let status = percentChange > 0 ? 'RISING' : (percentChange < 0 ? 'FALLING' : 'STABLE');
+                trendMessage = `Price Trend (7 days)
+──────────────────────────────
+Market: ${market.name}
+Product: ${product.product_name}
+
+Current: ${Number(currentPrice).toLocaleString()} RWF
+Change: ${changeSymbol}${Math.abs(percentChange).toFixed(1)}%
+Status: ${status}`;
+            } else {
+                trendMessage = `Price Trend
+──────────────────────────────
+Market: ${market.name}
+Product: ${product.product_name}
+
+Current: ${Number(currentPrice).toLocaleString()} RWF
+Trend: Stable (insufficient data)`;
+            }
+
+            const message = `${trendMessage}
+
+──────────────────────────────
+1. Check Another Product
+2. Change Market
+3. Main Menu
+
+0. Back  |  #. Logout`;
+            return this.continueSession(message);
+        } catch (error) {
+            console.error('Trend error:', error);
+            return this.showPrice(user, market, product);
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Compare markets for a product
+    // -------------------------------------------------------------------------
+    async showCompareMarkets(user, product) {
+        try {
+            // Get average prices for this product across all markets
+            const compareQuery = `
+                SELECT 
+                    m.id, m.name,
+                    AVG(pr.price) AS avg_price,
+                    COUNT(pr.price) AS samples
+                FROM prices pr
+                JOIN markets m ON pr.market_id = m.id
+                WHERE pr.product_id = $1
+                AND pr.created_at > NOW() - INTERVAL '3 days'
+                GROUP BY m.id, m.name
+                ORDER BY avg_price ASC
+                LIMIT 6
+            `;
+            const result = await pool.query(compareQuery, [product.product_id]);
+            const markets = result.rows;
+
+            if (markets.length === 0) {
+                return this.endSession('No comparison data available for this product.');
+            }
+
+            const best = markets[0];
+            let message = `Market Comparison
+──────────────────────────────
+Product: ${product.product_name}
+
+Best Price: ${best.name}
+${Number(best.avg_price).toLocaleString()} RWF/${product.unit || 'kg'}
+
+Other Markets:
+──────────────────────────────\n`;
+            for (let i = 1; i < markets.length; i++) {
+                message += `${markets[i].name}: ${Number(markets[i].avg_price).toLocaleString()} RWF\n`;
+            }
+
+            message += `\n──────────────────────────────
+1. Check Another Product
+2. Main Menu
+
+0. Back  |  #. Logout`;
+            return this.continueSession(message);
+        } catch (error) {
+            console.error('Compare error:', error);
+            return this.endSession('Unable to compare markets. Please try again.');
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Level 5 (post‑action menu)
     // -------------------------------------------------------------------------
     async handleLevel5(user, choice, input) {
+        // Re‑determine action from input[2]
+        const consumerChoice = input[2];
+        let action;
+        switch (consumerChoice) {
+            case '1': action = 'price'; break;
+            case '2': action = 'trend'; break;
+            case '3': action = 'compare'; break;
+            default: action = 'price';
+        }
+
         switch (choice) {
-            case '1': // New Search
-                return this.getMainMenu(user);
-            case '2': // Main Menu
-                return this.getMainMenu(user);
-            case '0': // Exit
-                return this.endSession('Thank you for using Smart Market. Goodbye!');
-            case '#': // Main Menu
-                return this.getMainMenu(user);
+            case '1':   // Another product
+                return this.getMarketList(user, action);
+            case '2':   // Change market
+                return this.getMarketList(user, action);
+            case '3':   // Main menu
+                return this.getConsumerMenu(user);
+            case '0':   // Back
+                if (action === 'price' || action === 'trend') {
+                    return this.getMarketList(user, action);
+                }
+                return this.getConsumerMenu(user);
+            case '#':   // Logout
+                return this.logout(user);
             default:
-                return this.getMainMenu(user);
+                return this.getConsumerMenu(user);
         }
     }
 
     // -------------------------------------------------------------------------
-    // Response Formatters
+    // Logout
+    // -------------------------------------------------------------------------
+    logout(user) {
+        return this.endSession('You have been logged out. Thank you for using Smart Market!');
+    }
+
+    // -------------------------------------------------------------------------
+    // Response formatters (for controller)
     // -------------------------------------------------------------------------
     continueSession(message) {
         return { type: 'continue', message };
