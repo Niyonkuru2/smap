@@ -183,13 +183,13 @@ Tips:
             message += `\nSend market number`;
             
             if (page < totalPages) {
-                message += `\nNext: 99`;
+                message += `\n99. Next`;
             }
             if (page > 1) {
-                message += `\nPrev: 98`;
+                message += `\n98. Prev`;
             }
-            message += `\nBack: 0`;
-            message += `\nMain: 00`;
+            message += `\n0. Back`;
+            message += `\n00. Main`;
             
             return this.continueSession(message, { action, page, totalPages, markets: markets.map(m => ({ id: m.id, name: m.name })) });
         } catch (error) {
@@ -228,13 +228,13 @@ Tips:
             message += `\nSend product number`;
             
             if (page < totalPages) {
-                message += `\nNext: 99`;
+                message += `\n99. Next`;
             }
             if (page > 1) {
-                message += `\nPrev: 98`;
+                message += `\n98. Prev`;
             }
-            message += `\nBack: 0`;
-            message += `\nMain: 00`;
+            message += `\n0. Back`;
+            message += `\n00. Main`;
             
             return this.continueSession(message, { products: products.map(p => ({ id: p.id, name: p.name, unit: p.unit })) });
         } catch (error) {
@@ -323,8 +323,8 @@ Tips:
             });
             message += `\n----------------------------`;
             message += `\nSend product number`;
-            message += `\nBack to Markets: 0`;
-            message += `\nMain Menu: 00`;
+            message += `\n0. Back to Markets`;
+            message += `\n00. Main Menu`;
             
             return this.continueSession(message);
         } catch (error) {
@@ -530,9 +530,9 @@ Tips:
 Product: ${product.name}
 
 BEST PRICE:
-- ${bestMarket.name}: ${Number(bestMarket.price).toLocaleString()} RWF/${product.unit || 'kg'}
+${bestMarket.name}: ${Number(bestMarket.price).toLocaleString()} RWF/${product.unit || 'kg'}
 
-All Markets:
+All Markets (${startIdx + 1}-${endIdx} of ${totalMarkets}):
 ----------------------------\n`;
         
         // Show markets for current page
@@ -546,33 +546,29 @@ All Markets:
             }
         }
         
-        message += `\n----------------------------`;
-        
-        // Add navigation options
-        if (totalPages > 1) {
-            message += `\nPage ${page}/${totalPages}`;
-            if (page < totalPages) {
-                message += ` | Next: 99`;
-            }
-            if (page > 1) {
-                message += ` | Prev: 98`;
-            }
-        }
-        
-        message += `\n----------------------------`;
-        
-        // Calculate savings between best and worst market
         const worstMarket = allMarkets[totalMarkets - 1];
         const savingsPercent = ((worstMarket.price - bestMarket.price) / worstMarket.price * 100).toFixed(0);
         
-        message += `\nAverage: ${Math.round(avgPrice).toLocaleString()} RWF
-Save ${savingsPercent}pct at ${bestMarket.name}
-
-----------------------------
-1. Another Product
-2. Main Menu
-
-#. Logout`;
+        message += `\n----------------------------`;
+        message += `\nAverage: ${Math.round(avgPrice).toLocaleString()} RWF`;
+        message += `\nSave ${savingsPercent}pct at ${bestMarket.name}`;
+        message += `\n\n----------------------------`;
+        
+        // Input options - these are what the user can type
+        message += `\n1. Another Product`;
+        message += `\n2. Main Menu`;
+        
+        // Add pagination options only if needed
+        if (totalPages > 1) {
+            if (page < totalPages) {
+                message += `\n99. Next Page`;
+            }
+            if (page > 1) {
+                message += `\n98. Previous Page`;
+            }
+        }
+        
+        message += `\n#. Logout`;
         
         return this.continueSession(message);
     }
