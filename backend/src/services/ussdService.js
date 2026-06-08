@@ -3,6 +3,9 @@ import pool from '../config/database.js';
 class USSDService {
     // Pagination settings
     ITEMS_PER_PAGE = 5;
+    
+    // Temporary storage for pagination state (in production, use Redis or session storage)
+    comparisonCache = new Map();
 
     async handleUSSDRequest(sessionId, phoneNumber, text) {
         try {
@@ -25,13 +28,13 @@ class USSDService {
             // Route based on navigation level
             switch (level) {
                 case 1:
-                    return this.handleMainMenuChoice(user, input[0]);
+                    return this.handleMainMenuChoice(user, input[0], sessionId);
                 case 2:
-                    return this.handleLevel2(user, input[0], input[1]);
+                    return this.handleLevel2(user, input[0], input[1], sessionId);
                 case 3:
-                    return this.handleLevel3(user, input[0], input[1], input[2]);
+                    return this.handleLevel3(user, input[0], input[1], input[2], sessionId);
                 case 4:
-                    return this.handleLevel4(user, input[0], input[1], input[2], input[3]);
+                    return this.handleLevel4(user, input[0], input[1], input[2], input[3], sessionId);
                 default:
                     return this.getConsumerMenu();
             }
@@ -107,8 +110,13 @@ Welcome!
         return this.continueSession(message);
     }
 
-    async handleMainMenuChoice(user, choice) {
+    async handleMainMenuChoice(user, choice, sessionId) {
         console.log(`[Main Menu] Choice: ${choice}`);
+        
+        // Clear comparison cache for this session when starting fresh
+        if (choice !== '3') {
+            this.comparisonCache.delete(sessionId);
+        }
         
         switch (choice) {
             case '1':
@@ -235,7 +243,7 @@ Tips:
         }
     }
 
-    async handleLevel2(user, mainChoice, secondChoice) {
+    async handleLevel2(user, mainChoice, secondChoice, sessionId) {
         console.log(`[Level2] Main: ${mainChoice}, Second: ${secondChoice}`);
         
         // Handle pagination for Compare Markets
@@ -250,9 +258,10 @@ Tips:
                 return this.getConsumerMenu();
             }
             if (secondChoice === '00') {
+                this.comparisonCache.delete(sessionId);
                 return this.getConsumerMenu();
             }
-            return this.handleProductComparison(user, secondChoice);
+            return this.handleProductComparison(user, secondChoice, sessionId);
         }
         
         // Handle pagination for Price/Trend
@@ -324,7 +333,7 @@ Tips:
         }
     }
 
-    async handleLevel3(user, mainChoice, secondChoice, thirdChoice) {
+    async handleLevel3(user, mainChoice, secondChoice, thirdChoice, sessionId) {
         console.log(`[Level3] Third: ${thirdChoice}`);
         
         const action = mainChoice === '1' ? 'price' : 'trend';
@@ -382,7 +391,7 @@ Tips:
         }
     }
 
-    async handleLevel4(user, mainChoice, secondChoice, thirdChoice, fourthChoice) {
+    async handleLevel4(user, mainChoice, secondChoice, thirdChoice, fourthChoice, sessionId) {
         console.log(`[Level4] Fourth: ${fourthChoice}`);
         
         switch (fourthChoice) {
@@ -390,7 +399,7 @@ Tips:
                 if (mainChoice === '3') {
                     return this.getProductListForComparison(1);
                 } else {
-                    return this.handleLevel2(user, mainChoice, secondChoice);
+                    return this.handleLevel2(user, mainChoice, secondChoice, sessionId);
                 }
                 
             case '2': // Change market
@@ -401,28 +410,49 @@ Tips:
                 }
                 
             case '3': // Main menu
+                this.comparisonCache.delete(sessionId);
                 return this.getConsumerMenu();
                 
             case '0': // Back
                 if (mainChoice === '3') {
                     return this.getProductListForComparison(1);
                 } else {
-                    return this.handleLevel2(user, mainChoice, secondChoice);
+                    return this.handleLevel2(user, mainChoice, secondChoice, sessionId);
                 }
                 
             case '#': // Logout
+                this.comparisonCache.delete(sessionId);
                 return this.logout();
                 
             default:
+                // Handle pagination for comparison markets
+                if (mainChoice === '3' && (fourthChoice === '99' || fourthChoice === '98')) {
+                    const cached = this.comparisonCache.get(sessionId);
+                    if (cached) {
+                        const totalPages = Math.ceil(cached.allMarkets.length / this.ITEMS_PER_PAGE);
+                        let newPage = cached.currentPage;
+                        
+                        if (fourthChoice === '99' && newPage < totalPages) {
+                            newPage++;
+                        } else if (fourthChoice === '98' && newPage > 1) {
+                            newPage--;
+                        } else {
+                            return this.showCompareMarketsWithPagination(cached.product, cached.allMarkets, newPage, sessionId);
+                        }
+                        
+                        return this.showCompareMarketsWithPagination(cached.product, cached.allMarkets, newPage, sessionId);
+                    }
+                }
+                
                 if (mainChoice === '3') {
                     return this.getProductListForComparison(1);
                 } else {
-                    return this.handleLevel2(user, mainChoice, secondChoice);
+                    return this.handleLevel2(user, mainChoice, secondChoice, sessionId);
                 }
         }
     }
 
-    async handleProductComparison(user, productChoice) {
+    async handleProductComparison(user, productChoice, sessionId) {
         try {
             const products = await pool.query(
                 'SELECT id, name, unit FROM products ORDER BY name'
@@ -434,11 +464,117 @@ Tips:
             }
             
             const selectedProduct = products.rows[productIndex];
-            return this.showCompareMarkets(selectedProduct);
+            return this.showCompareMarkets(selectedProduct, sessionId);
         } catch (error) {
             console.error('Error in product comparison:', error);
             return this.endSession('Unable to compare markets. Please try again.');
         }
+    }
+
+    async showCompareMarkets(product, sessionId, page = 1) {
+        try {
+            const compareQuery = `
+                SELECT 
+                    m.id,
+                    m.name,
+                    m.province,
+                    pr.price,
+                    pr.created_at
+                FROM prices pr
+                INNER JOIN markets m ON pr.market_id = m.id
+                WHERE pr.product_id = $1
+                AND pr.status = 'approved'
+                AND pr.created_at = (
+                    SELECT MAX(created_at) 
+                    FROM prices p2 
+                    WHERE p2.product_id = pr.product_id 
+                    AND p2.market_id = pr.market_id
+                    AND p2.status = 'approved'
+                )
+                ORDER BY pr.price ASC
+            `;
+            
+            const result = await pool.query(compareQuery, [product.id]);
+            const allMarkets = result.rows;
+
+            if (allMarkets.length === 0) {
+                return this.endSession(`No price data available for ${product.name}.`);
+            }
+
+            // Cache the results for pagination
+            this.comparisonCache.set(sessionId, {
+                product: product,
+                allMarkets: allMarkets,
+                currentPage: page
+            });
+
+            return this.showCompareMarketsWithPagination(product, allMarkets, page, sessionId);
+        } catch (error) {
+            console.error('Error in showCompareMarkets:', error);
+            return this.endSession('Unable to compare markets. Please try again.');
+        }
+    }
+
+    async showCompareMarketsWithPagination(product, allMarkets, page, sessionId) {
+        const totalMarkets = allMarkets.length;
+        const totalPages = Math.ceil(totalMarkets / this.ITEMS_PER_PAGE);
+        const startIdx = (page - 1) * this.ITEMS_PER_PAGE;
+        const endIdx = Math.min(startIdx + this.ITEMS_PER_PAGE, totalMarkets);
+        const pageMarkets = allMarkets.slice(startIdx, endIdx);
+        
+        const bestMarket = allMarkets[0];
+        const avgPrice = allMarkets.reduce((sum, m) => sum + parseFloat(m.price), 0) / totalMarkets;
+        
+        let message = `Compare Markets (Page ${page}/${totalPages})
+----------------------------
+Product: ${product.name}
+
+BEST PRICE:
+- ${bestMarket.name}: ${Number(bestMarket.price).toLocaleString()} RWF/${product.unit || 'kg'}
+
+All Markets:
+----------------------------\n`;
+        
+        // Show markets for current page
+        for (const market of pageMarkets) {
+            const isBest = market.id === bestMarket.id;
+            if (isBest) {
+                message += `* ${market.name}: ${Number(market.price).toLocaleString()} RWF (BEST)\n`;
+            } else {
+                const priceDiff = ((market.price - bestMarket.price) / bestMarket.price * 100).toFixed(1);
+                message += `  ${market.name}: ${Number(market.price).toLocaleString()} RWF (+${priceDiff}pct)\n`;
+            }
+        }
+        
+        message += `\n----------------------------`;
+        
+        // Add navigation options
+        if (totalPages > 1) {
+            message += `\nPage ${page}/${totalPages}`;
+            if (page < totalPages) {
+                message += ` | Next: 99`;
+            }
+            if (page > 1) {
+                message += ` | Prev: 98`;
+            }
+        }
+        
+        message += `\n----------------------------`;
+        
+        // Calculate savings between best and worst market
+        const worstMarket = allMarkets[totalMarkets - 1];
+        const savingsPercent = ((worstMarket.price - bestMarket.price) / worstMarket.price * 100).toFixed(0);
+        
+        message += `\nAverage: ${Math.round(avgPrice).toLocaleString()} RWF
+Save ${savingsPercent}pct at ${bestMarket.name}
+
+----------------------------
+1. Another Product
+2. Main Menu
+
+#. Logout`;
+        
+        return this.continueSession(message);
     }
 
     async showPrice(market, product) {
@@ -517,81 +653,6 @@ ${Math.round(prediction).toLocaleString()} RWF/${product.unit || 'kg'}
         } catch (error) {
             console.error('Error in showTrend:', error);
             return this.showPrice(market, product);
-        }
-    }
-
-    async showCompareMarkets(product) {
-        try {
-            const compareQuery = `
-                SELECT 
-                    m.id,
-                    m.name,
-                    m.province,
-                    pr.price,
-                    pr.created_at
-                FROM prices pr
-                INNER JOIN markets m ON pr.market_id = m.id
-                WHERE pr.product_id = $1
-                AND pr.status = 'approved'
-                AND pr.created_at = (
-                    SELECT MAX(created_at) 
-                    FROM prices p2 
-                    WHERE p2.product_id = pr.product_id 
-                    AND p2.market_id = pr.market_id
-                    AND p2.status = 'approved'
-                )
-                ORDER BY pr.price ASC
-            `;
-            
-            const result = await pool.query(compareQuery, [product.id]);
-            const markets = result.rows;
-
-            if (markets.length === 0) {
-                return this.endSession(`No price data available for ${product.name}.`);
-            }
-
-            const bestMarket = markets[0];
-            const avgPrice = markets.reduce((sum, m) => sum + parseFloat(m.price), 0) / markets.length;
-            
-            let message = `Compare Markets
-----------------------------
-Product: ${product.name}
-
-BEST PRICE:
-- ${bestMarket.name}: ${Number(bestMarket.price).toLocaleString()} RWF/${product.unit || 'kg'}
-
-All Markets:
-----------------------------\n`;
-            
-            // Show markets with pagination (first 6)
-            const displayMarkets = markets.slice(0, 6);
-            for (const market of displayMarkets) {
-                const isBest = market.id === bestMarket.id;
-                if (!isBest) {
-                    const priceDiff = ((market.price - bestMarket.price) / bestMarket.price * 100).toFixed(1);
-                    message += `${market.name}: ${Number(market.price).toLocaleString()} RWF (+${priceDiff}pct)\n`;
-                }
-            }
-            
-            if (markets.length > 6) {
-                message += `\n... and ${markets.length - 6} more markets`;
-            }
-            
-            const savingsPercent = ((markets[markets.length - 1].price - bestMarket.price) / markets[markets.length - 1].price * 100).toFixed(0);
-            message += `\n----------------------------
-Average: ${Math.round(avgPrice).toLocaleString()} RWF
-Save ${savingsPercent}pct at ${bestMarket.name}
-
-----------------------------
-1. Another Product
-2. Main Menu
-
-#. Logout`;
-            
-            return this.continueSession(message);
-        } catch (error) {
-            console.error('Error in showCompareMarkets:', error);
-            return this.endSession('Unable to compare markets. Please try again.');
         }
     }
 
