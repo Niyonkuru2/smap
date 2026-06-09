@@ -83,9 +83,9 @@ export const getVerificationTemplate = (userName, verificationCode, language = '
 // ============================================
 // PASSWORD RESET EMAIL
 // ============================================
-export const getPasswordResetTemplate = (userName, resetToken, resetCode, language = 'en') => {
+export const getPasswordResetTemplate = ( userName,resetCode,language = 'en') => {
     const frontendUrl = process.env.FRONTEND_URL || 'https://smppms-test.onrender.com';
-    const resetLink = `${frontendUrl}/reset-password?token=${resetToken}`;
+   
 
     const subjects = {
         en: 'Reset Your Password - SMPPMS',
@@ -106,7 +106,7 @@ export const getPasswordResetTemplate = (userName, resetToken, resetCode, langua
                     <div style="background-color: #f4f4f4; padding: 15px; text-align: center; font-size: 28px; font-weight: bold; letter-spacing: 5px; border-radius: 5px;">
                         ${resetCode}
                     </div>
-                    <p style="margin-top: 15px;">Or click here: <a href="${resetLink}" style="color: #ff9800;">Reset Password</a></p>
+                   
                     <p>This link will expire in <strong>1 hour</strong>.</p>
                     <p>If you didn't request this, please ignore this email.</p>
                     <hr style="margin: 20px 0;">
@@ -126,7 +126,6 @@ export const getPasswordResetTemplate = (userName, resetToken, resetCode, langua
                     <div style="background-color: #f4f4f4; padding: 15px; text-align: center; font-size: 28px; font-weight: bold; letter-spacing: 5px; border-radius: 5px;">
                         ${resetCode}
                     </div>
-                    <p style="margin-top: 15px;">Ou cliquez ici: <a href="${resetLink}" style="color: #ff9800;">Réinitialiser le mot de passe</a></p>
                     <p>Ce lien expirera dans <strong>1 heure</strong>.</p>
                     <p>Si vous n'avez pas demandé cela, ignorez cet email.</p>
                     <hr style="margin: 20px 0;">
@@ -146,7 +145,6 @@ export const getPasswordResetTemplate = (userName, resetToken, resetCode, langua
                     <div style="background-color: #f4f4f4; padding: 15px; text-align: center; font-size: 28px; font-weight: bold; letter-spacing: 5px; border-radius: 5px;">
                         ${resetCode}
                     </div>
-                    <p style="margin-top: 15px;">Cankande kanda hano: <a href="${resetLink}" style="color: #ff9800;">Subiza Ijambo ryibanga</a></p>
                     <p>Iyi linki izashira mu <strong>saha 1</strong>.</p>
                     <p>Niba utabikoze, wirengagize iyi imeli.</p>
                     <hr style="margin: 20px 0;">

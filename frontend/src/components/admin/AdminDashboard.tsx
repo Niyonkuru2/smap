@@ -248,7 +248,7 @@ export default function AdminDashboard({
 
                 <LanguageSwitcher />
 
-                <RoleViewSwitcher onViewAsRole={onViewAsRole} />
+             
 
                 <Button
                   variant="outline"
@@ -349,14 +349,7 @@ export default function AdminDashboard({
                     <LanguageSwitcher />
                   </div>
 
-                  <div className="border-t border-white/10 pt-4">
-                    <RoleViewSwitcher
-                      onViewAsRole={(role) => {
-                        onViewAsRole(role);
-                        setShowMobileMenu(false);
-                      }}
-                    />
-                  </div>
+                  
 
                   <button
                     onClick={() => {

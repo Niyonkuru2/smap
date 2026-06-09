@@ -133,8 +133,11 @@ export const sendVerificationEmail = async (to, name, code, lang = 'en') => {
     return sendEmail({ to, subject, html });
 };
 
-export const sendPasswordResetEmail = async (to, name, token, code, lang = 'en') => {
-    const { subject, html } = getPasswordResetTemplate(name, token, code, lang);
+export const sendPasswordResetEmail = async ( to,
+    name,
+    code,
+    lang = 'en') => {
+    const { subject, html } = getPasswordResetTemplate(name, code, lang);
     return sendEmail({ to, subject, html });
 };
 
