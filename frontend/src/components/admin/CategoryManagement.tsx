@@ -106,6 +106,13 @@ export default function CategoryManagement() {
     fetchAllData();
   }, []);
 
+  // Auto-fill unit from selected product if it becomes empty
+  useEffect(() => {
+    if (selectedProduct && selectedProduct.unit && !priceData.unit) {
+      setPriceData(prev => ({ ...prev, unit: selectedProduct.unit }));
+    }
+  }, [selectedProduct, priceData.unit]);
+
   const fetchAllData = async () => {
     setIsLoading(true);
     try {
@@ -344,8 +351,16 @@ export default function CategoryManagement() {
   };
 
   const handleSetPrice = async () => {
-    if (!priceData.product_id || !priceData.market_id || !priceData.price) {
-      toast.error('Please fill in all required fields');
+    // Detailed validation with logging
+    const missingFields = [];
+    if (!priceData.product_id) missingFields.push('Product ID');
+    if (!priceData.market_id) missingFields.push('Market');
+    if (!priceData.price || priceData.price <= 0) missingFields.push('Price');
+    if (!priceData.unit || !priceData.unit.trim()) missingFields.push('Unit');
+
+    if (missingFields.length > 0) {
+      console.error('Missing fields in priceData:', priceData);
+      toast.error(`Please fill in all required fields: ${missingFields.join(', ')}`);
       return;
     }
 
@@ -372,6 +387,15 @@ export default function CategoryManagement() {
   const handleEditPrice = async () => {
     if (!editingPrice) return;
 
+    if (!editingPrice.price || editingPrice.price <= 0) {
+      toast.error('Please enter a valid price');
+      return;
+    }
+    if (!editingPrice.unit || !editingPrice.unit.trim()) {
+      toast.error('Unit is required');
+      return;
+    }
+
     try {
       await referencePriceService.updateReferencePrice(editingPrice.id!, {
         price: editingPrice.price,
@@ -390,12 +414,15 @@ export default function CategoryManagement() {
   };
 
   const openSetPriceDialog = (product: ProductWithDetails) => {
+    if (!product.unit || product.unit.trim() === '') {
+      toast.warning(`Product "${product.name}" has no unit. Please enter the unit manually.`);
+    }
     setSelectedProduct(product);
     setPriceData({
       product_id: product.id,
       market_id: '',
       price: 0,
-      unit: product.unit,
+      unit: product.unit || '',
       effective_date: new Date().toISOString().split('T')[0],
       expiry_date: '',
       notes: ''
@@ -1049,12 +1076,13 @@ export default function CategoryManagement() {
               />
             </div>
             <div>
-              <Label className="text-white">Unit</Label>
+              <Label className="text-white">Unit *</Label>
               <Input
                 value={priceData.unit}
                 onChange={(e) => setPriceData({ ...priceData, unit: e.target.value })}
                 placeholder="e.g., kg, piece"
                 className="mt-1.5 bg-white/5 border-white/10 text-white"
+                required
               />
             </div>
             <div>
@@ -1115,11 +1143,12 @@ export default function CategoryManagement() {
               />
             </div>
             <div>
-              <Label className="text-white">Unit</Label>
+              <Label className="text-white">Unit *</Label>
               <Input
                 value={editingPrice?.unit || ''}
                 onChange={(e) => setEditingPrice(prev => prev ? { ...prev, unit: e.target.value } : null)}
                 className="mt-1.5 bg-white/5 border-white/10 text-white"
+                required
               />
             </div>
             <div>
