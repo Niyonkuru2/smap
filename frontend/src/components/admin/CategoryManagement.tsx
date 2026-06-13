@@ -353,7 +353,6 @@ export default function CategoryManagement() {
   const handleSetPrice = async () => {
     // Detailed validation with logging
     const missingFields = [];
-    if (!priceData.product_id) missingFields.push('Product ID');
     if (!priceData.market_id) missingFields.push('Market');
     if (!priceData.price || priceData.price <= 0) missingFields.push('Price');
     if (!priceData.unit || !priceData.unit.trim()) missingFields.push('Unit');
