@@ -3,6 +3,7 @@ import pool from '../config/database.js';
 class USSDService {
     // Pagination settings
     ITEMS_PER_PAGE = 5;
+    COMPARISON_PAGE_SIZE = 3;   // For Compare Markets – only 3 markets per page
     
     // Temporary storage for pagination state (in production, use Redis or session storage)
     comparisonCache = new Map();
@@ -429,7 +430,8 @@ Tips:
                 if (mainChoice === '3' && (fourthChoice === '99' || fourthChoice === '98')) {
                     const cached = this.comparisonCache.get(sessionId);
                     if (cached) {
-                        const totalPages = Math.ceil(cached.allMarkets.length / this.ITEMS_PER_PAGE);
+                        // Use COMPARISON_PAGE_SIZE, not ITEMS_PER_PAGE
+                        const totalPages = Math.ceil(cached.allMarkets.length / this.COMPARISON_PAGE_SIZE);
                         let newPage = cached.currentPage;
                         
                         if (fourthChoice === '99' && newPage < totalPages) {
@@ -517,59 +519,39 @@ Tips:
 
     async showCompareMarketsWithPagination(product, allMarkets, page, sessionId) {
         const totalMarkets = allMarkets.length;
-        const totalPages = Math.ceil(totalMarkets / this.ITEMS_PER_PAGE);
-        const startIdx = (page - 1) * this.ITEMS_PER_PAGE;
-        const endIdx = Math.min(startIdx + this.ITEMS_PER_PAGE, totalMarkets);
+        const itemsPerPage = this.COMPARISON_PAGE_SIZE;   // 3 items per page
+        const totalPages = Math.ceil(totalMarkets / itemsPerPage);
+        const startIdx = (page - 1) * itemsPerPage;
+        const endIdx = Math.min(startIdx + itemsPerPage, totalMarkets);
         const pageMarkets = allMarkets.slice(startIdx, endIdx);
-        
+
+        // Find best market (lowest price) – used for the top summary
         const bestMarket = allMarkets[0];
-        const avgPrice = allMarkets.reduce((sum, m) => sum + parseFloat(m.price), 0) / totalMarkets;
-        
-        let message = `Compare Markets (Page ${page}/${totalPages})
-----------------------------
-Product: ${product.name}
+        const bestPrice = Number(bestMarket.price).toLocaleString();
+        const bestUnit = product.unit || 'kg';
 
-BEST PRICE:
-${bestMarket.name}: ${Number(bestMarket.price).toLocaleString()} RWF/${product.unit || 'kg'}
+        // Build compact message (5-7 lines total)
+        let message = `${product.name} – best ${bestPrice} RWF/${bestUnit} at ${bestMarket.name}\n`;
+        message += `Page ${page}/${totalPages}:\n`;
 
-All Markets (${startIdx + 1}-${endIdx} of ${totalMarkets}):
-----------------------------\n`;
-        
-        // Show markets for current page
-        for (const market of pageMarkets) {
-            const isBest = market.id === bestMarket.id;
-            if (isBest) {
-                message += `* ${market.name}: ${Number(market.price).toLocaleString()} RWF (BEST)\n`;
-            } else {
-                const priceDiff = ((market.price - bestMarket.price) / bestMarket.price * 100).toFixed(1);
-                message += `  ${market.name}: ${Number(market.price).toLocaleString()} RWF (+${priceDiff}pct)\n`;
-            }
+        // List markets on this page (numbered 1..3)
+        for (let i = 0; i < pageMarkets.length; i++) {
+            const m = pageMarkets[i];
+            const priceFormatted = Number(m.price).toLocaleString();
+            const isBest = m.id === bestMarket.id;
+            const marker = isBest ? ' (BEST)' : '';
+            message += `${i+1}. ${m.name} ${priceFormatted}${marker}\n`;
         }
-        
-        const worstMarket = allMarkets[totalMarkets - 1];
-        const savingsPercent = ((worstMarket.price - bestMarket.price) / worstMarket.price * 100).toFixed(0);
-        
-        message += `\n----------------------------`;
-        message += `\nAverage: ${Math.round(avgPrice).toLocaleString()} RWF`;
-        message += `\nSave ${savingsPercent}pct at ${bestMarket.name}`;
-        message += `\n\n----------------------------`;
-        
-        // Input options - these are what the user can type
-        message += `\n1. Another Product`;
-        message += `\n2. Main Menu`;
-        
-        // Add pagination options only if needed
+
+        // Navigation & actions (all in one short line if possible)
+        let nav = '';
         if (totalPages > 1) {
-            if (page < totalPages) {
-                message += `\n99. Next Page`;
-            }
-            if (page > 1) {
-                message += `\n98. Previous Page`;
-            }
+            if (page < totalPages) nav += '99.Next ';
+            if (page > 1) nav += '98.Prev ';
         }
-        
-        message += `\n#. Logout`;
-        
+        nav += '0.Back #.Exit';
+        message += `\n${nav}\n1.Another product 2.Main menu`;
+
         return this.continueSession(message);
     }
 
