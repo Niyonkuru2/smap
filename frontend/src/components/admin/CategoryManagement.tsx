@@ -106,9 +106,9 @@ export default function CategoryManagement() {
     fetchAllData();
   }, []);
 
-  // Auto-fill unit from selected product if it becomes empty
+  // Auto‑fill unit from selected product if unit field is empty
   useEffect(() => {
-    if (selectedProduct && selectedProduct.unit && !priceData.unit) {
+    if (selectedProduct && selectedProduct.unit && selectedProduct.unit.trim() !== '' && !priceData.unit) {
       setPriceData(prev => ({ ...prev, unit: selectedProduct.unit }));
     }
   }, [selectedProduct, priceData.unit]);
@@ -139,16 +139,44 @@ export default function CategoryManagement() {
   };
 
   const fetchProductsWithPrices = async () => {
-    try {
-      const result = await referencePriceService.getProductsWithPrices({ limit: 100 });
-      if (result.success && result.data) {
-        setProducts(result.data);
-      }
-    } catch (error) {
-      console.error('Error fetching products with prices:', error);
-      toast.error('Failed to load products');
+  try {
+    const result = await referencePriceService.getProductsWithPrices({ limit: 100 });
+    if (result.success && result.data) {
+      const normalizedProducts = result.data.map((p: any) => {
+        // Map product_id to id (and fallback to p.id if exists)
+        const id = p.id || p.product_id;
+        if (!id) {
+          console.warn('⚠️ Product missing id/product_id:', p);
+        }
+        
+        let name = p.name || p.product_name;
+        if (!name || name === 'null' || name === 'undefined') {
+          name = 'Unnamed Product';
+        }
+        
+        let unit = p.unit || p.product_unit || '';
+        if (unit === 'null' || unit === 'undefined') unit = '';
+        
+        const description = p.description || p.product_description || '';
+        
+        return {
+          id: id,                 // ✅ crucial: set id field
+          name: name,
+          unit: unit,
+          description: description,
+          category_id: p.category_id,
+          category_name: p.category_name,
+          reference_prices: p.reference_prices,
+          image_url: p.image_url,
+        };
+      });
+      setProducts(normalizedProducts);
     }
-  };
+  } catch (error) {
+    console.error('Error fetching products with prices:', error);
+    toast.error('Failed to load products');
+  }
+};
 
   const handleAddCategory = async () => {
     if (!newCategory.name.trim()) {
@@ -351,17 +379,21 @@ export default function CategoryManagement() {
   };
 
   const handleSetPrice = async () => {
-    // Detailed validation with logging
+    // Validate required fields
     const missingFields = [];
     if (!priceData.market_id) missingFields.push('Market');
     if (!priceData.price || priceData.price <= 0) missingFields.push('Price');
     if (!priceData.unit || !priceData.unit.trim()) missingFields.push('Unit');
+    if (!priceData.product_id || priceData.product_id <= 0) missingFields.push('Product ID');
 
     if (missingFields.length > 0) {
-      console.error('Missing fields in priceData:', priceData);
+      console.error('❌ Missing fields:', missingFields, priceData);
       toast.error(`Please fill in all required fields: ${missingFields.join(', ')}`);
       return;
     }
+
+    // Log the payload before sending
+    console.log('🚀 Sending reference price payload:', priceData);
 
     try {
       await referencePriceService.setReferencePrice(priceData);
@@ -379,6 +411,7 @@ export default function CategoryManagement() {
       setSelectedProduct(null);
       await fetchProductsWithPrices();
     } catch (error: any) {
+      console.error('❌ Error setting price:', error);
       toast.error(error.message || 'Failed to set reference price');
     }
   };
@@ -413,12 +446,26 @@ export default function CategoryManagement() {
   };
 
   const openSetPriceDialog = (product: ProductWithDetails) => {
-    if (!product.unit || product.unit.trim() === '') {
-      toast.warning(`Product "${product.name}" has no unit. Please enter the unit manually.`);
+    console.log('🔍 Opening set price dialog for product:', product);
+    
+    // Ensure product has a valid ID
+    if (!product.id) {
+      console.error('❌ Product missing ID:', product);
+      toast.error('Invalid product: missing ID');
+      return;
     }
+
+    // Force product_id to be a number
+    const productId = Number(product.id);
+    if (isNaN(productId) || productId <= 0) {
+      console.error('❌ Invalid product ID conversion:', product.id);
+      toast.error('Invalid product ID');
+      return;
+    }
+
     setSelectedProduct(product);
     setPriceData({
-      product_id: product.id,
+      product_id: productId,
       market_id: '',
       price: 0,
       unit: product.unit || '',
@@ -795,9 +842,11 @@ export default function CategoryManagement() {
                 <div>
                   <div className="flex items-center gap-2 flex-wrap">
                     <h4 className="font-semibold text-white">{product.name}</h4>
-                    <Badge className="bg-primary/20 text-primary border-primary/30">
-                      {product.unit}
-                    </Badge>
+                    {product.unit && (
+                      <Badge className="bg-primary/20 text-primary border-primary/30">
+                        {product.unit}
+                      </Badge>
+                    )}
                     {product.category_name && (
                       <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30">
                         {product.category_name}
@@ -830,7 +879,7 @@ export default function CategoryManagement() {
               </div>
 
               {/* Reference Prices List */}
-              {product.reference_prices.length > 0 ? (
+              {product.reference_prices && product.reference_prices.length > 0 ? (
                 <div className="divide-y divide-white/10">
                   {product.reference_prices.map((price) => (
                     <div key={price.reference_price_id} className="p-4 flex items-center justify-between flex-wrap gap-3 hover:bg-white/5 transition-colors">
@@ -1042,7 +1091,7 @@ export default function CategoryManagement() {
         <DialogContent className="dark-glass border-white/10 sm:max-w-[500px]">
           <DialogHeader>
             <DialogTitle className="gradient-text">
-              Set Reference Price for {selectedProduct?.name}
+              Set Reference Price for {selectedProduct?.name || 'Product'}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
@@ -1083,6 +1132,11 @@ export default function CategoryManagement() {
                 className="mt-1.5 bg-white/5 border-white/10 text-white"
                 required
               />
+              {!priceData.unit && selectedProduct?.unit && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Product unit is "{selectedProduct.unit}". You can use it or change it.
+                </p>
+              )}
             </div>
             <div>
               <Label className="text-white">Effective Date</Label>
