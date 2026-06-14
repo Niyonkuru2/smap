@@ -1,6 +1,8 @@
 import axios from 'axios';
+
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 const VENDOR_URL = `${API_BASE_URL}/vendor`;
+
 export interface Vendor {
   id?: string;
   name: string;
@@ -12,9 +14,9 @@ export interface Vendor {
   verified?: boolean;
   is_active?: boolean;
   created_at?: string;
-  market_id?: string; 
-  province?: string;  
-  district?: string; 
+  market_id?: string;
+  province?: string;
+  district?: string;
   status?: 'active' | 'inactive' | 'pending';
   rating?: number;
   joinDate?: string;
@@ -22,10 +24,24 @@ export interface Vendor {
 }
 
 /**
+ * Helper to get auth headers – throws if token missing
+ */
+const getAuthConfig = () => {
+  const token = localStorage.getItem('authToken');
+  if (!token) {
+    throw new Error('No authentication token found. Please login.');
+  }
+  return {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  };
+};
+
+/**
  * Convert backend vendor data to frontend Vendor format
  */
 const mapVendor = (vendor: any): Vendor => {
-  // Determine status based on is_active and verified
   let status: 'active' | 'inactive' | 'pending' = 'pending';
   if (vendor.is_active === true && vendor.verified === true) {
     status = 'active';
@@ -35,7 +51,6 @@ const mapVendor = (vendor: any): Vendor => {
     status = 'pending';
   }
 
-  // Get category from either category_name (from join) or category field
   const category = vendor.category_name || vendor.category || '';
 
   return {
@@ -45,13 +60,10 @@ const mapVendor = (vendor: any): Vendor => {
     phone: vendor.phone || '',
     address: vendor.address || '',
     category: category,
-
     role: vendor.role,
     verified: vendor.verified,
     is_active: vendor.is_active,
     created_at: vendor.created_at,
-
-    // frontend UI fields
     status: status,
     joinDate: vendor.created_at
       ? new Date(vendor.created_at).toISOString().split('T')[0]
@@ -66,13 +78,10 @@ const mapVendor = (vendor: any): Vendor => {
  */
 export const getVendors = async (): Promise<Vendor[]> => {
   try {
-    const response = await axios.get(VENDOR_URL);
-    
-    // Check if response has the expected structure
+    const response = await axios.get(VENDOR_URL, getAuthConfig());
     if (response.data && response.data.success && Array.isArray(response.data.data)) {
       return response.data.data.map(mapVendor);
     } else if (Array.isArray(response.data)) {
-      // Fallback for direct array response
       return response.data.map(mapVendor);
     } else {
       console.error('Unexpected API response structure:', response.data);
@@ -89,12 +98,10 @@ export const getVendors = async (): Promise<Vendor[]> => {
  */
 export const getVendorById = async (id: string): Promise<Vendor | null> => {
   try {
-    const response = await axios.get(`${VENDOR_URL}/${id}`);
-    
+    const response = await axios.get(`${VENDOR_URL}/${id}`, getAuthConfig());
     if (response.data && response.data.success && response.data.data) {
       return mapVendor(response.data.data);
     }
-    
     return null;
   } catch (error: any) {
     if (error.response?.status === 404) {
@@ -116,13 +123,10 @@ export const createVendor = async (vendor: Vendor): Promise<Vendor> => {
     address: vendor.address,
     category: vendor.category,
   };
-
-  const response = await axios.post(VENDOR_URL, payload);
-  
+  const response = await axios.post(VENDOR_URL, payload, getAuthConfig());
   if (response.data && response.data.success && response.data.data) {
     return mapVendor(response.data.data);
   }
-  
   throw new Error(response.data?.message || 'Failed to create vendor');
 };
 
@@ -132,9 +136,10 @@ export const createVendor = async (vendor: Vendor): Promise<Vendor> => {
 export const updateVendor = async (id: string, vendor: Partial<Vendor>): Promise<Vendor> => {
   const payload: any = {
     name: vendor.name,
+    email: vendor.email,        
     phone: vendor.phone,
     address: vendor.address,
-    category: vendor.category,
+    category: vendor.category, 
   };
 
   // Map status to backend fields
@@ -149,12 +154,10 @@ export const updateVendor = async (id: string, vendor: Partial<Vendor>): Promise
     payload.is_active = true;
   }
 
-  const response = await axios.put(`${VENDOR_URL}/${id}`, payload);
-  
+  const response = await axios.put(`${VENDOR_URL}/${id}`, payload, getAuthConfig());
   if (response.data && response.data.success && response.data.data) {
     return mapVendor(response.data.data);
   }
-  
   throw new Error(response.data?.message || 'Failed to update vendor');
 };
 
@@ -162,8 +165,7 @@ export const updateVendor = async (id: string, vendor: Partial<Vendor>): Promise
  * DELETE VENDOR (SOFT DELETE)
  */
 export const deleteVendor = async (id: string): Promise<void> => {
-  const response = await axios.delete(`${VENDOR_URL}/${id}`);
-  
+  const response = await axios.delete(`${VENDOR_URL}/${id}`, getAuthConfig());
   if (!response.data?.success) {
     throw new Error(response.data?.message || 'Failed to delete vendor');
   }
@@ -180,35 +182,20 @@ export const getVendorStats = async (): Promise<{
   total_submissions: number;
   total_approved: number;
 }> => {
-  const response = await axios.get(`${VENDOR_URL}/stats`, {
-    headers: getAuthHeaders()
-  });
-  
+  const response = await axios.get(`${VENDOR_URL}/stats`, getAuthConfig());
   if (response.data && response.data.success && response.data.data) {
     return response.data.data;
   }
-  
   return {
     total_vendors: 0,
     active_vendors: 0,
     pending_vendors: 0,
     inactive_vendors: 0,
     total_submissions: 0,
-    total_approved: 0
+    total_approved: 0,
   };
 };
 
-/**
- * Helper to get auth headers
- */
-const getAuthHeaders = () => {
-  const token = localStorage.getItem('authToken');
-  return token ? { Authorization: `Bearer ${token}` } : {};
-};
-
-// ============================================
-// DEFAULT EXPORT
-// ============================================
 export default {
   getVendors,
   getVendorById,
