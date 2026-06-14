@@ -196,7 +196,7 @@ class VendorService {
    * Update vendor
    */
   static async updateVendor(id, data, currentUserRole) {
-    const allowedFields = ['name', 'phone', 'address'];
+    const allowedFields = ['name', 'email', 'phone', 'address'];
     const adminOnlyFields = ['verified', 'is_active', 'role', 'category'];
 
     const updates = [];
